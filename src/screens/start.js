@@ -54,7 +54,7 @@ export function Start() {
           <span class="size-alt">EU ${size.eu} · UK ${size.uk} · Ø ${size.diameter.toFixed(1)} mm</span>
         </div>
         <div class="size-chips" role="radiogroup" aria-label="Common sizes">
-          ${[4, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 10, 11, 12].map(
+          ${[4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 13].map(
             (v) => html`<button role="radio" aria-checked=${design.sizeUS === v} class=${'chip' + (design.sizeUS === v ? ' on' : '')}
               onClick=${() => setDesign({ sizeUS: v })}>${fmtUs(v)}</button>`
           )}

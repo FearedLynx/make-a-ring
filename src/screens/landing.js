@@ -62,8 +62,17 @@ export function Landing() {
   const size = sizeSummary(design.sizeUS);
   const mat = getMaterial(design.materialId);
   const price = estimate(design).total;
-  const pla = estimate(designFromTemplate('heritage', { materialId: 'pla' })).total;
-  const gold = estimate(designFromTemplate('heritage', { materialId: 'gold-yellow' })).total;
+  // Price range per way of making it, all for the same Heritage band, from the same estimate the studio shows.
+  const costRows = [
+    ['Printed at home', ['pla', 'resin', 'tpu']],
+    ['Metal 3D printed', ['steel', 'titanium']],
+    ['Cast in silver or brass', ['silver', 'brass']],
+    ['Cast in 14k gold', ['gold-yellow', 'gold-rose', 'gold-white']],
+  ].map(([label, ids]) => {
+    const totals = ids.map((id) => estimate(designFromTemplate('heritage', { materialId: id })).total);
+    return { label, lo: Math.min(...totals), hi: Math.max(...totals) };
+  });
+  const costMax = Math.ceil(Math.max(...costRows.map((r) => r.hi)) / 250) * 250;
   const bandDesign = designFromTemplate('heritage', { sizeUS: 9 });
 
   return html`<div class="lp">
@@ -156,7 +165,7 @@ export function Landing() {
             <li><span class="lp-n">B</span><div><h3>Draw once, wrap forever</h3><p>Pen, line, square, circle and dot, with mirroring, snapping, zoom and a Steady tool that calms shaky lines.</p></div><span class="lp-keys"><kbd>D</kbd></span></li>
             <li><span class="lp-n">C</span><div><h3>Proportions you control</h3><p>Drag the zone edges to make the borders wider or the middle bolder. Repeats can be typed exactly.</p></div><span class="lp-keys"><kbd>drag</kbd></span></li>
             <li><span class="lp-n">D</span><div><h3>Printability built in</h3><p>Wall thickness, line width and engraving depth are checked for your material. Every warning has a fix.</p></div><span class="lp-keys"><kbd>live</kbd></span></li>
-            <li><span class="lp-n">E</span><div><h3>Fits the first time</h3><p>US, EU and UK sizes, a screen-calibrated ring sizer, and a string method.</p></div><span class="lp-keys"><kbd>Ø</kbd></span></li>
+            <li><span class="lp-n">E</span><div><h3>Find your size</h3><p>US, EU and UK sizes, a screen-calibrated ring sizer, and a string method. Check with a jeweller's sizer before casting in gold.</p></div><span class="lp-keys"><kbd>Ø</kbd></span></li>
           </ul>
         </div>
       </section>
@@ -180,15 +189,15 @@ export function Landing() {
       </section>
 
       <section class="lp-sec" id="cost">
-        <${SectionBar} n="4" title="Cost" meta="estimate for a 6 mm band, US 7" />
+        <${SectionBar} n="4" title="Cost" meta="estimate for the Heritage band, 7 mm, US 7" />
         <div class="lp-cost">
-          <div class="lp-bars" role="img" aria-label=${`Traditional bespoke jeweller 2,000 to 5,000 dollars. Make-a-Ring ${money(pla)} to ${money(gold)}.`}>
-            <div class="lp-bar-row"><span>Bespoke jeweller</span><div class="lp-bar-track"><i style="left:40%;width:60%"></i></div><b>$2,000–5,000</b></div>
-            <div class="lp-bar-row accent"><span>Make-a-Ring, cast</span><div class="lp-bar-track"><i style=${`left:${(80 / 5000) * 100}%;width:${Math.max(1.5, ((gold - 80) / 5000) * 100)}%`}></i></div><b>$80–${Math.round(gold)}</b></div>
-            <div class="lp-bar-row accent"><span>Make-a-Ring, printed</span><div class="lp-bar-track"><i style="left:0;width:1.2%"></i></div><b>from ${money(pla)}</b></div>
-            <div class="lp-axis"><span>$0</span><span>$1k</span><span>$2k</span><span>$3k</span><span>$4k</span><span>$5k</span></div>
+          <div class="lp-bars" role="img" aria-label=${costRows.map((r) => `${r.label}: ${money(r.lo)} to ${money(r.hi)}`).join('. ')}>
+            ${costRows.map((r) => html`<div class="lp-bar-row accent"><span>${r.label}</span>
+              <div class="lp-bar-track"><i style=${`left:${(r.lo / costMax) * 100}%;width:${Math.max(1.2, ((r.hi - r.lo) / costMax) * 100)}%`}></i></div>
+              <b>${money(r.lo)}–${money(r.hi)}</b></div>`)}
+            <div class="lp-axis">${[0, 0.25, 0.5, 0.75, 1].map((f) => html`<span>${f ? money(f * costMax) : "$0"}</span>`)}</div>
           </div>
-          <p class="lp-note">Print it in PLA or resin at home and electroplate it later, or send the same file to a casting house for silver or gold.</p>
+          <p class="lp-note">Print it in PLA or resin at home and electroplate it later, or send the same file to a casting house for silver or gold. Prices are estimates for the metal and making only; a jeweller's quote for a custom design adds design and labour on top.</p>
         </div>
       </section>
 

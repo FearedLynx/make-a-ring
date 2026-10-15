@@ -61,6 +61,7 @@ function makerBrief(name, rows, checks) {
     ...checks.map((c) => `[${c.level}] ${c.title}: ${c.detail}`),
     '',
     'Units are millimetres. The ring axis is Y. Inner diameter in the file already includes any plating compensation.',
+    'Dimensions are nominal: the caster or print service applies its own shrink and finishing allowance.',
   ].join('\n');
 }
 
@@ -234,7 +235,7 @@ export function Review() {
             ${price.lines.filter((l) => l.value > 0).map((l) => html`<li><span>${l.label}</span><span>${money(l.value)}</span></li>`)}
             <li class="total"><span>Total</span><span>${money(price.total)}</span></li>
           </ul>
-          <p class="muted small">${price.leadDays ? `Made by a partner workshop in about ${price.leadDays} days.` : 'Print it yourself today. Plate it later if you like.'} A bespoke jeweller usually charges $2,000–5,000.</p>
+          <p class="muted small">${price.leadDays ? `A casting house or print service typically takes about ${price.leadDays} days.` : 'Print it yourself today. Plate it later if you like.'} An estimate, not a quote: shipping and tax are not included.</p>
         </div>
 
         <div class="card export-card">

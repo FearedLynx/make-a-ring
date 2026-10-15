@@ -267,7 +267,7 @@ export function Specs({ onHide }) {
           </div>`
         )}
         <p class="mat-process"><strong>${m.process}</strong> · min wall ${m.minWall} mm · min detail ${m.minDetail} mm
-          ${m.leadDays ? ` · ships in ~${m.leadDays} days` : ' · print it yourself'}</p>
+          ${m.leadDays ? ` · typically ~${m.leadDays} days at a service` : ' · print it yourself'}</p>
         ${m.platable &&
         html`<span class="field-label">Plating after printing</span>
           <${Segmented} label="Plating" size="full" value=${design.plating}
@@ -301,7 +301,7 @@ export function Specs({ onHide }) {
           </button>
         </span>
         <strong class="price">${money(price.total)}</strong>
-        <span class="muted small">Bespoke jeweller: $2,000+</span>
+        <span class="muted small">Estimate, not a quote</span>
       </div>
       <button class="btn primary" onClick=${() => go('tryon')}>Try it on <${Icon} name="right" size=${16} /></button>
     </div>

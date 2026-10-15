@@ -9,10 +9,11 @@ export const usToCircumference = (us) => Math.PI * usToDiameter(us);
 
 const UK = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
+// UK letters start at A = 37.8 mm inside circumference and step 1.25 mm; half letters sit in between.
 export function ukSize(us) {
-  const idx = (usToCircumference(us) - 37.8) / 1.25;
-  const i = Math.max(0, Math.min(UK.length - 1, Math.floor(idx)));
-  return UK[i] + (idx - Math.floor(idx) >= 0.5 && i < UK.length - 1 ? '½' : '');
+  const h = Math.round(((usToCircumference(us) - 37.8) / 1.25) * 2) / 2; // nearest half letter
+  const i = Math.max(0, Math.min(UK.length - 1, Math.floor(h)));
+  return UK[i] + (h > i && i < UK.length - 1 ? '½' : '');
 }
 
 export const euSize = (us) => Math.round(usToCircumference(us));

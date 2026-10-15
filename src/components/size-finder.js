@@ -107,11 +107,12 @@ export function SizeFinder() {
       </label>`}
       ${system === 'UK' &&
       html`<label class="field">UK size
-        <select value=${s.uk.replace('½', '')} onChange=${(e) => {
-          const i = UK.indexOf(e.currentTarget.value);
-          setUs(clampUs(diameterToUs((37.8 + i * 1.25 + 0.3) / Math.PI)));
+        <select value=${s.uk} onChange=${(e) => {
+          const v = e.currentTarget.value;
+          const i = UK.indexOf(v[0]) + (v.endsWith('½') ? 0.5 : 0);
+          setUs(clampUs(diameterToUs((37.8 + i * 1.25) / Math.PI)));
         }}>
-          ${UK.map((l) => html`<option value=${l}>${l}</option>`)}
+          ${UK.flatMap((l, i) => (i < UK.length - 1 ? [l, l + '½'] : [l])).map((l) => html`<option value=${l}>${l}</option>`)}
         </select>
       </label>`}
     </div>`}

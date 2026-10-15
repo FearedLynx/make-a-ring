@@ -120,7 +120,7 @@ export const TEMPLATES = [
     blurb: 'Feathered centre with Morse-code rails. Bold and wide.',
     layout: 'trio',
     patterns: { middle: 'feather', sideL: 'morse', sideR: 'morse' },
-    width: 8, profile: 'flat', materialId: 'titanium', thickness: 2, style: 'engraved',
+    width: 8, profile: 'flat', materialId: 'silver', finish: 'antique', thickness: 2, style: 'engraved',
   },
   {
     id: 'botanica',

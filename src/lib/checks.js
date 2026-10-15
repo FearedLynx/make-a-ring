@@ -1,10 +1,12 @@
 // Printability checks and price estimate. Each check can carry a one-click fix.
-import { getMaterial, PLATINGS } from './materials.js';
+import { getMaterial, MATERIALS, PLATINGS } from './materials.js';
 import { bandMetrics, resolveZones } from './band.js';
 import { engravingLayout, getEngraving, ENGRAVE_DEPTH, STROKE_RATIO, LETTER_MIN, LETTER_MAX } from './engraving.js';
 
-const PROFILE_EDGE = { flat: 1, domed: 0.55, comfort: 0.8, bevel: 0.65 };
-const PROFILE_FILL = { flat: 1, domed: 0.82, comfort: 0.9, bevel: 0.9 };
+// Wall at the rim and mean wall across the band, as fractions of the thickness. Both follow the
+// profile shapes in ringGeometry.js (comfort: outer rim 0.8·t minus the 0.22·t inner curve).
+const PROFILE_EDGE = { flat: 1, domed: 0.55, comfort: 0.58, bevel: 0.65 };
+const PROFILE_FILL = { flat: 1, domed: 0.903, comfort: 0.884, bevel: 0.965 };
 
 export function runChecks(design, getPattern) {
   const m = getMaterial(design.materialId);
@@ -47,14 +49,18 @@ export function runChecks(design, getPattern) {
   if (finest) {
     const name = finest.zone.pattern.name;
     if (finest.mm < m.minDetail) {
-      const widthNeeded = Math.ceil(((design.width * m.minDetail) / finest.mm) * 2) / 2;
+      // Built-in lines scale with the zone but are clamped to BASE_LINE_MM, so widening only helps
+      // once the unclamped width (pattern.sw × zone height) reaches the limit.
+      const raw = finest.zone.pattern.sw * finest.zone.heightMM;
+      const widthNeeded = Math.ceil(((design.width * m.minDetail) / raw) * 2) / 2;
+      const finer = MATERIALS.find((x) => x.metalness && x.minDetail <= finest.mm);
       const fixes = finest.zone.pattern.lw
         ? null // hand-drawn line weight: raise it in the pattern editor
         : !m.metalness
         ? { label: 'Switch to tough resin (0.3 mm detail)', patch: { materialId: 'resin' } }
-        : widthNeeded <= 12 && finest.mm > 0.38
+        : widthNeeded <= 12
           ? { label: `Widen band to ${widthNeeded} mm`, patch: { width: widthNeeded } }
-          : null;
+          : finer && { label: `Switch to ${finer.name.toLowerCase()} (${finer.minDetail} mm detail)`, patch: { materialId: finer.id } };
       add(finest.mm < m.minDetail * 0.7 ? 'error' : 'warn', 'Details smaller than the printer can make',
         `Lines in “${name}” are ${finest.mm.toFixed(2)} mm. ${m.process} resolves ${m.minDetail} mm.${finest.zone.pattern.lw ? ' Edit the pattern and raise its line weight.' : ''}`, fixes);
     } else {
@@ -122,13 +128,14 @@ export function estimate(design) {
   const m = getMaterial(design.materialId);
   const { innerD } = bandMetrics(design);
   const r = innerD / 2;
-  const t = design.thickness + (design.style === 'raised' ? design.relief * 0.3 : -design.relief * 0.3);
+  const relief = Object.values(design.patterns || {}).some(Boolean) ? design.relief * 0.3 : 0; // patterns cover roughly 30% of the band
+  const t = design.thickness + (design.style === 'raised' ? relief : -relief);
   const volume = Math.PI * ((r + t) ** 2 - r ** 2) * design.width * PROFILE_FILL[design.profile]; // mm³
   const grams = (volume / 1000) * m.density;
   const plating = m.platable ? PLATINGS[design.plating] : null;
   const lines = [
     { label: `${m.name} · ${grams.toFixed(1)} g`, value: grams * m.perGram },
-    { label: m.leadDays ? m.process : 'Printing at home (filament, power, supports)', value: m.setup },
+    { label: m.leadDays ? m.process : m.id === 'resin' ? 'Printing at home (resin, power, supports)' : 'Printing at home (filament, power, supports)', value: m.setup },
   ];
   if (plating) lines.push({ label: plating.name, value: plating.price });
   if (design.finish === 'antique') lines.push({ label: 'Antique patina', value: m.metalness ? 12 : 0 });

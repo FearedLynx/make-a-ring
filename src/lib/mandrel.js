@@ -6,7 +6,7 @@ import { usToDiameter } from './sizes.js';
 
 export const MANDREL = {
   width: 240, // SVG viewBox
-  height: 440,
+  height: 470, // room for the collar, handle and its shadow under the cone
   cx: 104, // cone axis; ticks and labels sit to the right
   yTop: 44, // where size 3½ would sit
   coneHeight: 312, // from size 3½ to size 13½

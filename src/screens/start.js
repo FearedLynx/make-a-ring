@@ -15,6 +15,7 @@ export function Start() {
   // `picked` is a template id, or "mine:<id>" for one of My designs.
   const [picked, setPicked] = useState(currentSaved && saved.some((x) => x.id === currentSaved) ? `mine:${currentSaved}` : design.templateId || 'heritage');
   const size = sizeSummary(design.sizeUS);
+  const [preview, setPreview] = useState(null); // size pill under the pointer or focus: shown as a ghost ring
 
   const next = () => {
     if (picked.startsWith('mine:')) openSavedDesign(picked.slice(5), { silent: true });
@@ -66,11 +67,13 @@ export function Start() {
           <span class="size-big">US ${size.us}</span>
           <span class="size-alt">EU ${size.eu} · UK ${size.uk} · Ø ${size.diameter.toFixed(1)} mm</span>
         </div>
-        <${Mandrel} sizeUS=${design.sizeUS} />
+        <${Mandrel} sizeUS=${design.sizeUS} previewUS=${preview} materialId=${design.materialId} />
         <div class="size-chips" role="radiogroup" aria-label="Common sizes">
           ${[4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 13].map(
             (v) => html`<button role="radio" aria-checked=${design.sizeUS === v} class=${'chip' + (design.sizeUS === v ? ' on' : '')}
-              onClick=${() => setDesign({ sizeUS: v })}>${fmtUs(v)}</button>`
+              onClick=${() => setDesign({ sizeUS: v })}
+              onPointerEnter=${(e) => e.pointerType === 'mouse' && setPreview(v)} onPointerLeave=${() => setPreview(null)}
+              onFocus=${() => setPreview(v)} onBlur=${() => setPreview(null)}>${fmtUs(v)}</button>`
           )}
         </div>
         <button class="btn ghost" onClick=${() => store.set({ sizeFinderOpen: true })}><${Icon} name="ruler" size=${16} /> Help me find my size</button>

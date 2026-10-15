@@ -12,7 +12,7 @@ import { PATTERNS } from '../lib/patterns.js';
 import { sizeSummary } from '../lib/sizes.js';
 import { estimate, money } from '../lib/checks.js';
 import { go, patternById } from '../state.js';
-import { CostWheel } from '../components/cost-wheel.js';
+import { DisplayTray } from '../components/display-tray.js';
 
 const SHOWCASE = ['heritage', 'botanica', 'nordic', 'everwrap', 'twin-rails', 'solitaire'];
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -197,7 +197,7 @@ export function Landing() {
 
       <section class="lp-sec" id="cost">
         <${SectionBar} n="4" title="Cost" meta="estimate for the Heritage band, 7 mm, US 7" />
-        <${CostWheel} routes=${costRows} />
+        <${DisplayTray} routes=${costRows} bandMm=${designFromTemplate('heritage').width} />
       </section>
 
       <a class="lp-mega" href="#/start" onClick=${(e) => (e.preventDefault(), go('start'))}>

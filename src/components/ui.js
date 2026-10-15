@@ -54,6 +54,7 @@ const P = {
   band: 'M3 18v-7c0-5 18-5 18 0v7Z',
   pattern: 'M3 5h18v14H3ZM3 13l3-3 3 3 3-3 3 3 3-3 3 3',
   shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9 12l2 2 4-4',
+  type: 'M4 7V5h16v2M9 19h6M12 5v14',
 };
 
 export function Icon({ name, size = 18, className = '' }) {

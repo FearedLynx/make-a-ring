@@ -24,7 +24,7 @@ Upload the folder as a static site (Deployxa, GitHub Pages, Netlify, Vercel). Th
 
 1. **Landing** (`#/landing`): pitch, rotating 3D showcase.
 2. **Start** (`#/start`): pick a template (3D thumbnails), then your size.
-3. **Studio** (`#/studio`): the cross carousel. ↑/↓ changes the middle, ←/→ changes the sides, the ring updates live. Both side panels work like Blender's properties editor: a strip of category icons on the outer edge, one category shown at a time (left: patterns, my patterns, templates; right: size, layout, band & relief, material & finish, printability). Hiding a panel leaves its strip, and any icon opens it again. Price, check status and **Try it on** stay pinned at the bottom. Use **Draw your own** to open the pattern editor.
+3. **Studio** (`#/studio`): the cross carousel. ↑/↓ changes the middle, ←/→ changes the sides, the ring updates live. Both side panels work like Blender's properties editor: a strip of category icons on the outer edge, one category shown at a time (left: patterns, my patterns, templates; right: size, layout, band & relief, material & finish, inside engraving, printability). The Middle / Sides selectors sit in a column on the right edge of the stage, so the carousel keeps its full height. Hiding a panel leaves its strip, and any icon opens it again. Price, check status and **Try it on** stay pinned at the bottom. Use **Draw your own** to open the pattern editor.
 4. **Try on** (`#/tryon`): illustrated hand (5 skin tones, 2 shapes, 4 fingers, close-up) or your own photo.
 5. **Review** (`#/review`): spec sheet, checks, price breakdown, real STL/OBJ export (built in the browser) with a maker brief, share link.
 
@@ -37,7 +37,7 @@ hints and layout adapt to the device.
 
 ## Guidance
 
-- A guided studio tour runs on the first visit, and the pattern editor has its own. Both can be skipped
+- A guided studio tour runs on the first visit only (once started it counts as seen, whether finished, skipped or left), and the pattern editor has its own. Both can be skipped
   (with a confirmation) and replayed from the help menu (?).
 - One-off tips appear when someone clicks the same control repeatedly, pointing to the keyboard shortcut.
   Each has "Don't show again".
@@ -59,6 +59,7 @@ hints and layout adapt to the device.
 | `src/components/stage.js` | The cross carousel |
 | `src/components/editor.js` | Pattern editor (zoom, grid, square/move tools, Steady smoothing, line weight in mm). Strokes placed with symmetry remember their copies: with symmetry on, erasing, moving, deleting or smoothing one copy acts on all of them; with it off, only on the one you touch. On phones it goes full screen with the tools pinned as swipeable rows above a larger canvas |
 | `src/components/rail-strip.js` | Category icon strip for the studio side panels |
+| `src/lib/engraving.js` | Inside engraving: presets (initials, A for B, A ♥ B, love, custom), letter-size limits and the inner-surface heightmap cut into the mesh |
 | `src/components/tour.js` | Guided tours and tips |
 | `src/screens/*` | One file per screen |
 

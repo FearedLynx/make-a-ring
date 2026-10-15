@@ -118,12 +118,16 @@ export function dismissTip(forever = false) {
   store.set({ tip: null });
 }
 export const tourDone = (id) => load('mar.tours.done', []).includes(id);
+const markTourSeen = (id) => save('mar.tours.done', [...new Set([...load('mar.tours.done', []), id])]);
+// A tour counts as seen as soon as it starts: finished, skipped, or left by reloading, it never
+// starts on its own again. The help menu still replays it.
 export function startTour(id) {
+  markTourSeen(id);
   store.set({ tour: { id, step: 0, snapshot: id === 'studio' ? store.get().design : null }, tip: null });
 }
 export function endTour() {
   const t = store.get().tour;
-  if (t) save('mar.tours.done', [...new Set([...load('mar.tours.done', []), t.id])]);
+  if (t) markTourSeen(t.id);
   store.set({ tour: null });
 }
 
@@ -173,7 +177,7 @@ export function announce(msg) {
 
 export function applyTemplate(id, { silent = false } = {}) {
   const prev = store.get().design;
-  const next = designFromTemplate(id, { sizeUS: prev.sizeUS });
+  const next = designFromTemplate(id, { sizeUS: prev.sizeUS, ...(prev.engraving ? { engraving: prev.engraving } : {}) }); // size and engraving are personal, keep them
   store.set({ design: next, activeSide: 'sideL' });
   if (!silent) toast('Template applied', { label: 'Undo', run: () => store.set({ design: prev }) });
 }

@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { sampleHeight } from './heightmap.js';
 import { usToDiameter } from './sizes.js';
+import { buildEngravingMap, ENGRAVE_DEPTH } from './engraving.js';
 
 const NU = 1080; // segments around the ring (~0.06 mm each)
 
@@ -33,13 +34,18 @@ export function buildRingGeometry(design, hm) {
   const edgeFade = Math.min(0.2, 0.3 / w); // keep the outer rim clean
   const sign = design.style === 'engraved' ? -1 : 1;
   const antique = design.finish === 'antique';
+  const engr = buildEngravingMap(design); // text cut into the inside, or null
 
   // Each section is a list of rows; a row is { s, rho(u) , outerSurface }.
   const outerRows = Math.round(Math.min(200, Math.max(90, w / 0.045)));
   const sections = [
     { rows: Array.from({ length: outerRows + 1 }, (_, j) => ({ s: -1 + (2 * j) / outerRows, kind: 'outer' })) },
     { rows: [0, 0.5, 1].map((k) => ({ s: 1, kind: 'wall', k, from: 'outer' })) },
-    { rows: Array.from({ length: 25 }, (_, j) => ({ s: 1 - (2 * j) / 24, kind: 'inner' })) },
+    // The inside only needs a few rows, unless it carries an engraving: then enough to resolve the letters.
+    (() => {
+      const n = engr ? Math.round(Math.min(160, Math.max(80, w / 0.05))) : 24;
+      return { rows: Array.from({ length: n + 1 }, (_, j) => ({ s: 1 - (2 * j) / n, kind: 'inner' })) };
+    })(),
     { rows: [0, 0.5, 1].map((k) => ({ s: -1, kind: 'wall', k, from: 'inner' })) },
   ];
 
@@ -65,6 +71,11 @@ export function buildRingGeometry(design, hm) {
           if (antique && hm.ranges.some(([a, b]) => v >= a && v <= b)) shade = design.style === 'engraved' ? 1 - 0.6 * h * fade : 0.46 + 0.54 * Math.max(h, 1 - fade);
         } else if (row.kind === 'inner') {
           rho = inner(row.s);
+          if (engr) {
+            const h = sampleHeight(engr, u, (row.s + 1) / 2);
+            rho += ENGRAVE_DEPTH * h; // cut outwards, into the metal
+            if (antique && h > 0.05) shade = 1 - 0.55 * h;
+          }
         } else {
           const a = outer(row.s), b = inner(row.s);
           rho = row.from === 'outer' ? a + (b - a) * row.k : b + (a - b) * row.k;

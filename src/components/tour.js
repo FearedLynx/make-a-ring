@@ -262,7 +262,7 @@ export function Tour() {
 
   useLayoutEffect(() => {
     if (rect) setPos(placeCard(rect, card.current));
-  }, [rect, skipAsk, i, !!doneMsg]);
+  }, [rect, i, !!doneMsg]); // not on skipAsk: the confirmation appears in place, the card does not jump
 
   useEffect(() => {
     if (step || final) requestAnimationFrame(() => (card.current?.querySelector('[data-primary]') || nextBtn.current)?.focus({ preventScroll: true }));
@@ -356,16 +356,7 @@ export function Tour() {
       ${interact && step.done && html`<span class="tour-try">Try it</span>`}
     </div>
     <div class="tour-card" ref=${card} style=${`top:${pos.top}px;left:${pos.left}px`}>
-      ${skipAsk
-        ? html`<div class="tour-head"><span class="tour-count">Skip?</span></div>
-            <h2 id="tour-title">Skip the tour?</h2>
-            <p id="tour-body">We recommend finishing it. It's ${steps.length} short steps and shows the shortcuts that make this much faster. You can replay it any time from the help menu.</p>
-            <div class="tour-actions">
-              <button class="btn ghost sm" onClick=${() => (setSkipAsk(false), finish())}>Skip anyway</button>
-              <span class="spacer"></span>
-              <button class="btn primary sm" data-primary onClick=${() => setSkipAsk(false)}>Continue tour</button>
-            </div>`
-        : html`<div class="tour-head">
+      <div class="tour-head">
               <span class="tour-count">${String(i + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}</span>
               <div class="tour-progress" aria-hidden="true">${steps.map((_, k) => html`<span class=${k <= i ? 'on' : ''}></span>`)}</div>
             </div>
@@ -374,12 +365,18 @@ export function Tour() {
             ${doneMsg
               ? html`<p id="tour-body" class="tour-done" role="status"><${Icon} name="check" size=${16} /> ${doneMsg}</p>`
               : html`<p id="tour-body">${step.body()}</p>${step.more && html`<p class="tour-more">${step.more}</p>`}`}
-            <div class="tour-actions">
-              <button class="link-btn muted-link" onClick=${() => setSkipAsk(true)}>Skip tour</button>
-              <span class="spacer"></span>
-              ${i > 0 && html`<button class="btn ghost sm" onClick=${() => go(i - 1)}><${Icon} name="left" size=${14} /> Back</button>`}
-              <button class="btn primary sm" ref=${nextBtn} onClick=${() => go(i + 1)}>${last ? 'Finish' : 'Next'} ${!last && html`<${Icon} name="right" size=${14} />`}</button>
-            </div>`}
+            ${skipAsk
+              ? html`<div class="tour-actions tour-skip-ask" role="group" aria-label="Skip the tour?">
+                  <span class="tour-skip-q"><strong>Skip the tour?</strong> You can replay it from the help menu.</span>
+                  <button class="btn ghost sm" onClick=${() => (setSkipAsk(false), finish())}>Skip</button>
+                  <button class="btn primary sm" data-primary onClick=${() => setSkipAsk(false)}>Keep going</button>
+                </div>`
+              : html`<div class="tour-actions">
+                  <button class="link-btn muted-link" onClick=${() => setSkipAsk(true)}>Skip tour</button>
+                  <span class="spacer"></span>
+                  ${i > 0 && html`<button class="btn ghost sm" onClick=${() => go(i - 1)}><${Icon} name="left" size=${14} /> Back</button>`}
+                  <button class="btn primary sm" ref=${nextBtn} onClick=${() => go(i + 1)}>${last ? 'Finish' : 'Next'} ${!last && html`<${Icon} name="right" size=${14} />`}</button>
+                </div>`}
     </div>
   </div>`;
 }

@@ -1,6 +1,7 @@
 // Printability checks and price estimate. Each check can carry a one-click fix.
 import { getMaterial, PLATINGS } from './materials.js';
 import { bandMetrics, resolveZones } from './band.js';
+import { engravingLayout, getEngraving, ENGRAVE_DEPTH, STROKE_RATIO, LETTER_MIN, LETTER_MAX } from './engraving.js';
 
 const PROFILE_EDGE = { flat: 1, domed: 0.55, comfort: 0.8, bevel: 0.65 };
 const PROFILE_FILL = { flat: 1, domed: 0.82, comfort: 0.9, bevel: 0.9 };
@@ -11,11 +12,13 @@ export function runChecks(design, getPattern) {
   const checks = [];
   const add = (level, title, detail, fix) => checks.push({ level, title, detail, fix });
 
-  // 1. Wall thickness (thinnest point of the profile, minus engraving depth).
+  // 1. Wall thickness (thinnest point of the profile, minus anything cut in from outside or inside).
+  const eng = engravingLayout(design);
+  const cutIn = (design.style === 'engraved' ? design.relief : 0) + (eng ? ENGRAVE_DEPTH : 0);
   const edge = design.thickness * PROFILE_EDGE[design.profile];
-  const thinnest = design.style === 'engraved' ? Math.min(edge, design.thickness - design.relief) : edge;
+  const thinnest = Math.min(edge, design.thickness - cutIn);
   if (thinnest < m.minWall) {
-    const need = +(m.minWall / PROFILE_EDGE[design.profile] + (design.style === 'engraved' ? design.relief : 0) + 0.05).toFixed(1);
+    const need = +Math.max(m.minWall / PROFILE_EDGE[design.profile], m.minWall + cutIn + 0.05).toFixed(1);
     add('error', 'Band too thin to print',
       `Thinnest wall is ${thinnest.toFixed(2)} mm. ${m.name} needs at least ${m.minWall} mm.`,
       { label: `Set thickness to ${Math.min(3, need)} mm`, patch: { thickness: Math.min(3, need) } });
@@ -65,6 +68,30 @@ export function runChecks(design, getPattern) {
       add('warn', 'Crowded side border', `Side zones are only ${z.heightMM.toFixed(1)} mm tall. Patterns will look busy.`,
         { label: 'Widen band by 2 mm', patch: { width: Math.min(12, design.width + 2) } });
       break;
+    }
+  }
+
+  // 4b. Inside engraving: letter height, stroke thickness and length around the inside.
+  if (eng) {
+    const e = getEngraving(design);
+    const setSize = (mm) => ({ engraving: { ...e, size: +mm.toFixed(1) } });
+    const needH = Math.min(LETTER_MAX, Math.ceil((m.minDetail / STROKE_RATIO) * 10) / 10);
+    const fitLen = Math.floor(((eng.maxLength / eng.lengthMM) * eng.h) * 10) / 10;
+    if (eng.h > eng.maxH) {
+      add('error', 'Engraving taller than the band',
+        `${eng.h} mm letters need a band of at least ${(eng.h + 1.4).toFixed(1)} mm; this one is ${design.width} mm.`,
+        eng.maxH >= LETTER_MIN ? { label: `Set letters to ${eng.maxH} mm`, patch: setSize(eng.maxH) } : { label: 'Widen band', patch: { width: Math.min(12, Math.ceil(eng.h + 1.4)) } });
+    } else if (eng.lengthMM > eng.maxLength) {
+      add('error', 'Engraving too long for the inside',
+        `“${eng.text}” runs ${eng.lengthMM.toFixed(0)} mm; about ${eng.maxLength.toFixed(0)} mm fits inside a US ${design.sizeUS} ring.`,
+        fitLen >= LETTER_MIN ? { label: `Set letters to ${fitLen} mm`, patch: setSize(fitLen) } : null);
+    } else if (eng.strokeMM < m.minDetail) {
+      const fits = needH <= eng.maxH && (eng.lengthMM / eng.h) * needH <= eng.maxLength;
+      add(eng.strokeMM < m.minDetail * 0.7 ? 'error' : 'warn', 'Engraved letters too fine',
+        `Letter strokes are ${eng.strokeMM.toFixed(2)} mm; ${m.process} resolves ${m.minDetail} mm, so they may fill in.`,
+        fits ? { label: `Set letters to ${needH} mm`, patch: setSize(needH) } : !m.metalness ? null : { label: 'Switch to tough resin (0.3 mm detail)', patch: { materialId: 'resin' } });
+    } else {
+      add('ok', 'Inside engraving', `“${eng.text}”: ${eng.h} mm letters, ${ENGRAVE_DEPTH} mm deep, ${eng.lengthMM.toFixed(0)} mm long.`);
     }
   }
 

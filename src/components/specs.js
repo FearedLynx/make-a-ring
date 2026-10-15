@@ -9,6 +9,7 @@ import { resolveZones } from '../lib/band.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
 import { store, setDesign, setRails, patternById, go, toast } from '../state.js';
 import { RailStrip } from './rail-strip.js';
+import { ENGRAVE_KINDS, ENGRAVE_DEPTH, ENGRAVE_MARGIN, LETTER_MIN, LETTER_MAX, MAX_CUSTOM, STROKE_RATIO, getEngraving, engravingLayout, cleanInitials, cleanCustom } from '../lib/engraving.js';
 
 const profileIcon = {
   flat: 'M3 6h18v12H3Z',
@@ -72,9 +73,9 @@ function SplitControl({ design }) {
     onInput=${(v) => setDesign(splitPatch(design, v))} />`;
 }
 
-export function ChecksList({ design, compact = false }) {
+export function ChecksList({ design, compact = false, only }) {
   const { checks } = runChecks(design, patternById);
-  const shown = compact ? checks.filter((c) => c.level !== 'ok') : checks;
+  const shown = (compact ? checks.filter((c) => c.level !== 'ok') : checks).filter((c) => !only || only(c));
   const icon = { error: 'alert', warn: 'alert', info: 'info', ok: 'check' };
   if (!shown.length) return html`<p class="checks-clear"><${Icon} name="check" size=${16} /> Ready to print. All checks pass.</p>`;
   return html`<ul class="checks">
@@ -96,11 +97,71 @@ export function ChecksList({ design, compact = false }) {
   </ul>`;
 }
 
+/** Inside engraving: pick a style, type the initials or text, set the letter size. */
+function EngravingPanel({ design }) {
+  const e = getEngraving(design);
+  const set = (patch) => setDesign({ engraving: { ...e, ...patch } });
+  const L = engravingLayout(design);
+  const twoNames = e.kind === 'for' || e.kind === 'heart';
+  const m = getMaterial(design.materialId);
+  const minH = Math.min(LETTER_MAX, Math.ceil((m.minDetail / STROKE_RATIO) * 10) / 10);
+  const engChecks = runChecks(design, patternById).checks.filter((c) => /ngrav/.test(c.title) && c.level !== 'ok');
+  return html`<section class="spec-sec" id="spec-engraving">
+    <h3 class="sr-only">Inside engraving</h3>
+    <p class="hint engr-lead">Cut ${ENGRAVE_DEPTH} mm into the inside of the band, in a clean sans that prints reliably.</p>
+    <div class="engr-kinds" role="radiogroup" aria-label="Engraving style">
+      ${ENGRAVE_KINDS.map((k) => html`<button role="radio" aria-checked=${e.kind === k.id} class=${'chip sm' + (e.kind === k.id ? ' on' : '')}
+        title=${k.hint || ''} onClick=${() => set({ kind: k.id })}>${k.label}</button>`)}
+    </div>
+
+    ${(e.kind === 'initials' || twoNames) &&
+    html`<div class="engr-names">
+      <label class="field">${twoNames ? 'From' : 'Initials'}
+        <input value=${e.a} maxlength="3" autocapitalize="characters" spellcheck="false" aria-describedby="engr-names-hint"
+          onInput=${(ev) => set({ a: cleanInitials(ev.currentTarget.value) })} /></label>
+      ${twoNames && html`<label class="field">To
+        <input value=${e.b} maxlength="3" autocapitalize="characters" spellcheck="false" aria-describedby="engr-names-hint"
+          onInput=${(ev) => set({ b: cleanInitials(ev.currentTarget.value) })} /></label>`}
+    </div>
+    <p class="hint" id="engr-names-hint">Up to three letters each.</p>`}
+
+    ${e.kind === 'custom' &&
+    html`<label class="field">Text
+      <input value=${e.text} maxlength=${MAX_CUSTOM} spellcheck="false" placeholder="e.g. always · 10.10.26"
+        onInput=${(ev) => set({ text: cleanCustom(ev.currentTarget.value) })} /></label>
+    <p class="hint">${(e.text || '').length} / ${MAX_CUSTOM}. Letters, numbers, spaces and . , & ' + − ♥</p>`}
+
+    ${e.kind !== 'none' &&
+    html`<${Slider} label="Letter height" value=${e.size} min=${LETTER_MIN} max=${LETTER_MAX} step=${0.1} unit=" mm"
+        format=${(v) => `${v.toFixed(1)} mm`} onInput=${(v) => set({ size: +v.toFixed(1) })} />
+      <p class="hint">${m.name} needs letters of at least ${minH} mm; this band fits up to ${L ? L.maxH : (design.width - 1.4).toFixed(1)} mm.</p>
+      ${L && html`<${EngravingPreview} design=${design} L=${L} />`}
+      ${engChecks.length > 0 && html`<${ChecksList} design=${design} only=${(c) => engChecks.some((x) => x.title === c.title)} />`}`}
+  </section>`;
+}
+
+/** The inside of the band laid flat at true proportions, with the clear margins marked. */
+function EngravingPreview({ design, L }) {
+  const span = Math.min(L.innerCirc, Math.max(L.lengthMM + 10, 24));
+  const W = design.width;
+  const fontSize = L.h / 0.727; // cap height of the sans is about 0.727 em
+  const tooLong = L.lengthMM > L.maxLength;
+  return html`<figure class="engr-preview">
+    <svg viewBox=${`0 0 ${span} ${W}`} role="img" aria-label=${`Inside of the band, ${W} mm wide, engraved “${L.text}” in ${L.h} mm letters`}>
+      <rect class="engr-band" x="0" y="0" width=${span} height=${W} />
+      <rect class="engr-safe" x="0" y=${ENGRAVE_MARGIN} width=${span} height=${Math.max(0, W - 2 * ENGRAVE_MARGIN)} />
+      <text class=${'engr-text' + (L.h > L.maxH || tooLong ? ' bad' : '')} x=${span / 2} y=${W / 2 + L.h / 2} font-size=${fontSize}>${L.text}</text>
+    </svg>
+    <figcaption>Inside, laid flat · ${span.toFixed(0)} of ${L.innerCirc.toFixed(0)} mm shown · text ${L.lengthMM.toFixed(0)} mm long</figcaption>
+  </figure>`;
+}
+
 export const SPEC_CATS = [
   { id: 'size', label: 'Size', icon: 'ruler' },
   { id: 'layout', label: 'Layout', icon: 'layout' },
   { id: 'band', label: 'Band & relief', icon: 'band' },
   { id: 'material', label: 'Material & finish', icon: 'swatch' },
+  { id: 'engraving', label: 'Inside engraving', icon: 'type' },
   { id: 'checks', label: 'Printability', icon: 'shield' },
 ];
 
@@ -217,6 +278,8 @@ export function Specs({ onHide }) {
           options=${[{ value: 'polished', label: 'Polished' }, { value: 'satin', label: 'Satin' }, { value: 'antique', label: 'Antique' }]}
           onChange=${(v) => setDesign({ finish: v })} />
       </section>`}
+
+      ${cat === 'engraving' && html`<${EngravingPanel} design=${design} />`}
 
       ${cat === 'checks' &&
       html`<section class="spec-sec" id="spec-checks" aria-labelledby="checks-h">

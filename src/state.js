@@ -35,6 +35,18 @@ function designFromUrl() {
   }
 }
 
+// Side panels: content widths (the 44 px category strip comes on top) and the open category.
+// Smaller screens start with slimmer panels so the stage gets the room; the resizer still widens them.
+export const RAIL_DEFAULTS = matchMedia('(max-width: 1440px)').matches ? { lib: 240, spec: 268 } : { lib: 256, spec: 296 };
+function loadRails() {
+  const r = load('mar.rails', null);
+  const base = { ...RAIL_DEFAULTS, libOpen: true, specOpen: true, libCat: 'patterns', specCat: 'size', v: 2 };
+  if (!r) return base;
+  // Before the category strips, widths included everything; keep the panels the same overall size.
+  if (r.v !== 2) return { ...base, ...r, lib: Math.max(240, r.lib - 44), spec: Math.max(240, r.spec - 44), v: 2 };
+  return { ...base, ...r };
+}
+
 const shared = designFromUrl();
 const storedCustom = load('mar.custom', []);
 const custom = shared?.custom
@@ -57,7 +69,7 @@ export const store = createStore({
   tryOn: { tone: 1, build: 'slender', finger: 'ring', close: true, mode: 'illustration', photo: null, pos: { x: 0.5, y: 0.5, scale: 1, rot: 0 } },
   theme: document.documentElement.dataset.theme || 'beige',
   grid: document.documentElement.dataset.grid !== 'off',
-  rails: load('mar.rails', { lib: 300, spec: 340, libOpen: true, specOpen: true }),
+  rails: loadRails(),
   tip: null, // { id, text }
   tour: null, // { id, step }
 });

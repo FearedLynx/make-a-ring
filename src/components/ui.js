@@ -50,6 +50,10 @@ const P = {
   swatch: 'M12 22a10 10 0 1 1 10-10c0 2.5-2 3-3.5 3H16a2 2 0 0 0-1.5 3.3A2 2 0 0 1 12 22ZM7.5 10.5h.01M12 7.5h.01M16.5 10.5h.01',
   copy: 'M9 9h11v11H9ZM5 15H4V4h11v1',
   file: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8ZM14 2v6h6',
+  layout: 'M3 5h18v14H3ZM8 5v14M16 5v14',
+  band: 'M3 18v-7c0-5 18-5 18 0v7Z',
+  pattern: 'M3 5h18v14H3ZM3 13l3-3 3 3 3-3 3 3 3-3 3 3',
+  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9 12l2 2 4-4',
 };
 
 export function Icon({ name, size = 18, className = '' }) {

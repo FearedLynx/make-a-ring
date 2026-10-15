@@ -75,14 +75,33 @@ body { background: var(--bg); transition: background 0.2s; }
 .rail-resize:hover::after, .rail-resize:focus-visible::after { opacity: 1; background: var(--accent); }
 .rail-resize:focus-visible { outline: none; }
 body.resizing, body.resizing * { cursor: col-resize !important; user-select: none; }
-.rail-collapsed {
-  display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 0;
-  border: 0; background: var(--surface); color: var(--ink-2); border-right: 1px solid var(--line);
-}
-.rail-collapsed.spec { border-right: 0; border-left: 1px solid var(--line); }
-.rail-collapsed span { writing-mode: vertical-rl; font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: 0.12em; }
-.rail-collapsed:hover { background: var(--surface-2); color: var(--ink); }
-.rail-tabs { align-items: center; }
+/* Category strips: one icon tab per category on the outer edge of each panel (Blender-style).
+   With the panel hidden, the strip stays and any icon opens it on that category. */
+.rail-strip { flex: none; width: 44px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; background: var(--surface-2); }
+.rail-strip.lib { border-right: 1px solid var(--line); }
+.rail-strip.spec { border-left: 1px solid var(--line); }
+.rail-wrap.collapsed .rail-strip.spec { border-left-color: var(--line); }
+.strip-tab { position: relative; width: 34px; height: 34px; border: 0; border-radius: 9px; background: none; color: var(--ink-3); display: grid; place-items: center; }
+.strip-tab:hover { background: var(--surface); color: var(--ink); }
+.strip-tab.on { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
+.strip-tab.on::before { content: ''; position: absolute; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--accent); }
+.rail-strip.lib .strip-tab.on::before { left: -5px; }
+.rail-strip.spec .strip-tab.on::before { right: -5px; }
+.strip-label { display: none; }
+.strip-badge { position: absolute; top: 0; right: 0; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 99px; font: 600 10px/15px var(--mono); color: #fff; background: var(--ink-2); text-align: center; }
+.strip-badge.error { background: var(--error); }
+.strip-badge.warn { background: var(--warn); }
+.price-meta { display: flex; align-items: center; gap: 8px; }
+.check-chip { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 99px; padding: 2px 8px; font-size: 11.5px; font-weight: 600; }
+.check-chip.ok { background: var(--ok-soft); color: var(--ok); }
+.check-chip.warn { background: var(--warn-soft); color: var(--warn); }
+.check-chip.error { background: var(--error-soft); color: var(--error); }
+.check-chip:hover { filter: brightness(0.96); }
+.mine-empty { margin-top: 12px; }
+.size-find { margin-top: 10px; width: 100%; justify-content: center; }
+.price-card > div { min-width: 0; }
+.price-card .small { white-space: nowrap; }
+.spec-sec:first-child { padding-top: 0; }
 .rail-hide { border: 0; background: none; color: var(--ink-3); padding: 7px; border-radius: 8px; display: grid; place-items: center; margin-left: auto; }
 .rail-hide:hover { background: var(--surface-2); color: var(--ink); }
 .rail-title { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 16px; min-height: 47px; border-bottom: 1px solid var(--line); font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); }
@@ -344,7 +363,17 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 @media (max-width: 1180px) {
   .studio .rail-wrap { order: 3; }
   .studio.panel-specs .rail-wrap.lib, .studio.panel-library .rail-wrap.spec { display: none; }
-  .rail-resize, .rail-collapsed, .rail-hide { display: none !important; }
+  .studio { grid-template-columns: 1fr; } /* otherwise the desktop panel widths above win over the stacked layout */
+  .rail-resize, .rail-hide { display: none !important; }
+  /* Stacked under the stage: the strip becomes a labelled row of category tabs. */
+  .studio .rail-wrap { flex-direction: column; }
+  .rail-strip { width: auto; flex-direction: row; justify-content: flex-start; gap: 6px; padding: 8px 12px; border: 0 !important; border-bottom: 1px solid var(--line) !important; overflow-x: auto; }
+  .rail-strip.spec { order: -1; }
+  .strip-tab { width: auto; height: 36px; padding: 0 12px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; font-size: 13px; font-weight: 600; }
+  .strip-label { display: inline; }
+  .strip-badge { position: static; }
+  .strip-tab.on::before { top: auto; bottom: -9px; left: 10px !important; right: 10px !important; width: auto; height: 3px; }
+  .studio .rail-title { display: none; }
   .ed-props { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 760px) {
@@ -391,3 +420,39 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .tb-step { width: 22px; height: 20px; padding: 0; border: 1px solid var(--ink); border-radius: 3px; background: var(--surface); font: 600 14px/1 var(--mono); color: var(--ink); display: grid; place-items: center; }
 .tb-step:hover { background: var(--ink); color: var(--bg); }
 @media (max-width: 760px) { .topbar .view-prefs, .lp-head .view-prefs { display: none; } }
+
+/* ── Compact density for smaller desktop screens (laptops, 1366×768, 125–150 % scaling) ──
+   Only the side panels and the top bar tighten; the stage and carousel are untouched. */
+@media (min-width: 1181px) and (max-width: 1440px), (min-width: 1181px) and (max-height: 820px) {
+  :root { --topbar: 52px; }
+  .studio { min-height: 560px; }
+  .studio .rail-title { min-height: 38px; padding: 3px 6px 3px 12px; font-size: 11px; }
+  .studio .rail-body { padding: 12px; }
+  .rail-strip { padding: 6px 0; gap: 2px; }
+  .studio .spec-sec { padding-bottom: 10px; margin-bottom: 10px; }
+  .studio .spec-sec h3 { font-size: 13px; margin-bottom: 4px; }
+  .studio .slider { margin: 8px 0 2px; gap: 3px; }
+  .studio .field-label { margin: 10px 0 5px; font-size: 11px; }
+  .studio .hint, .studio .mat-process { font-size: 12px; margin-top: 4px; }
+  .studio .size-big { font-size: 22px; }
+  .studio .segmented button { padding-top: 5px; padding-bottom: 5px; font-size: 12.5px; }
+  .studio .swatches { gap: 4px; }
+  .studio .swatch { padding: 4px 6px; gap: 6px; font-size: 12px; border-radius: 8px; }
+  .studio .swatch-dot { width: 18px; height: 18px; }
+  .studio .check { padding: 7px 8px; }
+  .studio .check p { font-size: 12px; }
+  .studio .search { margin-bottom: 8px; }
+  .studio .search input { padding: 7px 0; }
+  .studio .tags { gap: 4px; margin-top: 8px; }
+  .studio .tag { padding: 2px 8px; font-size: 11.5px; }
+  .studio .rail-h { margin: 12px 0 6px; }
+  .studio .lib-grid { gap: 6px; }
+  .studio .lib-tile-main { padding: 6px 7px 7px; }
+  .studio .lib-tile-main .pattern-art { height: 34px; margin-bottom: 3px; }
+  .studio .lib-tile-name { font-size: 12.5px; }
+  .studio .tpl-list { gap: 8px; }
+  .studio .price-card { padding: 10px 12px; }
+  .studio .price { font-size: 20px; }
+  .studio .price-card .btn { padding: 8px 14px; font-size: 13px; }
+  .studio .price-card .small { font-size: 11.5px; }
+}

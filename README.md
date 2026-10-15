@@ -24,7 +24,7 @@ Upload the folder as a static site (Deployxa, GitHub Pages, Netlify, Vercel). Th
 
 1. **Landing** (`#/landing`): pitch, rotating 3D showcase.
 2. **Start** (`#/start`): pick a template (3D thumbnails), then your size.
-3. **Studio** (`#/studio`): the cross carousel. ↑/↓ changes the middle, ←/→ changes the sides, the ring updates live. Library search on the left; size, layout, band, relief, material and printability checks on the right. Use **Draw your own** to open the pattern editor.
+3. **Studio** (`#/studio`): the cross carousel. ↑/↓ changes the middle, ←/→ changes the sides, the ring updates live. Both side panels work like Blender's properties editor: a strip of category icons on the outer edge, one category shown at a time (left: patterns, my patterns, templates; right: size, layout, band & relief, material & finish, printability). Hiding a panel leaves its strip, and any icon opens it again. Price, check status and **Try it on** stay pinned at the bottom. Use **Draw your own** to open the pattern editor.
 4. **Try on** (`#/tryon`): illustrated hand (5 skin tones, 2 shapes, 4 fingers, close-up) or your own photo.
 5. **Review** (`#/review`): spec sheet, checks, price breakdown, mocked STL/3MF/OBJ export, share link.
 
@@ -57,7 +57,8 @@ hints and layout adapt to the device.
 | `src/lib/thumbnails.js` | Off-screen renderer for template thumbnails |
 | `src/state.js` | Global store, actions, persistence (localStorage), share links |
 | `src/components/stage.js` | The cross carousel |
-| `src/components/editor.js` | Pattern editor (zoom, grid, square/move tools, Steady smoothing, line weight in mm) |
+| `src/components/editor.js` | Pattern editor (zoom, grid, square/move tools, Steady smoothing, line weight in mm). Strokes placed with symmetry remember their copies: with symmetry on, erasing, moving, deleting or smoothing one copy acts on all of them; with it off, only on the one you touch |
+| `src/components/rail-strip.js` | Category icon strip for the studio side panels |
 | `src/components/tour.js` | Guided tours and tips |
 | `src/screens/*` | One file per screen |
 

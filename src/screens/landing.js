@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Logo } from '../components/ui.js';
-import { RingView } from '../components/ring-view.js';
+import { RingView, prebuildRing } from '../components/ring-view.js';
 import { PatternArt, BandMap } from '../components/pattern-art.js';
 import { ThemeDots, GridToggle } from '../components/topbar.js';
 import { TEMPLATES, LAYOUTS, designFromTemplate } from '../lib/templates.js';
@@ -64,6 +64,11 @@ export function Landing() {
     }, 4200);
     return () => clearInterval(tickRef.current);
   }, [holdUntil]);
+  // Build the next ring of the slideshow right after this one shows, so it appears with its title.
+  useEffect(() => {
+    const t = setTimeout(() => prebuildRing(designFromTemplate(SHOWCASE[(i + 1) % SHOWCASE.length])), 100);
+    return () => clearTimeout(t);
+  }, [i]);
   const step = (d) => {
     setI((n) => (n + d + SHOWCASE.length) % SHOWCASE.length);
     setHoldUntil(Date.now() + 12000); // pause the slideshow after manual control

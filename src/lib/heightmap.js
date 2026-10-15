@@ -70,7 +70,7 @@ export function buildHeightmap(design, getPattern) {
 }
 
 // Separable box blur (wraps around u) to soften the relief edges.
-function blur(src, w, h, r = 1) {
+export function blur(src, w, h, r = 1) {
   const tmp = new Float32Array(w * h);
   const out = new Float32Array(w * h);
   const n = 2 * r + 1;

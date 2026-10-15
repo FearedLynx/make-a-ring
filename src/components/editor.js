@@ -51,14 +51,37 @@ class Pure extends Component {
   }
 }
 
-function moveStrokes(strokes, sel, delta) {
+// Strokes placed with symmetry on share a group `g` and carry `sym: true`; each copy keeps its
+// transform `t`. Generated pieces share a group too, but without `sym`, and always act as one piece.
+// Saved patterns keep their groups, so reopening one gets fresh group ids to avoid clashes.
+const loadStrokes = (list) => {
+  const ids = new Map();
+  return copyStrokes(list).map((s) => {
+    if (!s.g) return s;
+    if (!ids.has(s.g)) ids.set(s.g, groupSeq++);
+    return { ...s, g: ids.get(s.g) };
+  });
+};
+
+/** True when acting on stroke `s` should also act on the other copies in its group. */
+const linkedTo = (s, symOn) => !!s?.g && (!s.sym || symOn);
+
+/** Indices of `idx` plus every copy linked to them. */
+function withPartners(strokes, idx, symOn) {
+  const out = new Set(idx);
+  const groups = new Set([...idx].map((i) => strokes[i]).filter((s) => linkedTo(s, symOn)).map((s) => s.g));
+  if (groups.size) strokes.forEach((s, j) => groups.has(s.g) && out.add(j));
+  return out;
+}
+
+function moveStrokes(strokes, sel, delta, symOn) {
   const out = strokes.slice();
   const done = new Set();
   const shift = (s, [dx, dy]) => ({ ...s, pts: s.pts.map(([x, y]) => [x + dx, y + dy]) });
   for (const i of sel) {
     const s = strokes[i];
     if (!s) continue;
-    if (s.g) {
+    if (linkedTo(s, symOn)) {
       if (done.has(s.g)) continue;
       done.add(s.g);
       const base = applyV(inv(s.t || I), delta);
@@ -66,6 +89,18 @@ function moveStrokes(strokes, sel, delta) {
     } else out[i] = shift(s, delta);
   }
   return out;
+}
+
+/** True on phone-width screens; follows rotation and resizing. */
+function useNarrow(query = '(max-width: 760px)') {
+  const [on, setOn] = useState(() => matchMedia(query).matches);
+  useEffect(() => {
+    const mq = matchMedia(query);
+    const onChange = () => setOn(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [query]);
+  return on;
 }
 
 function distToStroke(p, s) {
@@ -121,6 +156,7 @@ export function PatternEditor() {
   const drag = useRef(null);
   const toolClicks = useRef(0);
   const spaceDown = useRef(false);
+  const narrow = useNarrow();
 
   // (Re)initialise whenever the editor opens.
   useEffect(() => {
@@ -130,7 +166,7 @@ export function PatternEditor() {
     setName(base?.custom ? base.name : base ? `${base.name} remix` : `My pattern ${store.get().customPatterns.length + 1}`);
     setAspect(base?.aspect ?? 1);
     setLw(base?.lw ?? minLw);
-    setHist({ past: [], present: base ? copyStrokes(base.strokes) : [], future: [] });
+    setHist({ past: [], present: base ? loadStrokes(base.strokes) : [], future: [] });
     setLive(null);
     setSel(new Set());
     setTool('pen');
@@ -158,9 +194,11 @@ export function PatternEditor() {
   const undo = () => setHist((h) => (h.past.length ? { past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] } : h));
   const redo = () => setHist((h) => (h.future.length ? { past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) } : h));
   const mats = symMats(sym, aspect);
+  const symOn = sym !== 'none';
   const withSymmetry = (s) => {
     const g = groupSeq++;
-    return mats.map((m) => ({ ...s, g, t: m, pts: s.pts.map((p) => applyM(m, p)) }));
+    const placedOnSymmetry = mats.length > 1;
+    return mats.map((m) => ({ ...s, g, t: m, sym: placedOnSymmetry, pts: s.pts.map((p) => applyM(m, p)) }));
   };
   const addStroke = (s) => commit([...strokes, ...withSymmetry(s)]);
 
@@ -187,7 +225,9 @@ export function PatternEditor() {
 
   // ── View: zoom & pan ──
   const TW = aspect * 100, TH = 100, pad = 14;
-  const base = { x: -TW - pad, y: -pad - 10, w: 3 * TW + 2 * pad, h: TH + 2 * pad + 20 };
+  // Phones show the tile with a sliver of each neighbour instead of three whole tiles, so the tile is big enough to draw on.
+  const side = narrow ? 0.18 * TW : TW;
+  const base = { x: -side - pad, y: -pad - 10, w: TW + 2 * side + 2 * pad, h: TH + 2 * pad + 20 };
   const cx = view.cx ?? TW / 2, cy = view.cy ?? TH / 2;
   const vw = base.w / view.z, vh = base.h / view.z;
   const vb = { x: cx - vw / 2, y: cy - vh / 2, w: vw, h: vh };
@@ -291,7 +331,7 @@ export function PatternEditor() {
       else if (e.shiftKey) (next = new Set(sel)), next.has(i) ? next.delete(i) : next.add(i);
       else if (!sel.has(i)) next = new Set([i]);
       setSel(next);
-      if (i >= 0 && next.size) drag.current = { move: true, start: p, orig: strokes, sel: next, moved: false };
+      if (i >= 0 && next.size) drag.current = { move: true, start: p, orig: strokes, sel: next, moved: false, symOn };
     } else if (tool === 'line') {
       let q = seamSnap(snapPt(p));
       if (e.shiftKey && live?.pts.length) q = constrain(live.pts[live.pts.length - 1], q, aspect);
@@ -343,7 +383,7 @@ export function PatternEditor() {
     } else if (d.move) {
       const delta = snapDelta([p[0] - d.start[0], p[1] - d.start[1]]);
       d.moved = delta[0] || delta[1];
-      setHist((h) => ({ ...h, present: moveStrokes(d.orig, d.sel, delta) }));
+      setHist((h) => ({ ...h, present: moveStrokes(d.orig, d.sel, delta, d.symOn) }));
     }
   };
   const onUp = () => {
@@ -373,11 +413,17 @@ export function PatternEditor() {
       setLive(null);
     } else if (d.move && d.moved) {
       setHist((h) => ({ past: [...h.past.slice(-80), d.orig], present: h.present, future: [] }));
+      if (!d.symOn && [...d.sel].some((i) => d.orig[i]?.sym)) setFlash('Symmetry is off, so only this copy moved');
     }
   };
   const erase = (p) => {
-    const keep = strokes.filter((s) => distToStroke(p, s) > swTile / 2 + 0.035);
-    if (keep.length !== strokes.length) commit(keep), setSel(new Set());
+    const hit = new Set();
+    strokes.forEach((s, i) => distToStroke(p, s) <= swTile / 2 + 0.035 && hit.add(i));
+    if (!hit.size) return;
+    const gone = withPartners(strokes, hit, symOn);
+    commit(strokes.filter((_, i) => !gone.has(i)));
+    setSel(new Set());
+    if (gone.size > hit.size) setFlash(`Erased ${gone.size} symmetric copies`);
   };
   const onWheel = (e) => {
     // Nothing to pan at the default zoom, so let the wheel scroll the page.
@@ -395,12 +441,14 @@ export function PatternEditor() {
 
   const deleteSel = () => {
     if (!sel.size) return;
-    commit(strokes.filter((_, i) => !sel.has(i)));
+    const gone = withPartners(strokes, sel, symOn);
+    commit(strokes.filter((_, i) => !gone.has(i)));
     setSel(new Set());
   };
   const smoothSel = () => {
     if (!sel.size) return;
-    commit(strokes.map((s, i) => (sel.has(i) && !s.fill && !s.closed ? { ...s, pts: steady(s.pts, Math.max(50, stead.amt), aspect) } : s)));
+    const pick = withPartners(strokes, sel, symOn);
+    commit(strokes.map((s, i) => (pick.has(i) && !s.fill && !s.closed ? { ...s, pts: steady(s.pts, Math.max(50, stead.amt), aspect) } : s)));
     setFlash('Smoothed');
   };
   const addGenerated = () => {
@@ -440,7 +488,7 @@ export function PatternEditor() {
       e.preventDefault();
       e.stopPropagation();
       const d = [step[0] / (GRID * aspect), step[1] / GRID];
-      if (tool === 'move' && sel.size) return commit(moveStrokes(strokes, sel, d));
+      if (tool === 'move' && sel.size) return commit(moveStrokes(strokes, sel, d, symOn));
       const c = cursor || [0.5, 0.5];
       setCursor([clamp(c[0] + d[0], 0, 1), clamp(c[1] + d[1], 0, 1)]);
     } else if (e.key === 'Enter') {
@@ -466,7 +514,7 @@ export function PatternEditor() {
     if (!strokes.length) return toast('Draw something first');
     const b = editor.base;
     const id = b?.custom ? b.id : `custom-${Date.now()}`;
-    const p = { ...draft, id, name: name.trim() || 'My pattern', strokes: strokes.map(({ g, t, ...s }) => s) };
+    const p = { ...draft, id, name: name.trim() || 'My pattern', strokes: copyStrokes(strokes) };
     saveCustomPattern(p);
     if (zone === 'middle' && hasMiddle(design.layout)) setPattern('middle', id);
     if (zone === 'side' && hasSides(design.layout)) setPattern(design.linked ? 'sideL' : store.get().activeSide, id);
@@ -478,7 +526,7 @@ export function PatternEditor() {
     if (!src) return toast('That zone is plain. Pick a pattern first');
     setAspect(src.aspect);
     setLw(Math.max(minLw, +lineWidthMM(src, zh).toFixed(2)));
-    commit(copyStrokes(src.strokes));
+    commit(loadStrokes(src.strokes));
     if (!name || name.startsWith('My pattern')) setName(`${src.name} remix`);
   };
 
@@ -509,7 +557,7 @@ export function PatternEditor() {
   }, [preview.profile, preview.width, zoneBox.from, zoneBox.to]);
 
   // ── Rendering ──
-  const selGroups = new Set([...sel].map((i) => strokes[i]?.g).filter(Boolean));
+  const selGroups = new Set([...sel].map((i) => strokes[i]).filter((s) => linkedTo(s, symOn)).map((s) => s.g));
   const drawn = (list, extra = '', withSel = false) =>
     list.map((s, i) => html`<path d=${pathD(s.pts, TW, TH, s.closed)} stroke-width=${swTile * TH} fill=${s.fill ? 'currentColor' : 'none'}
       class=${'ed-stroke ' + extra + (withSel && sel.has(i) ? ' sel' : withSel && s.g && selGroups.has(s.g) ? ' twin' : '')} />`);
@@ -540,21 +588,21 @@ export function PatternEditor() {
         </label>
         <${Segmented} label="Where this pattern goes" value=${zone} onChange=${setZone}
           options=${[{ value: 'middle', label: 'Middle' }, { value: 'side', label: 'Sides' }]} />
-        <button class="btn ghost sm" onClick=${remix}><${Icon} name="copy" size=${14} /> Remix current</button>
+        <button class="btn ghost sm ed-remix" onClick=${remix} aria-label="Remix current pattern" title="Remix current"><${Icon} name="copy" size=${14} /> <span>Remix current</span></button>
         <button class="icon-btn" onClick=${() => startTour('editor')} aria-label="Editor tour" title="Editor tour"><${Icon} name="help" /></button>
         <div class="spacer"></div>
-        <button class="btn ghost" onClick=${close}>Cancel</button>
-        <button class="btn primary" onClick=${save} disabled=${!strokes.length}><${Icon} name="check" size=${16} /> Save & apply</button>
+        <button class="btn ghost ed-cancel" onClick=${close}>Cancel</button>
+        <button class="btn primary ed-save" onClick=${save} disabled=${!strokes.length}><${Icon} name="check" size=${16} /> Save<span class="ed-save-more"> & apply</span></button>
       </div>
 
       <div class="ed-body">
         <div class="ed-tools" role="toolbar" aria-label="Drawing tools">
-          ${TOOLS.map(
+          <div class="ed-tool-row">${TOOLS.map(
             (t) => html`<button class=${'tool' + (tool === t.id ? ' on' : '')} aria-pressed=${tool === t.id}
               onClick=${() => pickTool(t.id, true)} title=${`${t.label} (${t.key})`}>
               <${Icon} name=${t.icon} /><span>${t.label}</span><kbd class="tool-key">${t.key}</kbd>
             </button>`
-          )}
+          )}</div>
           <hr />
           <div class="ed-sym" role="radiogroup" aria-label="Symmetry">
             <span class="field-label">Symmetry <kbd>M</kbd></span>
@@ -565,9 +613,11 @@ export function PatternEditor() {
             )}
           </div>
           <hr />
-          <button class="tool" onClick=${undo} disabled=${!hist.past.length} title="Undo (Ctrl+Z)"><${Icon} name="undo" /><span>Undo</span></button>
-          <button class="tool" onClick=${redo} disabled=${!hist.future.length} title="Redo (Ctrl+Shift+Z)"><${Icon} name="redo" /><span>Redo</span></button>
-          <button class="tool" onClick=${() => (commit([]), setSel(new Set()))} disabled=${!strokes.length} title="Clear"><${Icon} name="trash" /><span>Clear</span></button>
+          <div class="ed-edit-row">
+          <button class="tool" onClick=${undo} disabled=${!hist.past.length} aria-label="Undo" title="Undo (Ctrl+Z)"><${Icon} name="undo" /><span>Undo</span></button>
+          <button class="tool" onClick=${redo} disabled=${!hist.future.length} aria-label="Redo" title="Redo (Ctrl+Shift+Z)"><${Icon} name="redo" /><span>Redo</span></button>
+          <button class="tool" onClick=${() => (commit([]), setSel(new Set()))} disabled=${!strokes.length} aria-label="Clear the tile" title="Clear"><${Icon} name="trash" /><span>Clear</span></button>
+          </div>
         </div>
 
         <div class="ed-canvas-wrap">
@@ -629,8 +679,8 @@ export function PatternEditor() {
             html`<line class="ed-rubber" x1=${live.pts[live.pts.length - 1][0] * TW} y1=${live.pts[live.pts.length - 1][1] * TH} x2=${cursor[0] * TW} y2=${cursor[1] * TH} />`}
             ${cursor && tool !== 'stamp' && html`<circle class="ed-cursor" cx=${cursor[0] * TW} cy=${cursor[1] * TH} r=${2.2 / view.z} />`}
             ${zone === 'side' && html`<text class="ed-edge" x=${TW / 2} y="-5">ring edge</text>`}
-            <text class="ed-tile-label" x=${-TW / 2} y=${TH + pad + 6}>repeats</text>
-            <text class="ed-tile-label" x=${TW * 1.5} y=${TH + pad + 6}>repeats</text>
+            ${!narrow && html`<text class="ed-tile-label" x=${-TW / 2} y=${TH + pad + 6}>repeats</text>
+            <text class="ed-tile-label" x=${TW * 1.5} y=${TH + pad + 6}>repeats</text>`}
             <g class="ed-dims">
               <line x1="0" x2=${TW} y1=${TH + 8} y2=${TH + 8} /><line x1="0" x2="0" y1=${TH + 5} y2=${TH + 11} /><line x1=${TW} x2=${TW} y1=${TH + 5} y2=${TH + 11} />
               <text x=${TW / 2} y=${TH + 15}>${tileW.toFixed(2)} mm</text>
@@ -640,8 +690,8 @@ export function PatternEditor() {
           </svg>
           ${!strokes.length && !live && html`<p class="ed-empty">Draw <strong>one tile</strong>, or start from a stamp or the Generate tab. It repeats around the whole ring.</p>`}
           <div class="ed-status" aria-live="polite">
-            <span>X ${cursor ? (cursor[0] * tileW).toFixed(2) : '—'} mm</span>
-            <span>Y ${cursor ? (cursor[1] * zh).toFixed(2) : '—'} mm</span>
+            <span class="ed-xy">X ${cursor ? (cursor[0] * tileW).toFixed(2) : '—'} mm</span>
+            <span class="ed-xy">Y ${cursor ? (cursor[1] * zh).toFixed(2) : '—'} mm</span>
             <span>Tile ${tileW.toFixed(2)} × ${zh.toFixed(2)} mm</span>
             <span>${strokes.length} stroke${strokes.length === 1 ? '' : 's'}</span>
             ${flash && html`<span class="ed-flash"><${Icon} name="check" size=${12} /> ${flash}</span>`}
@@ -728,7 +778,7 @@ export function PatternEditor() {
           <span class="field-label">Live on your ring</span>
           <${Pure} a=${preview} b=${draft} render=${() => html`<${RingView} design=${preview} getPattern=${getP} mode="studio" className="ed-ring" />`} />
           <${Pure} a=${preview} b=${draft} z=${zone} render=${() => html`<${BandMap} design=${preview} getPattern=${getP} activeZones=${zone === 'middle' ? ['middle'] : ['sideL', 'sideR']} />`} />
-          <p class="hint">The ring updates when you lift the pen. Press <kbd>?</kbd> for every shortcut.</p>
+          <p class="hint">The ring updates when you lift the pen.<span class="keys-only"> Press <kbd>?</kbd> for every shortcut.</span></p>
         </div>
       </div>
     </div>

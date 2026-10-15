@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { TopBar } from '../components/topbar.js';
 import { Stage } from '../components/stage.js';
-import { Library } from '../components/library.js';
-import { Specs } from '../components/specs.js';
-import { Icon } from '../components/ui.js';
-import { store, setRails, startTour, tourDone } from '../state.js';
+import { Library, LibStrip } from '../components/library.js';
+import { Specs, SpecStrip } from '../components/specs.js';
+import { store, setRails, startTour, tourDone, RAIL_DEFAULTS } from '../state.js';
 
 const MIN = 240, MAX = 520;
 
@@ -32,21 +31,15 @@ function Resizer({ side }) {
       start.current = null;
       document.body.classList.remove('resizing');
     }}
-    onDblClick=${() => set(side === 'lib' ? 300 : 340)}
+    onDblClick=${() => set(RAIL_DEFAULTS[key])}
     onKeyDown=${(e) => {
       const d = { ArrowLeft: -16, ArrowRight: 16 }[e.key];
       if (d) (e.preventDefault(), e.stopPropagation(), set(rails[key] + (side === 'lib' ? d : -d)));
     }}></div>`;
 }
 
-function Collapsed({ side }) {
-  const label = side === 'lib' ? 'Library' : 'Specs';
-  return html`<button class=${'rail-collapsed ' + side} onClick=${() => setRails(side === 'lib' ? { libOpen: true } : { specOpen: true })}
-    aria-label=${`Show ${label.toLowerCase()} panel`} title=${`Show ${label} (${side === 'lib' ? '[' : ']'})`}>
-    <${Icon} name=${side === 'lib' ? 'panelL' : 'panelR'} size=${16} />
-    <span>${label}</span>
-  </button>`;
-}
+// Width of the category strip on the outer edge of each panel. It stays when the panel is hidden.
+const STRIP = 44;
 
 export function Studio() {
   const [panel, setPanel] = useState('specs');
@@ -60,7 +53,7 @@ export function Studio() {
       if (e.key === '/') {
         e.preventDefault();
         setPanel('library');
-        setRails({ libOpen: true });
+        setRails({ libOpen: true, libCat: 'patterns' });
         requestAnimationFrame(() => document.getElementById('lib-search')?.focus());
       } else if (e.key === '[') {
         setRails({ libOpen: !store.get().rails.libOpen });
@@ -77,23 +70,19 @@ export function Studio() {
     };
   }, []);
 
-  const cols = `${rails.libOpen ? rails.lib + 'px' : '40px'} minmax(0, 1fr) ${rails.specOpen ? rails.spec + 'px' : '40px'}`;
+  const cols = `${rails.libOpen ? rails.lib + STRIP + 'px' : STRIP + 'px'} minmax(0, 1fr) ${rails.specOpen ? rails.spec + STRIP + 'px' : STRIP + 'px'}`;
   return html`<div class="app-shell">
     <${TopBar} />
     <main class=${'studio panel-' + panel} id="main" style=${`--studio-cols:${cols}`}>
-      ${rails.libOpen
-        ? html`<div class="rail-wrap lib">
-            <${Library} onDraw=${openEditor} onHide=${() => setRails({ libOpen: false })} />
-            <${Resizer} side="lib" />
-          </div>`
-        : html`<${Collapsed} side="lib" />`}
+      <div class=${'rail-wrap lib' + (rails.libOpen ? '' : ' collapsed')}>
+        <${LibStrip} />
+        ${rails.libOpen && html`<${Library} onDraw=${openEditor} onHide=${() => setRails({ libOpen: false })} /><${Resizer} side="lib" />`}
+      </div>
       <${Stage} onDraw=${() => openEditor()} />
-      ${rails.specOpen
-        ? html`<div class="rail-wrap spec">
-            <${Resizer} side="spec" />
-            <${Specs} onHide=${() => setRails({ specOpen: false })} />
-          </div>`
-        : html`<${Collapsed} side="spec" />`}
+      <div class=${'rail-wrap spec' + (rails.specOpen ? '' : ' collapsed')}>
+        ${rails.specOpen && html`<${Resizer} side="spec" /><${Specs} onHide=${() => setRails({ specOpen: false })} />`}
+        <${SpecStrip} />
+      </div>
       <nav class="mobile-tabs" aria-label="Studio panels">
         <button class=${panel === 'library' ? 'on' : ''} aria-pressed=${panel === 'library'} onClick=${() => (setPanel('library'), setRails({ libOpen: true }))}>Patterns & templates</button>
         <button class=${panel === 'specs' ? 'on' : ''} aria-pressed=${panel === 'specs'} onClick=${() => (setPanel('specs'), setRails({ specOpen: true }))}>Size, material & checks</button>

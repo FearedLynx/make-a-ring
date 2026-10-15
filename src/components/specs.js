@@ -7,7 +7,9 @@ import { MATERIALS, PLATINGS, getMaterial } from '../lib/materials.js';
 import { sizeSummary, US_MIN, US_MAX, fmtUs } from '../lib/sizes.js';
 import { resolveZones } from '../lib/band.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
-import { store, setDesign, patternById, go, toast } from '../state.js';
+import { store, setDesign, setRails, patternById, go, toast } from '../state.js';
+import { RailStrip } from './rail-strip.js';
+import { ENGRAVE_KINDS, ENGRAVE_DEPTH, ENGRAVE_MARGIN, LETTER_MIN, LETTER_MAX, MAX_CUSTOM, STROKE_RATIO, getEngraving, engravingLayout, cleanInitials, cleanCustom } from '../lib/engraving.js';
 
 const profileIcon = {
   flat: 'M3 6h18v12H3Z',
@@ -71,9 +73,9 @@ function SplitControl({ design }) {
     onInput=${(v) => setDesign(splitPatch(design, v))} />`;
 }
 
-export function ChecksList({ design, compact = false }) {
+export function ChecksList({ design, compact = false, only }) {
   const { checks } = runChecks(design, patternById);
-  const shown = compact ? checks.filter((c) => c.level !== 'ok') : checks;
+  const shown = (compact ? checks.filter((c) => c.level !== 'ok') : checks).filter((c) => !only || only(c));
   const icon = { error: 'alert', warn: 'alert', info: 'info', ok: 'check' };
   if (!shown.length) return html`<p class="checks-clear"><${Icon} name="check" size=${16} /> Ready to print. All checks pass.</p>`;
   return html`<ul class="checks">
@@ -95,45 +97,137 @@ export function ChecksList({ design, compact = false }) {
   </ul>`;
 }
 
+/** Inside engraving: pick a style, type the initials or text, set the letter size. */
+function EngravingPanel({ design }) {
+  const e = getEngraving(design);
+  const set = (patch) => setDesign({ engraving: { ...e, ...patch } });
+  const L = engravingLayout(design);
+  const twoNames = e.kind === 'for' || e.kind === 'heart';
+  const m = getMaterial(design.materialId);
+  const minH = Math.min(LETTER_MAX, Math.ceil((m.minDetail / STROKE_RATIO) * 10) / 10);
+  const engChecks = runChecks(design, patternById).checks.filter((c) => /ngrav/.test(c.title) && c.level !== 'ok');
+  return html`<section class="spec-sec" id="spec-engraving">
+    <h3 class="sr-only">Inside engraving</h3>
+    <p class="hint engr-lead">Cut ${ENGRAVE_DEPTH} mm into the inside of the band, in a clean sans that prints reliably.</p>
+    <div class="engr-kinds" role="radiogroup" aria-label="Engraving style">
+      ${ENGRAVE_KINDS.map((k) => html`<button role="radio" aria-checked=${e.kind === k.id} class=${'chip sm' + (e.kind === k.id ? ' on' : '')}
+        title=${k.hint || ''} onClick=${() => set({ kind: k.id })}>${k.label}</button>`)}
+    </div>
+
+    ${(e.kind === 'initials' || twoNames) &&
+    html`<div class="engr-names">
+      <label class="field">${twoNames ? 'From' : 'Initials'}
+        <input value=${e.a} maxlength="3" autocapitalize="characters" spellcheck="false" aria-describedby="engr-names-hint"
+          onInput=${(ev) => set({ a: cleanInitials(ev.currentTarget.value) })} /></label>
+      ${twoNames && html`<label class="field">To
+        <input value=${e.b} maxlength="3" autocapitalize="characters" spellcheck="false" aria-describedby="engr-names-hint"
+          onInput=${(ev) => set({ b: cleanInitials(ev.currentTarget.value) })} /></label>`}
+    </div>
+    <p class="hint" id="engr-names-hint">Up to three letters each.</p>`}
+
+    ${e.kind === 'custom' &&
+    html`<label class="field">Text
+      <input value=${e.text} maxlength=${MAX_CUSTOM} spellcheck="false" placeholder="e.g. always · 10.10.26"
+        onInput=${(ev) => set({ text: cleanCustom(ev.currentTarget.value) })} /></label>
+    <p class="hint">${(e.text || '').length} / ${MAX_CUSTOM}. Letters, numbers, spaces and . , & ' + − ♥</p>`}
+
+    ${e.kind !== 'none' &&
+    html`<${Slider} label="Letter height" value=${e.size} min=${LETTER_MIN} max=${LETTER_MAX} step=${0.1} unit=" mm"
+        format=${(v) => `${v.toFixed(1)} mm`} onInput=${(v) => set({ size: +v.toFixed(1) })} />
+      <p class="hint">${m.name} needs letters of at least ${minH} mm; this band fits up to ${L ? L.maxH : (design.width - 1.4).toFixed(1)} mm.</p>
+      ${L && html`<${EngravingPreview} design=${design} L=${L} />`}
+      ${engChecks.length > 0 && html`<${ChecksList} design=${design} only=${(c) => engChecks.some((x) => x.title === c.title)} />`}`}
+  </section>`;
+}
+
+/** The inside of the band laid flat at true proportions, with the clear margins marked. */
+function EngravingPreview({ design, L }) {
+  const span = Math.min(L.innerCirc, Math.max(L.lengthMM + 10, 24));
+  const W = design.width;
+  const fontSize = L.h / 0.727; // cap height of the sans is about 0.727 em
+  const tooLong = L.lengthMM > L.maxLength;
+  return html`<figure class="engr-preview">
+    <svg viewBox=${`0 0 ${span} ${W}`} role="img" aria-label=${`Inside of the band, ${W} mm wide, engraved “${L.text}” in ${L.h} mm letters`}>
+      <rect class="engr-band" x="0" y="0" width=${span} height=${W} />
+      <rect class="engr-safe" x="0" y=${ENGRAVE_MARGIN} width=${span} height=${Math.max(0, W - 2 * ENGRAVE_MARGIN)} />
+      <text class=${'engr-text' + (L.h > L.maxH || tooLong ? ' bad' : '')} x=${span / 2} y=${W / 2 + L.h / 2} font-size=${fontSize}>${L.text}</text>
+    </svg>
+    <figcaption>Inside, laid flat · ${span.toFixed(0)} of ${L.innerCirc.toFixed(0)} mm shown · text ${L.lengthMM.toFixed(0)} mm long</figcaption>
+  </figure>`;
+}
+
+export const SPEC_CATS = [
+  { id: 'size', label: 'Size', icon: 'ruler' },
+  { id: 'layout', label: 'Layout', icon: 'layout' },
+  { id: 'band', label: 'Band & relief', icon: 'band' },
+  { id: 'material', label: 'Material & finish', icon: 'swatch' },
+  { id: 'engraving', label: 'Inside engraving', icon: 'type' },
+  { id: 'checks', label: 'Printability', icon: 'shield' },
+];
+
+function checkStatus(design) {
+  const { errors, warnings } = runChecks(design, patternById);
+  return errors
+    ? { level: 'error', text: `${errors} to fix`, short: errors }
+    : warnings
+      ? { level: 'warn', text: `${warnings} warning${warnings > 1 ? 's' : ''}`, short: warnings }
+      : { level: 'ok', text: 'All good' };
+}
+
+/** The category strip for the specs panel; the Printability tab carries the check count. */
+export function SpecStrip() {
+  const design = store.use((s) => s.design);
+  store.use((s) => s.customPatterns);
+  const rails = store.use((s) => s.rails);
+  const status = checkStatus(design);
+  const items = SPEC_CATS.map((c) => (c.id === 'checks' && status.level !== 'ok' ? { ...c, badge: status } : c));
+  return html`<${RailStrip} side="spec" label="Specification categories" items=${items} value=${rails.specCat || 'size'} open=${rails.specOpen}
+    onPick=${(id) => setRails({ specCat: id, specOpen: true })} />`;
+}
+
 export function Specs({ onHide }) {
   const design = store.use((s) => s.design);
   store.use((s) => s.customPatterns);
+  const cat = store.use((s) => s.rails.specCat) || 'size';
   const size = sizeSummary(design.sizeUS);
   const m = getMaterial(design.materialId);
   const zones = resolveZones(design, patternById);
   const nat = (id) => zones.find((z) => z.id === id && z.pattern)?.repeats;
-  const { errors, warnings } = runChecks(design, patternById);
+  const status = checkStatus(design);
   const price = estimate(design);
   const groups = [...new Set(MATERIALS.map((x) => x.group))];
+  const title = SPEC_CATS.find((c) => c.id === cat)?.label;
 
   return html`<aside class="rail specs" aria-label="Ring specifications">
     <div class="rail-title">
-      <span>Specification</span>
+      <span>${title}</span>
       ${onHide && html`<button class="rail-hide" onClick=${onHide} aria-label="Hide specs panel" title="Hide panel (])"><${Icon} name="panelR" size=${16} /></button>`}
     </div>
-    <div class="rail-body">
-      <section class="spec-sec">
-        <div class="spec-head"><h3>Size</h3>
-          <button class="link-btn" onClick=${() => store.set({ sizeFinderOpen: true })}><${Icon} name="ruler" size=${14} /> Find my size</button>
-        </div>
+    <div class="rail-body" id="spec-panel" role="tabpanel" aria-labelledby=${`spec-tab-${cat}`} key=${cat}>
+      ${cat === 'size' &&
+      html`<section class="spec-sec">
+        <h3 class="sr-only">Size</h3>
         <div class="size-display">
           <span class="size-big">US ${size.us}</span>
           <span class="size-alt">EU ${size.eu} · UK ${size.uk} · Ø ${size.diameter.toFixed(1)} mm</span>
         </div>
         <${Slider} label="Ring size (US)" value=${design.sizeUS} min=${US_MIN} max=${US_MAX} step=${0.25} unit=""
           format=${fmtUs} onInput=${(v) => setDesign({ sizeUS: v })} />
-      </section>
+        <button class="btn ghost sm size-find" onClick=${() => store.set({ sizeFinderOpen: true })}><${Icon} name="ruler" size=${14} /> Find my size</button>
+      </section>`}
 
-      <section class="spec-sec" id="spec-layout">
-        <h3>Layout</h3>
+      ${cat === 'layout' &&
+      html`<section class="spec-sec" id="spec-layout">
+        <h3 class="sr-only">Layout</h3>
         <${Segmented} label="Layout" size="full layout-seg" value=${design.layout}
           options=${Object.keys(LAYOUTS).map((id) => ({ value: id, title: LAYOUTS[id].hint, node: html`${layoutIcon(id)}<span>${LAYOUTS[id].name}</span>` }))}
           onChange=${(v) => setDesign({ layout: v })} />
         <p class="hint">${LAYOUTS[design.layout].hint}</p>
         <${SplitControl} design=${design} />
-      </section>
+      </section>`}
 
-      <section class="spec-sec">
+      ${cat === 'band' &&
+      html`<section class="spec-sec">
         <h3>Band</h3>
         <${Slider} label="Width" value=${design.width} min=${2} max=${12} step=${0.5} onInput=${(v) => setDesign({ width: v })} />
         <${Slider} label="Thickness" value=${design.thickness} min=${1} max=${3} step=${0.1} onInput=${(v) => setDesign({ thickness: +v.toFixed(1) })} />
@@ -145,7 +239,6 @@ export function Specs({ onHide }) {
           }))}
           onChange=${(v) => setDesign({ profile: v })} />
       </section>
-
       <section class="spec-sec">
         <h3>Pattern relief</h3>
         <${Segmented} label="Relief style" size="full" value=${design.style}
@@ -154,10 +247,11 @@ export function Specs({ onHide }) {
         <${Slider} label="Depth" value=${design.relief} min=${0.1} max=${0.7} step=${0.05} onInput=${(v) => setDesign({ relief: +v.toFixed(2) })} />
         ${hasMiddle(design.layout) && nat('middle') && html`<${Repeats} label="Middle repeats" axis="middle" design=${design} natural=${nat('middle')} />`}
         ${hasSides(design.layout) && (nat('sideL') || nat('sideR')) && html`<${Repeats} label="Side repeats" axis="side" design=${design} natural=${nat('sideL') || nat('sideR')} />`}
-      </section>
+      </section>`}
 
-      <section class="spec-sec">
-        <h3>Material</h3>
+      ${cat === 'material' &&
+      html`<section class="spec-sec">
+        <h3 class="sr-only">Material</h3>
         ${groups.map(
           (g) => html`<div class="mat-group">
             <span class="field-label">${g}</span>
@@ -183,22 +277,29 @@ export function Specs({ onHide }) {
         <${Segmented} label="Finish" size="full" value=${design.finish}
           options=${[{ value: 'polished', label: 'Polished' }, { value: 'satin', label: 'Satin' }, { value: 'antique', label: 'Antique' }]}
           onChange=${(v) => setDesign({ finish: v })} />
-      </section>
+      </section>`}
 
-      <section class="spec-sec" id="spec-checks" aria-labelledby="checks-h">
+      ${cat === 'engraving' && html`<${EngravingPanel} design=${design} />`}
+
+      ${cat === 'checks' &&
+      html`<section class="spec-sec" id="spec-checks" aria-labelledby="checks-h">
         <div class="spec-head">
-          <h3 id="checks-h">Printability</h3>
-          <span class=${'pill ' + (errors ? 'error' : warnings ? 'warn' : 'ok')}>
-            ${errors ? `${errors} to fix` : warnings ? `${warnings} warning${warnings > 1 ? 's' : ''}` : 'All good'}
-          </span>
+          <h3 id="checks-h" class="sr-only">Printability</h3>
+          <span class=${'pill ' + status.level}>${status.text}</span>
         </div>
         <${ChecksList} design=${design} />
-      </section>
+      </section>`}
     </div>
 
     <div class="price-card">
       <div>
-        <span class="muted">Estimated</span>
+        <span class="price-meta">
+          <span class="muted">Estimated</span>
+          <button class=${'check-chip ' + status.level} onClick=${() => setRails({ specCat: 'checks', specOpen: true })}
+            aria-label=${`Printability: ${status.text}. Show checks`} title="Show printability checks">
+            <${Icon} name=${status.level === 'ok' ? 'check' : 'alert'} size=${12} /> ${status.level === 'ok' ? 'Printable' : status.text}
+          </button>
+        </span>
         <strong class="price">${money(price.total)}</strong>
         <span class="muted small">Bespoke jeweller: $2,000+</span>
       </div>

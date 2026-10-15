@@ -5,11 +5,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon } from './ui.js';
 import { TourAnim } from './tour-anim.js';
-import { store, endTour, dismissTip } from '../state.js';
+import { store, endTour, dismissTip, setRails } from '../state.js';
 
 const touch = () => document.documentElement.dataset.input === 'touch';
 const K = (k) => html`<kbd>${k}</kbd>`;
 const edTab = (tab) => () => window.dispatchEvent(new CustomEvent('mar:edtab', { detail: tab }));
+// Studio side panels show one category at a time; open the one a step points at.
+const libCat = (cat) => () => setRails({ libOpen: true, libCat: cat });
+const specCat = (cat) => () => setRails({ specOpen: true, specCat: cat });
 const changed = (f) => (prev, next) => JSON.stringify(f(prev)) !== JSON.stringify(f(next));
 
 export const TOURS = {
@@ -49,9 +52,9 @@ export const TOURS = {
       done: 'Proportions are yours to set.',
     },
     {
-      target: '.rail.library', anim: 'search', detect: 'input', allowKeys: '*input',
+      target: '.rail.library', anim: 'search', detect: 'input', allowKeys: '*input', onEnter: libCat('patterns'), host: '.rail-strip.lib',
       title: 'Find anything faster',
-      body: () => (touch() ? 'Search every pattern and template here instead of scrolling.' : html`Type in the search box (${K('/')} jumps there). ${K('[')} hides this panel; drag its edge to resize it.`),
+      body: () => (touch() ? 'Search every pattern here instead of scrolling. The icons on the edge switch to your own patterns and templates.' : html`Type in the search box (${K('/')} jumps there). The icons on the edge switch categories, ${K('[')} hides the panel, and its edge drags to resize.`),
       done: 'Search narrows patterns as you type.',
     },
     {
@@ -61,21 +64,21 @@ export const TOURS = {
       more: 'The editor has its own short tour the first time you open it.',
     },
     {
-      target: '#spec-layout', anim: 'layout',
+      target: '#spec-layout', anim: 'layout', onEnter: specCat('layout'), host: '.rail-strip.spec',
       watch: changed((s) => [s.design.layout, s.design.splits]),
       title: 'Layout and proportions',
       body: () => 'Choose which zones the ring has, then set how wide the sides are compared to the middle.',
       done: 'Layout updated.',
     },
     {
-      target: '#spec-checks', anim: 'checks',
+      target: '#spec-checks', anim: 'checks', onEnter: specCat('checks'), host: '.rail-strip.spec',
       watch: changed((s) => s.design),
       title: 'Printability, checked live',
       body: () => 'Thin walls, fine lines and deep engravings are flagged for the material you pick. Each warning has a one-click fix.',
       done: 'Fixed, and it can be undone from the toast.',
     },
     {
-      target: '.price-card', anim: 'price', interact: false,
+      target: '.price-card', anim: 'price', interact: false, onEnter: () => setRails({ specOpen: true }), host: '.rail-strip.spec',
       title: 'Price and next step',
       body: () => (touch() ? 'When you like it, try it on a hand.' : html`When you like it, try it on a hand. Press ${K('?')} any time to see every shortcut.`),
     },
@@ -161,8 +164,10 @@ export function Tour() {
 
   const steps = tour
     ? (TOURS[tour.id] || []).filter((st) => {
-        const el = document.querySelector(st.target);
-        return el && el.getClientRects().length;
+        // A step whose target sits in a closed panel category stays if its panel (`host`) is on screen;
+        // its onEnter opens that category.
+        const shown = (sel) => !!document.querySelector(sel)?.getClientRects().length;
+        return shown(st.target) || (st.host && shown(st.host));
       })
     : [];
   const i = tour ? Math.min(tour.step, Math.max(0, steps.length - 1)) : 0;
@@ -191,7 +196,8 @@ export function Tour() {
     document.body.classList.add('tour-open');
     dismissTip();
     step.onEnter?.();
-    document.querySelector(step.target)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    // After the hook's re-render, so a panel it just opened can be scrolled to.
+    requestAnimationFrame(() => document.querySelector(step.target)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
     let raf;
     const tick = () => {
       const r = document.querySelector(step.target)?.getBoundingClientRect();
@@ -256,7 +262,7 @@ export function Tour() {
 
   useLayoutEffect(() => {
     if (rect) setPos(placeCard(rect, card.current));
-  }, [rect, skipAsk, i, !!doneMsg]);
+  }, [rect, i, !!doneMsg]); // not on skipAsk: the confirmation appears in place, the card does not jump
 
   useEffect(() => {
     if (step || final) requestAnimationFrame(() => (card.current?.querySelector('[data-primary]') || nextBtn.current)?.focus({ preventScroll: true }));
@@ -322,7 +328,7 @@ export function Tour() {
   spotRef.current = spot;
   const interact = step.interact !== false && !skipAsk;
   const last = i === steps.length - 1;
-  const vw = innerWidth, vh = innerHeight;
+  const vw = document.documentElement.clientWidth, vh = innerHeight; // clientWidth leaves out the scrollbar
   // Four blockers around the hole keep the rest of the page inert while the spotlit part stays usable.
   const blockers = interact
     ? [
@@ -350,16 +356,7 @@ export function Tour() {
       ${interact && step.done && html`<span class="tour-try">Try it</span>`}
     </div>
     <div class="tour-card" ref=${card} style=${`top:${pos.top}px;left:${pos.left}px`}>
-      ${skipAsk
-        ? html`<div class="tour-head"><span class="tour-count">Skip?</span></div>
-            <h2 id="tour-title">Skip the tour?</h2>
-            <p id="tour-body">We recommend finishing it. It's ${steps.length} short steps and shows the shortcuts that make this much faster. You can replay it any time from the help menu.</p>
-            <div class="tour-actions">
-              <button class="btn ghost sm" onClick=${() => (setSkipAsk(false), finish())}>Skip anyway</button>
-              <span class="spacer"></span>
-              <button class="btn primary sm" data-primary onClick=${() => setSkipAsk(false)}>Continue tour</button>
-            </div>`
-        : html`<div class="tour-head">
+      <div class="tour-head">
               <span class="tour-count">${String(i + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}</span>
               <div class="tour-progress" aria-hidden="true">${steps.map((_, k) => html`<span class=${k <= i ? 'on' : ''}></span>`)}</div>
             </div>
@@ -368,12 +365,18 @@ export function Tour() {
             ${doneMsg
               ? html`<p id="tour-body" class="tour-done" role="status"><${Icon} name="check" size=${16} /> ${doneMsg}</p>`
               : html`<p id="tour-body">${step.body()}</p>${step.more && html`<p class="tour-more">${step.more}</p>`}`}
-            <div class="tour-actions">
-              <button class="link-btn muted-link" onClick=${() => setSkipAsk(true)}>Skip tour</button>
-              <span class="spacer"></span>
-              ${i > 0 && html`<button class="btn ghost sm" onClick=${() => go(i - 1)}><${Icon} name="left" size=${14} /> Back</button>`}
-              <button class="btn primary sm" ref=${nextBtn} onClick=${() => go(i + 1)}>${last ? 'Finish' : 'Next'} ${!last && html`<${Icon} name="right" size=${14} />`}</button>
-            </div>`}
+            ${skipAsk
+              ? html`<div class="tour-actions tour-skip-ask" role="group" aria-label="Skip the tour?">
+                  <span class="tour-skip-q"><strong>Skip the tour?</strong> You can replay it from the help menu.</span>
+                  <button class="btn ghost sm" onClick=${() => (setSkipAsk(false), finish())}>Skip</button>
+                  <button class="btn primary sm" data-primary onClick=${() => setSkipAsk(false)}>Keep going</button>
+                </div>`
+              : html`<div class="tour-actions">
+                  <button class="link-btn muted-link" onClick=${() => setSkipAsk(true)}>Skip tour</button>
+                  <span class="spacer"></span>
+                  ${i > 0 && html`<button class="btn ghost sm" onClick=${() => go(i - 1)}><${Icon} name="left" size=${14} /> Back</button>`}
+                  <button class="btn primary sm" ref=${nextBtn} onClick=${() => go(i + 1)}>${last ? 'Finish' : 'Next'} ${!last && html`<${Icon} name="right" size=${14} />`}</button>
+                </div>`}
     </div>
   </div>`;
 }

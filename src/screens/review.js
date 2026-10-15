@@ -10,6 +10,7 @@ import { getMaterial, PLATINGS } from '../lib/materials.js';
 import { sizeSummary, usToDiameter, diameterToUs } from '../lib/sizes.js';
 import { buildHeightmap } from '../lib/heightmap.js';
 import { buildRingGeometry } from '../lib/ringGeometry.js';
+import { engravingLayout, ENGRAVE_DEPTH } from '../lib/engraving.js';
 import * as THREE from 'three';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
@@ -54,7 +55,7 @@ function makerBrief(name, rows, checks) {
   return [
     `Make-a-Ring maker brief: ${name || 'Untitled ring'}`,
     '',
-    ...rows.map(([k, v]) => `${k.padEnd(16)}${v}`),
+    ...rows.map(([k, v]) => `${k.padEnd(18)}${v}`),
     '',
     'Printability',
     ...checks.map((c) => `[${c.level}] ${c.title}: ${c.detail}`),
@@ -175,6 +176,7 @@ export function Review() {
   const layout = LAYOUTS[design.layout];
   const hasZ = (z) => layout.zones.some((x) => x.id === z);
 
+  const engr = engravingLayout(design);
   const rows = [
     ['Size', `US ${size.us} · EU ${size.eu} · UK ${size.uk}`],
     ['Inner diameter', `${size.diameter.toFixed(2)} mm`],
@@ -186,6 +188,7 @@ export function Review() {
     ['Material', `${m.name}${m.platable && design.plating !== 'none' ? ` + ${PLATINGS[design.plating].name.toLowerCase()}` : ''}`],
     ['Process', m.process],
     ['Finish', design.finish],
+    engr && ['Inside engraving', `“${engr.text}” · ${engr.h} mm letters · ${ENGRAVE_DEPTH} mm deep`],
     ['Weight', `≈ ${price.grams.toFixed(1)} g`],
   ].filter(Boolean);
 

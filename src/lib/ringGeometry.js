@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { sampleHeight } from './heightmap.js';
 import { usToDiameter } from './sizes.js';
+import { buildEngravingMap, engravingLayout, ENGRAVE_DEPTH } from './engraving.js';
 
 function profileFns(profile, r, t) {
   const dome = (s) => Math.sqrt(Math.max(0, 1 - s * s));
@@ -33,13 +34,25 @@ export function buildRingGeometry(design, hm, detail = 1.25) {
   const edgeFade = Math.min(0.2, 0.3 / w); // keep the outer rim clean
   const sign = design.style === 'engraved' ? -1 : 1;
   const antique = design.finish === 'antique';
+  const engr = buildEngravingMap(design); // text cut into the inside, or null
 
   // Each section is a list of rows; a row is { s, rho(u) , outerSurface }.
   const outerRows = Math.round(detail * Math.min(200, Math.max(90, w / 0.045)));
   const sections = [
     { rows: Array.from({ length: outerRows + 1 }, (_, j) => ({ s: -1 + (2 * j) / outerRows, kind: 'outer' })) },
     { rows: [0, 0.5, 1].map((k) => ({ s: 1, kind: 'wall', k, from: 'outer' })) },
-    { rows: Array.from({ length: 25 }, (_, j) => ({ s: 1 - (2 * j) / 24, kind: 'inner' })) },
+    // The inside only needs a few rows, plus dense ones across the engraving band (letters with
+    // descenders and a little margin) so the text resolves without bloating the exported file.
+    (() => {
+      const ss = Array.from({ length: 25 }, (_, j) => 1 - j / 12);
+      if (engr) {
+        const half = Math.min(1, (engravingLayout(design).h * 0.7 + 0.3) / (w / 2));
+        const n = Math.ceil((half * w) / 0.05); // 0.05 mm rows resolve the letter strokes
+        for (let j = 0; j <= n; j++) ss.push(half - (2 * half * j) / n);
+      }
+      const rows = [...new Set(ss.map((s) => +s.toFixed(6)))].sort((a, b) => b - a);
+      return { rows: rows.map((s) => ({ s, kind: 'inner' })) };
+    })(),
     { rows: [0, 0.5, 1].map((k) => ({ s: -1, kind: 'wall', k, from: 'inner' })) },
   ];
 
@@ -66,6 +79,11 @@ export function buildRingGeometry(design, hm, detail = 1.25) {
           if (antique && hm.ranges.some(([a, b]) => v >= a && v <= b)) shade = design.style === 'engraved' ? 1 - 0.6 * h * fade : 0.46 + 0.54 * Math.max(h, 1 - fade);
         } else if (row.kind === 'inner') {
           rho = inner(row.s);
+          if (engr) {
+            const h = sampleHeight(engr, u, (row.s + 1) / 2);
+            rho += ENGRAVE_DEPTH * h; // cut outwards, into the metal
+            if (antique && h > 0.05) shade = 1 - 0.55 * h;
+          }
         } else {
           const a = outer(row.s), b = inner(row.s);
           rho = row.from === 'outer' ? a + (b - a) * row.k : b + (a - b) * row.k;

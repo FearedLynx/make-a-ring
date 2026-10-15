@@ -6,7 +6,8 @@ import { PatternArt } from './pattern-art.js';
 import { TemplateCard } from './template-card.js';
 import { TAGS, PATTERNS } from '../lib/patterns.js';
 import { TEMPLATES, hasMiddle, hasSides } from '../lib/templates.js';
-import { store, setPattern, applyTemplate, deleteCustomPattern } from '../state.js';
+import { store, setPattern, setRails, applyTemplate, deleteCustomPattern } from '../state.js';
+import { RailStrip } from './rail-strip.js';
 
 const zoneBadge = { middle: 'Middle', side: 'Sides', any: 'Anywhere' };
 
@@ -45,12 +46,27 @@ function PatternTile({ p, design, activeSide, libZone, onEdit }) {
   </li>`;
 }
 
+export const LIB_CATS = [
+  { id: 'patterns', label: 'Patterns', icon: 'pattern' },
+  { id: 'mine', label: 'My patterns', icon: 'pen' },
+  { id: 'templates', label: 'Templates', icon: 'layers' },
+];
+
+/** The category strip for the library panel; My patterns shows how many you have. */
+export function LibStrip() {
+  const rails = store.use((s) => s.rails);
+  const custom = store.use((s) => s.customPatterns);
+  const items = LIB_CATS.map((c) => (c.id === 'mine' && custom.length ? { ...c, badge: { level: 'count', text: `${custom.length} saved`, short: custom.length } } : c));
+  return html`<${RailStrip} side="lib" label="Library categories" items=${items} value=${rails.libCat || 'patterns'} open=${rails.libOpen}
+    onPick=${(id) => setRails({ libCat: id, libOpen: true })} />`;
+}
+
 export function Library({ onDraw, onHide }) {
   const design = store.use((s) => s.design);
   const activeSide = store.use((s) => s.activeSide);
   const custom = store.use((s) => s.customPatterns);
   const libZone = store.use((s) => s.libZone);
-  const [tab, setTab] = useState('patterns');
+  const tab = store.use((s) => s.rails.libCat) || 'patterns';
   const [q, setQ] = useState('');
   const [tag, setTag] = useState(null);
 
@@ -65,18 +81,20 @@ export function Library({ onDraw, onHide }) {
   const mine = custom.filter(match);
   const lib = PATTERNS.filter(match);
 
+  const title = LIB_CATS.find((c) => c.id === tab)?.label;
+  const tile = (p) => html`<${PatternTile} key=${p.id} p=${p} design=${design} activeSide=${activeSide} libZone=${libZone} onEdit=${(pp) => onDraw(pp)} />`;
+
   return html`<aside class="rail library" aria-label="Pattern and template library">
-    <div class="rail-tabs" role="tablist">
-      <button role="tab" aria-selected=${tab === 'patterns'} class=${tab === 'patterns' ? 'on' : ''} onClick=${() => setTab('patterns')}>Patterns</button>
-      <button role="tab" aria-selected=${tab === 'templates'} class=${tab === 'templates' ? 'on' : ''} onClick=${() => setTab('templates')}>Templates</button>
+    <div class="rail-title">
+      <span>${title}</span>
       ${onHide && html`<button class="rail-hide" onClick=${onHide} aria-label="Hide library panel" title="Hide panel ([)"><${Icon} name="panelL" size=${16} /></button>`}
     </div>
 
-    ${tab === 'patterns'
-      ? html`<div class="rail-body">
+    ${tab === 'patterns' &&
+      html`<div class="rail-body" id="lib-panel" role="tabpanel" aria-labelledby="lib-tab-patterns">
           <label class="search">
             <${Icon} name="search" size=${16} />
-            <input id="lib-search" type="search" placeholder="Search patterns…  ( / )" value=${q}
+            <input id="lib-search" type="search" placeholder="Search patterns (/)" value=${q}
               onInput=${(e) => setQ(e.currentTarget.value)} aria-label="Search patterns" />
           </label>
           <${Segmented} label="Show patterns for" size="sm full" value=${libZone}
@@ -86,7 +104,17 @@ export function Library({ onDraw, onHide }) {
             ${TAGS.map((t) => html`<button class=${'tag' + (tag === t ? ' on' : '')} aria-pressed=${tag === t} onClick=${() => setTag(tag === t ? null : t)}>${t}</button>`)}
           </div>
 
-          <h3 class="rail-h">My patterns</h3>
+          <h3 class="rail-h">${q || tag ? 'Results' : 'Library'} <span class="muted">${mine.length + lib.length}</span></h3>
+          ${mine.length + lib.length
+            ? html`<ul class="lib-grid">${mine.map(tile)}${lib.map(tile)}</ul>`
+            : html`<div class="empty">
+                <p>Nothing matches “${q}”${tag ? ` in ${tag}` : ''}.</p>
+                <button class="btn ghost sm" onClick=${() => onDraw()}><${Icon} name="pen" size=${14} /> Draw it yourself</button>
+              </div>`}
+        </div>`}
+
+    ${tab === 'mine' &&
+      html`<div class="rail-body" id="lib-panel" role="tabpanel" aria-labelledby="lib-tab-mine">
           <ul class="lib-grid">
             <li class="lib-tile new">
               <button class="lib-tile-main" onClick=${() => onDraw()}>
@@ -95,20 +123,13 @@ export function Library({ onDraw, onHide }) {
                 <span class="lib-tile-zone">Mirror, repeat, done</span>
               </button>
             </li>
-            ${mine.map((p) => html`<${PatternTile} key=${p.id} p=${p} design=${design} activeSide=${activeSide} libZone=${libZone} onEdit=${(pp) => onDraw(pp)} />`)}
+            ${custom.map(tile)}
           </ul>
+          ${!custom.length && html`<p class="rail-note mine-empty">Patterns you draw are saved here, ready to edit or reuse on any ring.</p>`}
+        </div>`}
 
-          <h3 class="rail-h">Library <span class="muted">${lib.length}</span></h3>
-          ${lib.length
-            ? html`<ul class="lib-grid">
-                ${lib.map((p) => html`<${PatternTile} key=${p.id} p=${p} design=${design} activeSide=${activeSide} libZone=${libZone} />`)}
-              </ul>`
-            : html`<div class="empty">
-                <p>Nothing matches “${q}”${tag ? ` in ${tag}` : ''}.</p>
-                <button class="btn ghost sm" onClick=${() => onDraw()}><${Icon} name="pen" size=${14} /> Draw it yourself</button>
-              </div>`}
-        </div>`
-      : html`<div class="rail-body">
+    ${tab === 'templates' &&
+      html`<div class="rail-body" id="lib-panel" role="tabpanel" aria-labelledby="lib-tab-templates">
           <p class="rail-note">Templates set the layout, patterns and material. Your size is kept.</p>
           <ul class="tpl-list">
             ${TEMPLATES.map((t) => {

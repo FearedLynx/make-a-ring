@@ -35,6 +35,18 @@ function designFromUrl() {
   }
 }
 
+// Side panels: content widths (the 44 px category strip comes on top) and the open category.
+// Smaller screens start with slimmer panels so the stage gets the room; the resizer still widens them.
+export const RAIL_DEFAULTS = matchMedia('(max-width: 1440px)').matches ? { lib: 240, spec: 268 } : { lib: 256, spec: 296 };
+function loadRails() {
+  const r = load('mar.rails', null);
+  const base = { ...RAIL_DEFAULTS, libOpen: true, specOpen: true, libCat: 'patterns', specCat: 'size', v: 2 };
+  if (!r) return base;
+  // Before the category strips, widths included everything; keep the panels the same overall size.
+  if (r.v !== 2) return { ...base, ...r, lib: Math.max(240, r.lib - 44), spec: Math.max(240, r.spec - 44), v: 2 };
+  return { ...base, ...r };
+}
+
 const shared = designFromUrl();
 const storedCustom = load('mar.custom', []);
 const custom = shared?.custom
@@ -57,7 +69,7 @@ export const store = createStore({
   tryOn: { tone: 1, build: 'slender', finger: 'ring', close: true, mode: 'illustration', photo: null, pos: { x: 0.5, y: 0.5, scale: 1, rot: 0 } },
   theme: document.documentElement.dataset.theme || 'beige',
   grid: document.documentElement.dataset.grid !== 'off',
-  rails: load('mar.rails', { lib: 300, spec: 340, libOpen: true, specOpen: true }),
+  rails: loadRails(),
   tip: null, // { id, text }
   tour: null, // { id, step }
 });
@@ -106,12 +118,16 @@ export function dismissTip(forever = false) {
   store.set({ tip: null });
 }
 export const tourDone = (id) => load('mar.tours.done', []).includes(id);
+const markTourSeen = (id) => save('mar.tours.done', [...new Set([...load('mar.tours.done', []), id])]);
+// A tour counts as seen as soon as it starts: finished, skipped, or left by reloading, it never
+// starts on its own again. The help menu still replays it.
 export function startTour(id) {
+  markTourSeen(id);
   store.set({ tour: { id, step: 0, snapshot: id === 'studio' ? store.get().design : null }, tip: null });
 }
 export function endTour() {
   const t = store.get().tour;
-  if (t) save('mar.tours.done', [...new Set([...load('mar.tours.done', []), t.id])]);
+  if (t) markTourSeen(t.id);
   store.set({ tour: null });
 }
 
@@ -161,7 +177,7 @@ export function announce(msg) {
 
 export function applyTemplate(id, { silent = false } = {}) {
   const prev = store.get().design;
-  const next = designFromTemplate(id, { sizeUS: prev.sizeUS });
+  const next = designFromTemplate(id, { sizeUS: prev.sizeUS, ...(prev.engraving ? { engraving: prev.engraving } : {}) }); // size and engraving are personal, keep them
   store.set({ design: next, activeSide: 'sideL' });
   if (!silent) toast('Template applied', { label: 'Undo', run: () => store.set({ design: prev }) });
 }

@@ -14,16 +14,21 @@ const ANIMS = {
 
   vertical: () => html`
     <g class="ta-slide-y">
-      ${[0, 1, 2, 3].map((i) => html`<g>${card(80, 6 + i * 28, 40, 22, i === 1 ? 'on' : '')}${motif(100, 17 + i * 28)}</g>`)}
+      ${[0, 1, 2, 3].map((i) => html`<g>${card(80, 6 + i * 28, 40, 22)}${motif(100, 17 + i * 28)}</g>`)}
     </g>
     <rect class="ta-frame" x="76" y="30" width="48" height="30" rx="5" />
     <text class="ta-key" x="150" y="40">↑</text><text class="ta-key" x="150" y="60">↓</text>`,
 
+  // Cards are 34 wide on a 44 step, centred on the fixed frame at x = 100; one extra card on the right
+  // slides in as the row moves one step left, so the frame always holds exactly one card.
   horizontal: () => html`
     <g class="ta-slide-x">
-      ${[0, 1, 2, 3, 4].map((i) => html`<g>${card(10 + i * 44, 22, 34, 46, i === 2 ? 'on' : '')}<path class="ta-motif-line" d=${`M${18 + i * 44} 30q4 7 0 14t0 14M${36 + i * 44} 30q-4 7 0 14t0 14`} /></g>`)}
+      ${[0, 1, 2, 3, 4, 5].map((i) => {
+        const x = 83 + (i - 2) * 44;
+        return html`<g>${card(x, 22, 34, 46)}<path class="ta-motif-line" d=${`M${x + 8} 30q4 7 0 14t0 14M${x + 26} 30q-4 7 0 14t0 14`} /></g>`;
+      })}
     </g>
-    <rect class="ta-frame" x="80" y="18" width="42" height="54" rx="5" />`,
+    <rect class="ta-frame" x="79" y="18" width="42" height="54" rx="5" />`,
 
   link: () => html`
     <rect class="ta-band" x="40" y="22" width="120" height="46" rx="6" />

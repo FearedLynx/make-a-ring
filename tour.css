@@ -146,3 +146,8 @@
   .ta-smooth, .ta-sym, .ta-gen { stroke-dashoffset: 0; opacity: 1; }
   .ta-result, .ta-stamp { opacity: 1; }
 }
+
+/* Skip confirmation sits in the card's action row, so the card keeps its place. */
+.tour-skip-ask { flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.tour-skip-q { flex: 1 0 100%; font-size: 13px; color: var(--ink-2); }
+.tour-skip-q strong { color: var(--ink); }

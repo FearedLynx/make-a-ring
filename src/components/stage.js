@@ -140,6 +140,7 @@ export function Stage({ onDraw }) {
       <button class=${'icon-btn' + (spin ? ' on' : '')} aria-pressed=${spin} onClick=${() => setSpin(!spin)} title="Turntable" aria-label="Turntable rotation"><${Icon} name="spin" /></button>
     </div>
 
+    <div class="stage-main">
     <div class="cross">
       <div class="cross-top" onWheel=${mid ? midWheel : undefined} ...${mid ? midSwipe : {}}>
         ${mid
@@ -206,6 +207,8 @@ export function Stage({ onDraw }) {
       </div>
 
       <button class="btn accent draw-btn" onClick=${onDraw}><${Icon} name="pen" size=${16} /> Draw your own</button>
+    </div>
+
     </div>
 
     <div class="band-map-wrap">

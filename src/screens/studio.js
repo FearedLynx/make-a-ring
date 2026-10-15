@@ -7,6 +7,7 @@ import { Specs, SpecStrip } from '../components/specs.js';
 import { store, setRails, startTour, tourDone, RAIL_DEFAULTS } from '../state.js';
 
 const MIN = 240, MAX = 520;
+const uiScaleNow = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
 
 /** Drag handle on the inner edge of a side panel. `side` is 'lib' (left) or 'spec' (right). */
 function Resizer({ side }) {
@@ -24,7 +25,7 @@ function Resizer({ side }) {
     }}
     onPointerMove=${(e) => {
       if (!start.current) return;
-      const dx = e.clientX - start.current.x;
+      const dx = (e.clientX - start.current.x) / uiScaleNow(); // widths are kept in unscaled pixels
       set(start.current.w + (side === 'lib' ? dx : -dx));
     }}
     onPointerUp=${() => {
@@ -70,7 +71,9 @@ export function Studio() {
     };
   }, []);
 
-  const cols = `${rails.libOpen ? rails.lib + STRIP + 'px' : STRIP + 'px'} minmax(0, 1fr) ${rails.specOpen ? rails.spec + STRIP + 'px' : STRIP + 'px'}`;
+  // Panel widths scale with the fit-to-screen UI scale (--ui), like everything drawn inside them.
+  const px = (n) => `calc(${n}px * var(--ui))`;
+  const cols = `${px(rails.libOpen ? rails.lib + STRIP : STRIP)} minmax(0, 1fr) ${px(rails.specOpen ? rails.spec + STRIP : STRIP)}`;
   return html`<div class="app-shell">
     <${TopBar} />
     <main class=${'studio panel-' + panel} id="main" style=${`--studio-cols:${cols}`}>

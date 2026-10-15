@@ -3,6 +3,7 @@ import { html } from '../lib/html.js';
 import { Modal, Segmented, Slider, Icon } from './ui.js';
 import { sizeSummary, diameterToUs, usToDiameter, roundUs, fmtUs, US_MIN, US_MAX } from '../lib/sizes.js';
 import { store, setDesign, toast } from '../state.js';
+import { snap } from '../lib/sound.js';
 
 const UK = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const clampUs = (u) => Math.min(US_MAX, Math.max(US_MIN, u));
@@ -58,6 +59,7 @@ export function SizeFinder() {
   const s = sizeSummary(us);
   const apply = () => {
     setDesign({ sizeUS: roundUs(us) });
+    snap();
     close();
     toast(`Size set to US ${fmtUs(roundUs(us))}`);
   };

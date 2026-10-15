@@ -21,9 +21,14 @@ function shadowTexture() {
 }
 
 export class RingViewer {
-  constructor(el, { mode = 'studio', autoRotate = false, zoom = mode !== 'hero' } = {}) {
+  /**
+   * `focus` (optional) returns an element inside the canvas: the ring is framed on that element instead of the
+   * whole canvas, so the canvas can fill a bigger area and the ring still shows past the element's edges.
+   */
+  constructor(el, { mode = 'studio', autoRotate = false, zoom = mode !== 'hero', focus = null } = {}) {
     this.el = el;
     this.mode = mode;
+    this.focus = focus;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -101,6 +106,8 @@ export class RingViewer {
     this.resize = this.resize.bind(this);
     this.ro = new ResizeObserver(this.resize);
     this.ro.observe(el);
+    const f = focus?.();
+    if (f) this.ro.observe(f);
     this.io = new IntersectionObserver(([e]) => (this.visible = e.isIntersecting));
     this.io.observe(el);
     this.resize();
@@ -178,6 +185,14 @@ export class RingViewer {
     if (this.mode === 'tryon') {
       const s = this.pxPerMM || 10;
       Object.assign(this.camera, { left: -w / 2 / s, right: w / 2 / s, top: h / 2 / s, bottom: -h / 2 / s });
+    } else if (this.focus?.()?.isConnected) {
+      // Frame the ring on the focus element: the camera sees the focus box as its full view, and the canvas is a
+      // window onto a larger area around it (offsets in canvas pixels; k converts from on-screen pixels).
+      const a = this.el.getBoundingClientRect(), f = this.focus().getBoundingClientRect();
+      const k = w / (a.width || w);
+      const fw = Math.max(1, f.width * k), fh = Math.max(1, f.height * k);
+      this.camera.aspect = fw / fh;
+      this.camera.setViewOffset(fw, fh, (a.left - f.left) * k, (a.top - f.top) * k, w, h);
     } else {
       this.camera.aspect = w / h;
     }

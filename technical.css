@@ -65,7 +65,7 @@ body { background: var(--bg); transition: background 0.2s; }
 .split-handle:focus-visible .split-line { stroke-width: 0.32; stroke-dasharray: none; }
 
 /* ── Resizable / collapsible side panels ── */
-@media (min-width: 1181px) { .studio { grid-template-columns: var(--studio-cols, 300px minmax(0, 1fr) 340px); } }
+@media (min-width: 1024px) { .studio { grid-template-columns: var(--studio-cols, 300px minmax(0, 1fr) 340px); } }
 .rail-wrap { position: relative; display: flex; min-height: 0; min-width: 0; }
 .rail-wrap > .rail { flex: 1; min-width: 0; }
 .rail-resize { position: absolute; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 6; touch-action: none; }
@@ -371,7 +371,7 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
   .lp-studio-fig { position: static; }
   .lp-cost { grid-template-columns: 1fr; }
 }
-@media (max-width: 1180px) {
+@media (max-width: 1023px) {
   .studio .rail-wrap { order: 3; }
   .studio.panel-specs .rail-wrap.lib, .studio.panel-library .rail-wrap.spec { display: none; }
   .rail-resize, .rail-hide { display: none !important; }
@@ -384,8 +384,8 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
   .strip-badge { position: static; }
   .strip-tab.on::before { top: auto; bottom: -9px; left: 10px !important; right: 10px !important; width: auto; height: 3px; }
   .studio .rail-title { display: none; }
-  .ed-props { grid-template-columns: 1fr 1fr; }
 }
+@media (max-width: 1180px) { .ed-props { grid-template-columns: 1fr 1fr; } }
 /* Phones: every category tab fits the width (icon over a short label), so the strip never scrolls sideways. */
 @media (max-width: 760px) {
   .rail-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; padding: 6px 8px; overflow-x: visible; }
@@ -439,9 +439,9 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 
 /* ── Compact density for smaller desktop screens (laptops, 1366×768, 125–150 % scaling) ──
    Only the side panels and the top bar tighten; the stage and carousel are untouched. */
-@media (min-width: 1181px) and (max-width: 1440px), (min-width: 1181px) and (max-height: 820px) {
+@media (min-width: 1024px) and (max-width: 1440px), (min-width: 1024px) and (max-height: 820px) {
   :root { --topbar: 52px; }
-  .studio { min-height: 560px; }
+  .studio { min-height: calc(560px * var(--ui)); }
   .studio .rail-title { min-height: 38px; padding: 3px 6px 3px 12px; font-size: 11px; }
   .studio .rail-body { padding: 12px; }
   .rail-strip { padding: 6px 0; gap: 2px; }
@@ -514,7 +514,7 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .cross { grid-template-rows: auto minmax(140px, 1fr) auto; }
 .stage-main { display: contents; }
 @container stage (min-width: 630px) {
-  .stage-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 156px; column-gap: 14px; }
+  .stage-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) calc(156px * var(--ui)); column-gap: 14px; }
   .stage-main .cross { min-width: 0; }
   /* The faded far card peeks past its column; clip it there so it never slides under the selectors. */
   .stage-main .cross-right { overflow-x: clip; overflow-clip-margin: 10px; }
@@ -586,11 +586,15 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .tx-line { stroke: color-mix(in oklab, var(--ink) 28%, transparent); stroke-width: 0.8; }
 .tx-dot { fill: color-mix(in oklab, var(--ink) 40%, transparent); }
 .ring-depth { fill: none; stroke: color-mix(in oklab, var(--ink) 35%, transparent); stroke-width: 1; }
-.ring-hi { fill: none; stroke: color-mix(in oklab, var(--ink) 55%, transparent); stroke-width: 1.4; stroke-linecap: round; }
-.ring-spark { fill: var(--ink); opacity: 0; transform-box: fill-box; transform-origin: center; }
-.ring-spark.on { opacity: 1; fill: var(--accent); }
-.tray-ring.on .ring-band { stroke: var(--accent); stroke-width: 2; }
-.tray-ring.on .ring-hi { stroke: var(--accent); }
+.tray-ring.metal .ring-band { stroke-width: 1; }
+.ring-tex.sintered { opacity: 0.35; }
+.ring-shine { fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; opacity: 0.9; }
+.ring-shine.metal { opacity: 0.55; stroke-width: 2; }
+.ring-shine.soft { stroke-width: 1.4; opacity: 0.45; }
+.ring-halo { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0; transition: opacity 0.2s; }
+.tray-ring.on .ring-halo { opacity: 1; }
+.ring-spark { fill: #fff6d2; stroke: #c4952f; stroke-width: 0.6; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.ring-spark.on { opacity: 1; }
 .tag-string { fill: none; stroke: color-mix(in oklab, var(--ink) 55%, transparent); stroke-width: 1; }
 .tag-card { fill: var(--surface); stroke: color-mix(in oklab, var(--ink) 60%, transparent); stroke-width: 1.2; stroke-linejoin: round; }
 .tag-hole { fill: var(--surface-2); stroke: color-mix(in oklab, var(--ink) 50%, transparent); stroke-width: 1; }
@@ -612,68 +616,57 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 @media (max-width: 1023px) { .tray-wrap { grid-template-columns: 1fr; gap: 20px; } .tray { max-height: 360px; } }
 @media (max-width: 639px) { .tag-name { display: none; } .tag-price { font-size: 16.5px; font-weight: 600; letter-spacing: -0.02em; transform: translateY(-9px); } } /* phones: price only, big enough to read */
 
-/* Size step: decorative ring mandrel (components/mandrel.js). One light source, upper left; tone instead of
-   outlines; shadows are gradients. Two columns on desktop; under the size card on tablets; compact on phones. */
-.mandrel-card {
-  position: relative; isolation: isolate; margin: 0; overflow: hidden;
-  display: grid; grid-template-rows: minmax(0, 1fr) auto; justify-items: center; gap: 2px;
-  height: 240px; padding: 10px 0 12px;
-  border-radius: var(--radius, 16px);
-  border: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
-  /* a soft spotlight behind the upper third, fading into the card fill */
-  background:
-    radial-gradient(60% 45% at 42% 26%, color-mix(in oklab, var(--surface) 70%, white) 0%, transparent 70%),
-    var(--surface);
-  /* stacked soft shadow plus a 1px top inner highlight */
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, white 60%, transparent),
-    0 1px 1px rgba(var(--shadow-rgb), 0.04), 0 2px 4px rgba(var(--shadow-rgb), 0.04),
-    0 8px 16px rgba(var(--shadow-rgb), 0.05), 0 24px 48px rgba(var(--shadow-rgb), 0.06);
-}
-/* static grain, ~3%: drawn once, never animated */
-.mandrel-card::after {
-  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.035; mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-}
-.mandrel { width: 100%; height: 100%; min-height: 0; overflow: visible; }
-
-.mdl-steel { stroke: color-mix(in oklab, var(--ink) 35%, transparent); stroke-width: 1; stroke-linejoin: round; }
-.mdl-rim { stroke: color-mix(in oklab, white 55%, transparent); stroke-width: 1; }
-.mdl-lathe { fill: none; stroke: var(--ink); stroke-width: 0.6; opacity: 0.07; }
-.mdl-cap { fill: color-mix(in oklab, var(--ink) 10%, var(--surface)); stroke: color-mix(in oklab, var(--ink) 35%, transparent); stroke-width: 1; }
-.mdl-seam { fill: none; stroke: color-mix(in oklab, var(--ink) 45%, transparent); stroke-width: 1; }
-
-.mdl-band { stroke: color-mix(in oklab, var(--ink) 55%, transparent); stroke-width: 0.8; stroke-linejoin: round; }
-.mdl-band-back { fill: none; stroke-width: 2.2; stroke-linecap: round; }
-.mdl-band-glint { opacity: 0; pointer-events: none; }
-.mdl-bevel { fill: none; stroke: color-mix(in oklab, white 70%, transparent); stroke-width: 1; stroke-linecap: round; }
-.mdl-pulse { fill: none; stroke: color-mix(in oklab, white 80%, var(--ink)); stroke-width: 1; opacity: 0; transform-box: fill-box; transform-origin: center; }
-.mdl-ghost { fill: none; stroke: color-mix(in oklab, var(--ink) 35%, transparent); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; transition: opacity 0.12s; }
-
-/* engraved scale: a dark hairline with a lit line just under it */
-.mdl-tick line { stroke: color-mix(in oklab, var(--ink) 55%, transparent); stroke-width: 1; transition: stroke 0.15s; }
-.mdl-tick.half line { stroke: color-mix(in oklab, var(--ink) 30%, transparent); }
-.mdl-tick line.mdl-tick-lit { stroke: color-mix(in oklab, white 75%, transparent); }
-.mdl-tick text { font: 500 10px var(--mono); font-variant-numeric: tabular-nums; fill: color-mix(in oklab, var(--ink) 55%, transparent); transition: fill 0.15s; }
-.mdl-tick.hover line, .mdl-tick.hover text { stroke: color-mix(in oklab, var(--ink) 80%, transparent); fill: color-mix(in oklab, var(--ink) 80%, transparent); }
-.mdl-tick.on line { stroke: var(--accent); stroke-width: 2; }
-.mdl-tick.on text { fill: var(--accent-ink); font-weight: 600; }
-
-/* caption with rolling digits */
-.mdl-caption { font: 500 12px var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
-.roll { display: inline-flex; line-height: 1em; height: 1em; overflow: hidden; vertical-align: -0.12em; }
-.roll-digit { display: inline-block; height: 1em; overflow: hidden; }
-.roll-strip { display: flex; flex-direction: column; transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.roll-strip span { height: 1em; line-height: 1em; }
-.roll-char { white-space: pre; }
-
+/* Size step: size drawing (components/size-drawing.js). The ring in front view as a dimensioned engineering
+   drawing, straight on the page: hatched section, chain-dot centre lines, accent inner contour and Ø dimension. */
+.size-drawing { display: grid; justify-items: center; align-content: center; gap: 4px; margin: 0; }
+.sd-svg { width: min(100%, 440px); height: auto; overflow: visible; }
+.sd-head { font: 600 10.5px var(--mono); letter-spacing: 0.12em; fill: var(--ink-3); }
+.sd-head.end { text-anchor: end; }
+.sd-rule { stroke: var(--ink); stroke-width: 1; }
+.sd-centre { stroke: color-mix(in oklab, var(--ink) 45%, transparent); stroke-width: 0.8; stroke-dasharray: 18 3 2 3; }
+.sd-hatch-line { stroke: color-mix(in oklab, var(--ink) 38%, transparent); stroke-width: 0.9; }
+.sd-body { fill: url(#sd-hatch); stroke: none; animation: sd-fade 0.5s 0.55s ease-out backwards; }
+.sd-line, .sd-fit { fill: none; stroke-dasharray: 1; stroke-dashoffset: 0; }
+.sd-line { stroke: var(--ink); stroke-width: 1.6; animation: sd-ink 0.9s cubic-bezier(.6,0,.3,1) backwards; }
+.sd-fit { stroke: var(--accent); stroke-width: 2.4; animation: sd-ink 0.6s cubic-bezier(.6,0,.3,1) backwards; }
+.sd-dim { stroke: var(--accent); stroke-width: 1; fill: none; }
+.sd-arrow { fill: var(--accent); }
+.sd-num { font: 700 15px var(--mono); font-variant-numeric: tabular-nums; fill: var(--accent-ink); text-anchor: middle;
+  paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; }
+.sd-ghost circle { fill: none; stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.sd-ghost path { fill: none; stroke: var(--ink-2); stroke-width: 0.8; }
+.sd-ghost text { font: 600 11px var(--mono); fill: var(--ink-2); text-anchor: end; }
+.sd-ghost { animation: sd-fade 0.18s ease-out; }
+.sd-block { width: min(100%, 360px); background: transparent; }
+.sd-sheet { font: 600 12px var(--mono); color: var(--ink-2); }
+@keyframes sd-ink { from { stroke-dashoffset: 1; } }
+@keyframes sd-fade { from { opacity: 0; } }
 @media (min-width: 1024px) {
-  .size-step { max-width: 1040px; grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); column-gap: 40px; align-items: start; }
-  .size-step > :not(.mandrel-card) { grid-column: 1; }
-  /* spans exactly the six left-hand rows, so its bottom lines up with the action buttons */
-  .size-step > .mandrel-card { grid-column: 2; grid-row: 1 / span 6; align-self: stretch; height: auto; min-height: 0; contain: size; } /* contain: its drawing never sets the row heights */
+  .size-step { max-width: 1040px; grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); column-gap: 48px; align-items: start; }
+  .size-step > :not(.size-drawing) { grid-column: 1; }
+  .size-step > .size-drawing { grid-column: 2; grid-row: 1 / span 6; align-self: center; }
 }
-@media (max-width: 639px) { .mandrel-card { height: 176px; } }
-@media (prefers-reduced-motion: reduce) {
-  .mdl-tick line, .mdl-tick text, .mdl-ghost, .roll-strip { transition: none; }
+@media (max-width: 639px) { .sd-svg { width: min(100%, 320px); } }
+@media (prefers-reduced-motion: reduce) { .sd-body, .sd-line, .sd-fit, .sd-ghost { animation: none; } }
 }
+
+/* ── Stage: the ring is the bottom layer ──
+   The 3D view fills the whole stage under the cards and selectors (framed on the centre of the cross), so a
+   zoomed-in ring is never cut off by a box. Empty space passes the pointer through to the ring. */
+.stage-ring { position: absolute; inset: 0; z-index: 0; }
+.stage-ring .ring-view { position: absolute; inset: 0; cursor: grab; }
+.stage-ring .ring-view:active { cursor: grabbing; }
+.stage-main, .cross, .selection-bar, .band-map-wrap { position: relative; z-index: 1; }
+.stage-main, .cross, .cross-center, .selection-bar { pointer-events: none; }
+/* the card cells keep their swipe and wheel handling exactly as before */
+.cross-top, .cross-bottom, .cross-left, .cross-right, .selection-bar > * { pointer-events: auto; }
+
+/* ── Fit-to-screen UI scale ──
+   On desktop the studio chrome (top bar, side panels, cards, selectors) scales with --ui, set from the window
+   size in main.js: a laptop at 125–150 % gets the same roomy stage a big monitor has, and the ring stays large. */
+:root { --ui: 1; --bar: calc(var(--topbar) * var(--ui)); }
+@media (min-width: 1024px) {
+  .topbar, .studio .rail-wrap, .stage-hint, .stage-tools, .stage-card, .stage-empty, .selection-bar, .band-map-wrap { zoom: var(--ui); }
+  .cross { grid-template-columns: minmax(calc(110px * var(--ui)), 1fr) minmax(240px, 2.4fr) minmax(calc(110px * var(--ui)), 1fr); }
+}
+.sound-toggle.off .st-wave { opacity: 0.25; }

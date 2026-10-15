@@ -11,6 +11,7 @@ import { Start } from './screens/start.js';
 import { Studio } from './screens/studio.js';
 import { TryOn } from './screens/tryon.js';
 import { Review } from './screens/review.js';
+import { watchUiScale } from './lib/ui-scale.js';
 
 const SCREENS = { landing: Landing, start: Start, studio: Studio, tryon: TryOn, review: Review };
 const TITLES = { landing: 'Make-a-Ring', start: 'Start · Make-a-Ring', studio: 'Studio · Make-a-Ring', tryon: 'Try on · Make-a-Ring', review: 'Review · Make-a-Ring' };
@@ -96,4 +97,5 @@ class Boundary extends Component {
   }
 }
 
+watchUiScale();
 render(html`<${Boundary}><${App} /><//>`, document.getElementById('app'));

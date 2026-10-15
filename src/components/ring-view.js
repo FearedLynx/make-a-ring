@@ -9,16 +9,17 @@ import { patternById } from '../state.js';
 
 /**
  * 3D ring. `getPattern` lets the pattern editor inject a draft pattern.
+ * `focus` (optional) returns the element to frame the ring on when the view fills a larger area.
  * `onViewer` receives the RingViewer instance (for reset view, snapshots, try-on scaling).
  */
-export function RingView({ design, getPattern = patternById, mode = 'studio', autoRotate = false, zoom, className = '', onViewer, label }) {
+export function RingView({ design, getPattern = patternById, mode = 'studio', autoRotate = false, zoom, focus, className = '', onViewer, label }) {
   const host = useRef();
   const viewer = useRef();
   const pending = useRef(0);
   const fine = useRef(0);
 
   useEffect(() => {
-    viewer.current = new RingViewer(host.current, { mode, autoRotate, zoom });
+    viewer.current = new RingViewer(host.current, { mode, autoRotate, zoom, focus });
     onViewer?.(viewer.current);
     return () => {
       cancelAnimationFrame(pending.current);

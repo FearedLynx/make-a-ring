@@ -58,7 +58,7 @@ export function LibStrip() {
   const custom = store.use((s) => s.customPatterns);
   const items = LIB_CATS.map((c) => (c.id === 'mine' && custom.length ? { ...c, badge: { level: 'count', text: `${custom.length} saved`, short: custom.length } } : c));
   return html`<${RailStrip} side="lib" label="Library categories" items=${items} value=${rails.libCat || 'patterns'} open=${rails.libOpen}
-    onPick=${(id) => setRails({ libCat: id, libOpen: true })} />`;
+    onPick=${(id) => setRails({ libCat: id, libOpen: true })} onClose=${() => setRails({ libOpen: false })} />`;
 }
 
 export function Library({ onDraw, onHide }) {

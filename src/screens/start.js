@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Logo } from '../components/ui.js';
 import { TemplateCard, SavedCard } from '../components/template-card.js';
-import { Mandrel } from '../components/mandrel.js';
+import { SizeDrawing } from '../components/size-drawing.js';
+import { tape } from '../lib/sound.js';
 import { TEMPLATES } from '../lib/templates.js';
 import { sizeSummary, fmtUs } from '../lib/sizes.js';
 import { store, go, applyTemplate, setDesign, openSavedDesign, deleteSavedDesign } from '../state.js';
@@ -67,11 +68,11 @@ export function Start() {
           <span class="size-big">US ${size.us}</span>
           <span class="size-alt">EU ${size.eu} · UK ${size.uk} · Ø ${size.diameter.toFixed(1)} mm</span>
         </div>
-        <${Mandrel} sizeUS=${design.sizeUS} previewUS=${preview} materialId=${design.materialId} />
+        <${SizeDrawing} sizeUS=${design.sizeUS} previewUS=${preview} />
         <div class="size-chips" role="radiogroup" aria-label="Common sizes">
           ${[4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 13].map(
             (v) => html`<button role="radio" aria-checked=${design.sizeUS === v} class=${'chip' + (design.sizeUS === v ? ' on' : '')}
-              onClick=${() => setDesign({ sizeUS: v })}
+              onClick=${() => (v !== design.sizeUS && tape(design.sizeUS, v), setDesign({ sizeUS: v }))}
               onPointerEnter=${(e) => e.pointerType === 'mouse' && setPreview(v)} onPointerLeave=${() => setPreview(null)}
               onFocus=${() => setPreview(v)} onBlur=${() => setPreview(null)}>${fmtUs(v)}</button>`
           )}

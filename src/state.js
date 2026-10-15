@@ -3,6 +3,7 @@ import { PATTERNS, fitsZone } from './lib/patterns.js';
 import { designFromTemplate, sanitizeDesign, hasZone, hasSides, hasMiddle } from './lib/templates.js';
 import { MATERIALS, getMaterial } from './lib/materials.js';
 import { onFontLoaded } from './lib/engraving.js';
+import { panel as panelSound, stamp } from './lib/sound.js';
 
 const SCREENS = ['landing', 'start', 'studio', 'tryon', 'review'];
 
@@ -74,7 +75,7 @@ const storedDesign = load('mar.design', null); // read before the store starts s
 export const store = createStore({
   screen: screenFromHash(),
   design: cleanDesign(shared?.design || storedDesign),
-  ringName: (typeof shared?.name === 'string' && shared.name.slice(0, 40)) || load('mar.name', 'My first ring'),
+  ringName: (typeof shared?.name === 'string' && shared.name.slice(0, 40)) || load('mar.name', 'My ring'),
   customPatterns: custom,
   savedDesigns: cleanSaved(load('mar.saved', [])),
   currentSaved: load('mar.current', null), // id in savedDesigns of the design being edited, or null
@@ -154,6 +155,9 @@ export function endTour() {
 }
 
 export function setRails(patch) {
+  const r = store.get().rails;
+  const opened = ['libOpen', 'specOpen'].find((k) => k in patch && !!patch[k] !== !!r[k]);
+  if (opened) panelSound(!!patch[opened]);
   store.set((s) => ({ rails: { ...s.rails, ...patch } }));
 }
 
@@ -205,11 +209,16 @@ export function announce(msg) {
   store.set({ announce: msg });
 }
 
+/** Name a ring gets until you rename it. */
+export const DEFAULT_RING_NAME = 'My ring';
+
+/** Start a new ring from a template: a fresh name and no engraving; only your ring size carries over. */
 export function applyTemplate(id, { silent = false } = {}) {
-  const prev = store.get().design;
-  const next = designFromTemplate(id, { sizeUS: prev.sizeUS, ...(prev.engraving ? { engraving: prev.engraving } : {}) }); // size and engraving are personal, keep them
-  store.set({ design: next, activeSide: 'sideL', currentSaved: null }); // built-in templates are never saved over
-  if (!silent) toast('Template applied', { label: 'Undo', run: () => store.set({ design: prev }) });
+  const s = store.get();
+  const prev = { design: s.design, ringName: s.ringName, currentSaved: s.currentSaved };
+  const next = designFromTemplate(id, { sizeUS: s.design.sizeUS });
+  store.set({ design: next, ringName: DEFAULT_RING_NAME, activeSide: 'sideL', currentSaved: null }); // built-in templates are never saved over
+  if (!silent) toast('New ring from the template', { label: 'Undo', run: () => store.set(prev) });
 }
 
 export function setPattern(zone, id) {
@@ -315,12 +324,14 @@ export function saveDesign({ asNew = false } = {}) {
   const existing = !asNew && currentSavedEntry(s);
   if (existing) {
     store.set({ savedDesigns: s.savedDesigns.map((x) => (x.id === existing.id ? { ...x, name: s.ringName, design: s.design, savedAt: now } : x)) });
+    stamp();
     toast(`Updated “${s.ringName}” in My designs`);
     return;
   }
   const name = uniqueName((s.ringName || '').trim() || 'My ring', s.savedDesigns);
   const entry = { id: `mine-${now}`, name, design: s.design, savedAt: now };
   store.set({ savedDesigns: [entry, ...s.savedDesigns], currentSaved: entry.id, ringName: name });
+  stamp();
   toast(`Saved “${name}” to My designs`);
 }
 

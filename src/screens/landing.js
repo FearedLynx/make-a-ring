@@ -5,7 +5,7 @@ import { html } from '../lib/html.js';
 import { Icon, Logo } from '../components/ui.js';
 import { RingView } from '../components/ring-view.js';
 import { PatternArt, BandMap } from '../components/pattern-art.js';
-import { ThemeDots, GridToggle } from '../components/topbar.js';
+import { ThemeDots, GridToggle, SoundToggle } from '../components/topbar.js';
 import { TEMPLATES, LAYOUTS, designFromTemplate } from '../lib/templates.js';
 import { MATERIALS, getMaterial } from '../lib/materials.js';
 import { PATTERNS } from '../lib/patterns.js';
@@ -91,7 +91,7 @@ export function Landing() {
         <a href="#materials" onClick=${scrollTo('materials')}><span>03</span>Materials</a>
         <a href="#cost" onClick=${scrollTo('cost')}><span>04</span>Cost</a>
       </nav>
-      <div class="view-prefs"><${ThemeDots} /><${GridToggle} /></div>
+      <div class="view-prefs"><${ThemeDots} /><${GridToggle} /><${SoundToggle} /></div>
       <button class="btn primary sm" onClick=${() => go('start')}>Open the studio <${Icon} name="right" size=${14} /></button>
     </header>
 

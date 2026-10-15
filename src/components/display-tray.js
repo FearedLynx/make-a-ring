@@ -17,6 +17,14 @@ const LIP_Y = 252; // top of the tray's front lip, where the tag strings hang fr
 const RING = { rx: 46, ry: 50 };
 const TAG = { w: 118, h: 48 };
 const DROP_KEY = 'mar.trayDropped';
+// Each metal gets its own colour and polish: a diagonal gradient with a bright highlight band, plus an edge tone.
+// Home print stays flat with its print layers. (Material colours are data, like the studio's material swatches.)
+const METALS = {
+  metal: { edge: '#4f5459', stops: [[0, '#5d6268'], [0.32, '#c3c7cc'], [0.45, '#8c9197'], [0.75, '#6c7177'], [1, '#4c5055']] }, // titanium / steel: cool, satin
+  // silver or brass: half and half, a hard seam down the middle (silver left, brass right)
+  cast: { edge: '#7a7466', horizontal: true, stops: [[0, '#8f949a'], [0.16, '#ffffff'], [0.34, '#d9dce0'], [0.5, '#b9bdc3'], [0.5, '#b8913f'], [0.64, '#f5e2a3'], [0.82, '#d2aa4e'], [1, '#8a6a28']] },
+  gold: { edge: '#8a6420', stops: [[0, '#8f6a24'], [0.3, '#fff0b8'], [0.44, '#e6bd55'], [0.74, '#c4952f'], [1, '#86621f']] }, // 14k: warm, rich
+};
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const hoverable = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 const spoken = (r) => `${r.label}, ${money(r.lo)} to ${money(r.hi)}`;
@@ -29,11 +37,11 @@ const step = (s, goal, dt, k, zeta = 1) => {
 };
 
 /** routes: [{ id, short, label, lo, hi, text }], bandMm: band width used for the estimate (sets ring thickness). */
-export function DisplayTray({ routes, initial = 0, bandMm = 7 }) {
+export function DisplayTray({ routes, initial = null, bandMm = 7 }) {
   const [sel, setSel] = useState(initial);
   const [hover, setHover] = useState(-1);
   const n = routes.length;
-  const cur = routes[sel];
+  const cur = sel == null ? null : routes[sel]; // nothing is picked until the person picks
   const host = useRef();
   const ringEls = useRef([]), tagEls = useRef([]), sparkEls = useRef([]);
   const st = useRef(null); // per ring: lift spring, tag swing spring, entrance drop
@@ -42,7 +50,7 @@ export function DisplayTray({ routes, initial = 0, bandMm = 7 }) {
   selRef.current = sel;
   hoverRef.current = hover;
 
-  const band = Math.max(6, Math.min(14, bandMm * 1.3)); // wider bands read wider, within a legible range
+  const band = Math.max(9, Math.min(18, bandMm * 1.9)); // wider bands read wider, within a legible range
   const slotX = (i) => W / 2 + (i - (n - 1) / 2) * 140;
 
   const write = () => {
@@ -160,6 +168,9 @@ export function DisplayTray({ routes, initial = 0, bandMm = 7 }) {
     <svg class="tray" viewBox=${`0 0 ${W} ${H}`} role="radiogroup" aria-label="Making method">
       <defs>
         <pattern id="tx-layers" width="6" height="3" patternUnits="userSpaceOnUse"><line x1="0" y1="1.5" x2="6" y2="1.5" class="tx-line" /></pattern>
+        ${Object.entries(METALS).map(([id, mt]) => html`<linearGradient id=${`mt-${id}`} x1="0" y1="0" x2="1" y2=${mt.horizontal ? 0 : 1}>
+          ${mt.stops.map(([o, c]) => html`<stop offset=${o} stop-color=${c} />`)}
+        </linearGradient>`)}
         <pattern id="tx-stipple" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="0.7" class="tx-dot" /><circle cx="3.7" cy="3.6" r="0.6" class="tx-dot" /></pattern>
       </defs>
 
@@ -174,15 +185,18 @@ export function DisplayTray({ routes, initial = 0, bandMm = 7 }) {
         const outer = `M${cx - RING.rx} ${cy}a${RING.rx} ${RING.ry} 0 1 0 ${RING.rx * 2} 0a${RING.rx} ${RING.ry} 0 1 0 ${-RING.rx * 2} 0Z`;
         const irx = RING.rx - band, iry = RING.ry - band;
         const inner = `M${cx - irx} ${cy}a${irx} ${iry} 0 1 0 ${irx * 2} 0a${irx} ${iry} 0 1 0 ${-irx * 2} 0Z`;
-        const tex = r.id === 'home' ? 'url(#tx-layers)' : r.id === 'metal' ? 'url(#tx-stipple)' : null;
-        return html`<g class=${'tray-ring' + (on ? ' on' : '')} ref=${(el) => (ringEls.current[i] = el)} aria-hidden="true">
-          <path class="ring-band" d=${outer + inner} fill-rule="evenodd" />
-          ${tex && html`<path d=${outer + inner} fill-rule="evenodd" fill=${tex} class="ring-tex" />`}
-          <path class="ring-depth" d=${`M${cx - irx} ${cy}A${irx} ${iry} 0 0 1 ${cx + irx} ${cy}`} />
-          ${(r.id === 'cast' || r.id === 'gold') && html`<path class="ring-hi" d=${`M${cx - RING.rx + band * 0.45} ${cy - 10}A${RING.rx - band * 0.55} ${RING.ry - band * 0.55} 0 0 1 ${cx - 14} ${cy - RING.ry + band * 0.5}`} />`}
-          ${r.id === 'gold' && html`<path class="ring-hi" d=${`M${cx + 12} ${cy - RING.ry + band * 0.5}A${RING.rx - band * 0.55} ${RING.ry - band * 0.55} 0 0 1 ${cx + RING.rx - band * 0.6} ${cy - 16}`} />`}
+        const m = METALS[r.id]; // null for home print: flat and layered, as printed
+        const hi = (k) => `M${cx - RING.rx + band * 0.5} ${cy + 6}A${RING.rx - band * 0.5} ${RING.ry - band * 0.5} 0 0 1 ${cx - RING.rx * 0.18} ${cy - RING.ry + band * 0.5}`;
+        return html`<g class=${'tray-ring' + (on ? ' on' : '') + (m ? ' metal' : '')} ref=${(el) => (ringEls.current[i] = el)} aria-hidden="true">
+          <ellipse class="ring-halo" cx=${cx} cy=${cy} rx=${RING.rx + 6} ry=${RING.ry + 6} />
+          <path class="ring-band" d=${outer + inner} fill-rule="evenodd" style=${m ? `fill:url(#mt-${r.id});stroke:${m.edge}` : undefined} />
+          ${!m && html`<path d=${outer + inner} fill-rule="evenodd" fill="url(#tx-layers)" class="ring-tex" />`}
+          ${r.id === 'metal' && html`<path d=${outer + inner} fill-rule="evenodd" fill="url(#tx-stipple)" class="ring-tex sintered" />`}
+          <path class="ring-depth" d=${`M${cx - irx} ${cy}A${irx} ${iry} 0 0 1 ${cx + irx} ${cy}`} style=${m ? `stroke:${m.edge}` : undefined} />
+          ${m && html`<path class=${'ring-shine ' + r.id} d=${hi()} />`}
+          ${m && html`<path class="ring-shine soft" d=${`M${cx + RING.rx * 0.3} ${cy - RING.ry + band * 0.55}A${RING.rx - band * 0.5} ${RING.ry - band * 0.5} 0 0 1 ${cx + RING.rx - band * 0.55} ${cy - 12}`} />`}
           ${r.id === 'gold' && html`<path ref=${(el) => (sparkEls.current[i] = el)} class=${'ring-spark' + (on ? ' on' : '')}
-            d=${`M${cx + 30} ${cy - 44}l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2Z`} />`}
+            d=${`M${cx + 30} ${cy - 46}l2.4 7 7 2.4 -7 2.4 -2.4 7 -2.4 -7 -7 -2.4 7 -2.4Z`} />`}
         </g>`;
       })}
 
@@ -206,7 +220,7 @@ export function DisplayTray({ routes, initial = 0, bandMm = 7 }) {
 
       ${routes.map((r, i) => {
         const cx = slotX(i), on = i === sel;
-        return html`<g data-ring-i=${i} class="tray-hit" role="radio" aria-checked=${on} tabindex=${on ? 0 : -1} aria-label=${spoken(r)}
+        return html`<g data-ring-i=${i} class="tray-hit" role="radio" aria-checked=${on} tabindex=${on || (sel == null && i === 0) ? 0 : -1} aria-label=${spoken(r)}
           onClick=${() => pick(i)} onKeyDown=${(e) => onKey(e, i)}
           onPointerEnter=${() => onHover(i)} onPointerLeave=${() => onHover(-1)}>
           <rect class="tray-hit-area" x=${cx - 66} y="96" width="132" height=${H - 100} rx="14" />
@@ -216,9 +230,13 @@ export function DisplayTray({ routes, initial = 0, bandMm = 7 }) {
     </svg>
 
     <div class="cw-text" aria-live="polite">
-      <span class="cw-kicker">${String(sel + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')} · ${cur.label}</span>
-      <p class="cw-range">${money(cur.lo)}–${money(cur.hi)}</p>
-      <p>${cur.text}</p>
+      ${cur
+        ? html`<span class="cw-kicker">${String(sel + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')} · ${cur.label}</span>
+          <p class="cw-range">${money(cur.lo)}–${money(cur.hi)}</p>
+          <p>${cur.text}</p>`
+        : html`<span class="cw-kicker">${n} ways to make it</span>
+          <p class="cw-range">${money(Math.min(...routes.map((r) => r.lo)))}–${money(Math.max(...routes.map((r) => r.hi)))}</p>
+          <p>The same file can be printed at home or cast in precious metal. Pick a ring to see what each way costs and how it's made.</p>`}
       <p class="cw-foot">Prices are estimates for the metal and making only; a jeweller's quote for a custom design adds design and labour on top.</p>
     </div>
     <table class="sr-only">

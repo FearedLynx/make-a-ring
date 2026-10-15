@@ -17,6 +17,7 @@ import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
 import { store, go, patternById } from '../state.js';
+import { chime } from '../lib/sound.js';
 
 const FORMATS = [
   { id: 'stl', name: 'STL', desc: 'Works with every slicer and casting house.' },
@@ -132,6 +133,7 @@ function ExportModal({ open, onClose, design, name, rows }) {
       const made = out.map(([fname, blob]) => ({ name: fname, size: fmtBytes(blob.size), url: URL.createObjectURL(blob) }));
       setFiles(made);
       setPhase('done');
+      chime();
       if (made.length === 1) save(made[0]);
     } catch (err) {
       console.error(err);

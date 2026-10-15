@@ -95,7 +95,7 @@ export function Segmented({ label, value, options, onChange, size = '' }) {
   </div>`;
 }
 
-export function Slider({ label, value, min, max, step, unit = 'mm', onInput, format, hint, id }) {
+export function Slider({ label, value, min, max, step, unit = 'mm', onInput, onCommit, format, hint, id }) {
   const sid = id || 'sl-' + label.replace(/\W+/g, '-').toLowerCase();
   const pct = ((value - min) / (max - min)) * 100;
   return html`<div class="slider">
@@ -104,7 +104,7 @@ export function Slider({ label, value, min, max, step, unit = 'mm', onInput, for
       <output for=${sid}>${format ? format(value) : `${value}${unit ? ' ' + unit : ''}`}</output>
     </div>
     <input id=${sid} type="range" min=${min} max=${max} step=${step} value=${value} style=${`--pct:${pct}%`}
-      onInput=${(e) => onInput(parseFloat(e.currentTarget.value))} />
+      onInput=${(e) => onInput(parseFloat(e.currentTarget.value))} onChange=${onCommit && ((e) => onCommit(parseFloat(e.currentTarget.value)))} />
     ${hint && html`<p class="hint">${hint}</p>`}
   </div>`;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Logo } from './ui.js';
+import { soundOn, setSound, snap } from '../lib/sound.js';
 import { store, go, toast, shareUrl, THEMES, setTheme, startTour, setGrid, saveDesign, currentSavedEntry, hasUnsavedChanges } from '../state.js';
 
 /**
@@ -47,6 +48,27 @@ export function ThemeDots({ className = '' }) {
         onClick=${() => setTheme(t.id)}></button>`
     )}
   </div>`;
+}
+
+/** Turns the interface sounds on or off (remembered on this device). */
+export function SoundToggle() {
+  const [on, setOn] = useState(soundOn());
+  const flip = () => {
+    setSound(!on);
+    setOn(!on);
+    if (!on) snap(); // a sample, so you hear what you switched on
+  };
+  return html`<button class=${'grid-toggle sound-toggle' + (on ? '' : ' off')} aria-pressed=${on} onClick=${flip}
+    aria-label=${on ? 'Turn sounds off' : 'Turn sounds on'} title=${on ? 'Sounds on' : 'Sounds off'}>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.4" />
+      <g fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6.5 10.2h2.3L12 7.6v8.8l-3.2-2.6H6.5Z" fill="currentColor" />
+        <path class="st-wave" d="M14.4 9.6a3.4 3.4 0 0 1 0 4.8M16.4 7.8a6 6 0 0 1 0 8.4" />
+      </g>
+      <line class="gt-strike" x1="4.6" y1="19.4" x2="19.4" y2="4.6" />
+    </svg>
+  </button>`;
 }
 
 /** Shows or hides the drafting grid behind the stage, landing and editor. */
@@ -115,7 +137,7 @@ export function TopBar() {
         <${Icon} name="pen" size=${13} />
       </label>
       <${SaveControl} />
-      <div class="view-prefs"><${ThemeDots} /><${GridToggle} /></div>
+      <div class="view-prefs"><${ThemeDots} /><${GridToggle} /><${SoundToggle} /></div>
       <${HelpMenu} />
       <button class="btn ghost sm share-btn" onClick=${copyShareLink} aria-label="Copy share link"><${Icon} name="share" size=${15} /><span>Share</span></button>
     </div>

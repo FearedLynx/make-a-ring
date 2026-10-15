@@ -55,6 +55,7 @@ export function Stage({ onDraw }) {
   const activeSide = store.use((s) => s.activeSide);
   store.use((s) => s.customPatterns);
   const viewer = useRef();
+  const centre = useRef(); // the ring is framed on the centre of the cross, but drawn across the whole stage
   const [anim, setAnim] = useState({ axis: '', dir: 0, n: 0 });
   const [spin, setSpin] = useState(false);
 
@@ -131,6 +132,9 @@ export function Stage({ onDraw }) {
         ? html`<span>tap cards to change patterns</span><span>drag ring to rotate</span>`
         : html`<span><kbd>↑</kbd><kbd>↓</kbd> middle</span><span><kbd>←</kbd><kbd>→</kbd> sides</span><span>drag to rotate</span>`}
     </p>
+    <div class="stage-ring">
+      <${RingView} design=${design} mode="studio" autoRotate=${spin} focus=${() => centre.current} onViewer=${(v) => (viewer.current = v)} />
+    </div>
     <span class="reg tl" aria-hidden="true"></span><span class="reg tr" aria-hidden="true"></span>
     <span class="reg bl" aria-hidden="true"></span><span class="reg br" aria-hidden="true"></span>
     <div class="stage-tools">
@@ -156,9 +160,7 @@ export function Stage({ onDraw }) {
           : placeholder('side zones')}
       </div>
 
-      <div class="cross-center">
-        <${RingView} design=${design} mode="studio" autoRotate=${spin} onViewer=${(v) => (viewer.current = v)} />
-      </div>
+      <div class="cross-center" ref=${centre}></div>
 
       <div class="cross-right" onWheel=${sides ? sideWheel : undefined} ...${sides ? sideSwipe : {}}>
         ${sides &&

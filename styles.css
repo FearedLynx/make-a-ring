@@ -242,7 +242,7 @@ label.btn { cursor: pointer; }
 .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
 .studio {
   display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px;
-  height: calc(100vh - var(--topbar)); min-height: 620px;
+  height: calc(100vh - var(--bar)); min-height: 620px;
 }
 .rail { background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
 .rail.library { border-right: 1px solid var(--line); }
@@ -491,7 +491,7 @@ label.btn { cursor: pointer; }
 .ed-ring { position: relative; height: 300px; border-radius: 14px; background: radial-gradient(ellipse at 50% 42%, var(--stage-a), var(--stage-b)); flex: none; }
 
 /* ── Try-on ─────────────────────────────────────────────── */
-.tryon { display: grid; grid-template-columns: minmax(0, 1fr) 360px; height: calc(100vh - var(--topbar)); min-height: 600px; }
+.tryon { display: grid; grid-template-columns: minmax(0, 1fr) 360px; height: calc(100vh - var(--bar)); min-height: 600px; }
 .tryon-scene { position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #fbf8f3, #e6ddcf); }
 .tryon-scene.photo { background: #2a2622; }
 .tryon-scene .hand { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -514,8 +514,8 @@ label.btn { cursor: pointer; }
 .step-nav.sticky { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%); border: 0; padding: 22px 0 18px; }
 
 /* ── Review ─────────────────────────────────────────────── */
-.review { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(360px, 1fr); gap: 0; min-height: calc(100vh - var(--topbar)); }
-.review-hero { display: flex; flex-direction: column; gap: 14px; padding: 28px; background: radial-gradient(ellipse at 50% 35%, var(--stage-a), var(--stage-b)); position: sticky; top: var(--topbar); height: calc(100vh - var(--topbar)); }
+.review { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(360px, 1fr); gap: 0; min-height: calc(100vh - var(--bar)); }
+.review-hero { display: flex; flex-direction: column; gap: 14px; padding: 28px; background: radial-gradient(ellipse at 50% 35%, var(--stage-a), var(--stage-b)); position: sticky; top: var(--bar); height: calc(100vh - var(--bar)); }
 .review-ring { position: relative; flex: 1; min-height: 260px; }
 .review-ring .ring-view { position: absolute; inset: 0; }
 .review-title h1 { font: 500 34px/1.1 var(--display); margin: 4px 0; }
@@ -629,7 +629,8 @@ label.btn { cursor: pointer; }
 .size-step .step-nav { border: 0; padding: 10px 0 30px; }
 
 /* ── Responsive ─────────────────────────────────────────── */
-@media (max-width: 1180px) {
+/* The studio keeps its three columns down to 1024 px (the UI scales to fit, see --ui); below that it stacks. */
+@media (max-width: 1023px) {
   .studio { grid-template-columns: 1fr; height: auto; min-height: 0; }
   .studio .stage { order: 1; height: min(78vh, 760px); min-height: 560px; }
   .studio .mobile-tabs { order: 2; display: flex; gap: 6px; padding: 10px 14px; background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: var(--topbar); z-index: 5; }
@@ -641,6 +642,8 @@ label.btn { cursor: pointer; }
   .studio .price-card { position: sticky; bottom: 0; box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.06); }
   .lib-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .swatches { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+@media (max-width: 1180px) {
   .tryon { grid-template-columns: 1fr; height: auto; }
   .tryon-scene { height: 70vh; min-height: 460px; }
   .tryon-controls { border: 0; }

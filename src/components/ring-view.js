@@ -2,32 +2,101 @@ import { useEffect, useRef } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { RingViewer } from '../lib/viewer.js';
 import { buildHeightmap } from '../lib/heightmap.js';
-import { buildRingGeometry } from '../lib/ringGeometry.js';
+import { buildRingArrays } from '../lib/ringMesh.js';
+import { toGeometry, engravingFor } from '../lib/ringGeometry.js';
 import { bandMetrics } from '../lib/band.js';
 import { renderLook, getMaterial } from '../lib/materials.js';
 import { patternById } from '../state.js';
 
+const ZONES = ['middle', 'sideL', 'sideR'];
 const shapeKey = (design, getPattern) => [
   JSON.stringify({ ...design, materialId: 0, plating: 0 }),
-  ...['middle', 'sideL', 'sideR'].map((z) => getPattern(design.patterns[z])),
+  ...ZONES.map((z) => getPattern(design.patterns[z])),
 ];
 const sameKey = (a, b) => a.length === b.length && a.every((k, i) => k === b[i]);
 
-// The last few sharp rings, so going back is instant and the landing slideshow can build the next one early.
-// ponytail: about 13 MB each, so only 3 are kept.
-const cache = [];
-function sharpGeometry(design, getPattern, key = shapeKey(design, getPattern)) {
-  let hit = cache.find((c) => sameKey(c.key, key));
-  if (!hit) {
-    hit = { key, geom: buildRingGeometry(design, buildHeightmap(design, getPattern, 3072), 1.25) };
-    cache.unshift(hit);
-    cache.length = Math.min(cache.length, 3);
+// A full ring takes about 160 ms to build, so it is built in a worker and the page keeps animating meanwhile.
+// One job runs at a time; a newer request from the same view replaces its queued one, so fast flicking
+// never builds a backlog of rings nobody will see.
+let worker = null;
+let running = null;
+const queue = [];
+
+function pump() {
+  if (running || !queue.length) return;
+  running = queue.shift();
+  if (worker !== false) {
+    try {
+      worker ||= startWorker();
+      return worker.postMessage(running.msg);
+    } catch {
+      worker = false;
+    }
   }
-  return hit.geom;
+  // No worker (very old browser, or it failed to load): build here, on the main thread.
+  const { design, patterns, W, detail, engraving } = running.msg;
+  try {
+    finish(buildRingArrays(design, buildHeightmap(design, (id) => patterns[id], W), detail, engraving));
+  } catch (err) {
+    console.error(err);
+    running.resolve(null);
+    running = null;
+    setTimeout(pump);
+  }
 }
 
-/** Builds a ring's sharp mesh ahead of time, so a RingView shows it the moment its design arrives. */
-export const prebuildRing = (design, getPattern = patternById) => void sharpGeometry(design, getPattern);
+function finish(mesh) {
+  const job = running;
+  running = null;
+  job.resolve(toGeometry(mesh));
+  setTimeout(pump);
+}
+
+function startWorker() {
+  const w = new Worker(new URL('../lib/ring-worker.js', import.meta.url), { type: 'module' });
+  w.onmessage = ({ data }) => finish(data.mesh);
+  w.onerror = (e) => {
+    e.preventDefault();
+    worker = false;
+    w.terminate();
+    if (running) queue.unshift(running), (running = null);
+    pump();
+  };
+  return w;
+}
+
+function requestBuild(design, getPattern, owner) {
+  const patterns = Object.fromEntries(ZONES.map((z) => [design.patterns[z], getPattern(design.patterns[z])]).filter(([, p]) => p));
+  const msg = { design, patterns, W: 3072, detail: 1.25, engraving: engravingFor(design) };
+  return new Promise((resolve) => {
+    for (let i = queue.length - 1; i >= 0; i--) if (queue[i].owner === owner) queue.splice(i, 1)[0].resolve(null);
+    // Rings a view is waiting for go ahead of rings built early for the slideshow.
+    queue[owner === 'prebuild' ? 'push' : 'unshift']({ msg, owner, resolve });
+    pump();
+  });
+}
+
+// The last few rings, so going back is instant and the landing slideshow can build the next one early.
+// ponytail: about 13 MB each, so only 3 are kept.
+const cache = [];
+function sharpRing(design, getPattern, key, owner) {
+  let hit = cache.find((c) => sameKey(c.key, key));
+  if (hit) return hit;
+  hit = { key, geom: null };
+  hit.promise = requestBuild(design, getPattern, owner).then((geom) => {
+    if (geom) hit.geom = geom;
+    else if (cache.includes(hit)) cache.splice(cache.indexOf(hit), 1); // replaced by a newer request
+    return geom;
+  });
+  cache.unshift(hit);
+  cache.length = Math.min(cache.length, 3);
+  return hit;
+}
+
+/** Builds a ring ahead of time, so a RingView shows it the moment its design arrives. */
+export function prebuildRing(design, getPattern = patternById) {
+  if (!queue.length) sharpRing(design, getPattern, shapeKey(design, getPattern), 'prebuild');
+}
 
 /**
  * 3D ring. `getPattern` lets the pattern editor inject a draft pattern.
@@ -36,24 +105,22 @@ export const prebuildRing = (design, getPattern = patternById) => void sharpGeom
 export function RingView({ design, getPattern = patternById, mode = 'studio', autoRotate = false, zoom, className = '', onViewer, label }) {
   const host = useRef();
   const viewer = useRef();
-  const pending = useRef(0);
-  const fine = useRef(0);
   const shape = useRef(null);
-  const lastChange = useRef(-Infinity);
+  const asked = useRef(0); // numbers each ring this view asks for
+  const shown = useRef(0); // number of the ring on screen
 
   useEffect(() => {
     viewer.current = new RingViewer(host.current, { mode, autoRotate, zoom });
     onViewer?.(viewer.current);
     return () => {
-      cancelAnimationFrame(pending.current);
-      clearTimeout(fine.current);
       viewer.current.dispose();
+      viewer.current = null;
     };
   }, []);
 
   useEffect(() => viewer.current?.setAutoRotate(autoRotate), [autoRotate]);
 
-  const pats = ['middle', 'sideL', 'sideR'].map((z) => getPattern(design.patterns[z]));
+  const pats = ZONES.map((z) => getPattern(design.patterns[z]));
   useEffect(() => {
     // Material and plating only change the look, so the mesh is kept.
     const key = shapeKey(design, getPattern);
@@ -61,27 +128,19 @@ export function RingView({ design, getPattern = patternById, mode = 'studio', au
     shape.current = key;
 
     // Shape and look change together, so the ring never shows the new colour on the old pattern.
+    // While flicking, a ring that finishes after the view moved on still shows if it is newer than the one
+    // on screen, so the ring keeps up with the carousel instead of waiting for the last pick.
+    const n = ++asked.current;
     const show = (geom) => {
+      if (!geom || !viewer.current || n < shown.current) return;
+      shown.current = n;
       const { innerD, outerD } = bandMetrics(design);
       viewer.current.setGeometry(geom, innerD, outerD + 2 * design.relief);
       viewer.current.setLook(renderLook(design));
     };
-    const sharp = () => show(sharpGeometry(design, getPattern, key));
-    cancelAnimationFrame(pending.current);
-    clearTimeout(fine.current);
-    // Built ahead of time (the landing slideshow does this): show it now, with the rest of the page.
-    if (cache.some((c) => sameKey(c.key, key))) return sharp();
-    // A single change goes straight to the sharp ring (about 160 ms), so it never flashes a rough one.
-    // Only while the user flicks quickly (changes under 400 ms apart) does a quicker build keep up,
-    // and the sharp one follows once the input has been still for 200 ms.
-    const now = performance.now();
-    const burst = now - lastChange.current < 400;
-    lastChange.current = now;
-    pending.current = requestAnimationFrame(() => {
-      if (!burst) return sharp();
-      show(buildRingGeometry(design, buildHeightmap(design, getPattern, 1536), 0.75));
-      fine.current = setTimeout(sharp, 200);
-    });
+    const ring = sharpRing(design, getPattern, key, shape);
+    if (ring.geom) show(ring.geom);
+    else ring.promise.then(show);
   }, [design, ...pats]);
 
   const m = getMaterial(design.materialId);

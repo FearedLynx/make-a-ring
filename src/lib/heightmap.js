@@ -6,7 +6,7 @@ import { bandMetrics, resolveZones } from './band.js';
 let canvas;
 
 function ctx2d(w, h) {
-  if (!canvas) canvas = document.createElement('canvas');
+  if (!canvas) canvas = new OffscreenCanvas(1, 1); // works in the ring worker too
   canvas.width = w;
   canvas.height = h;
   return canvas.getContext('2d', { willReadFrequently: true });

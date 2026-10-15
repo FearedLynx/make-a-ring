@@ -63,30 +63,37 @@ export function buildHeightmap(design, getPattern, W = 3072) {
 
   const img = ctx.getImageData(0, 0, W, H).data;
   let data = new Float32Array(W * H);
-  for (let i = 0; i < W * H; i++) data[i] = img[i * 4] / 255;
+  for (let i = 0, j = 0; i < data.length; i++, j += 4) data[i] = img[j] / 255;
   // Two box passes (close to a Gaussian) give the relief soft edges a few mesh vertices wide, so diagonal lines do not stair-step.
   const r = W >= 2048 ? 2 : 1;
   data = blur(blur(data, W, H, r), W, H, r);
   return { data, W, H, ranges };
 }
 
-// Separable box blur (wraps around u) to soften the relief edges.
+// Separable box blur (wraps around u) to soften the relief edges. Running sums keep it O(1) per pixel.
 export function blur(src, w, h, r = 1) {
   const tmp = new Float32Array(w * h);
   const out = new Float32Array(w * h);
   const n = 2 * r + 1;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let s = 0;
-      for (let k = -r; k <= r; k++) s += src[y * w + ((x + k + w) % w)];
-      tmp[y * w + x] = s / n;
+  for (let y = 0, row = 0; y < h; y++, row += w) {
+    let s = 0;
+    for (let k = -r; k <= r; k++) s += src[row + ((k + w) % w)];
+    for (let x = 0, add = r + 1, sub = w - r; x < w; x++, add++, sub++) {
+      tmp[row + x] = s / n;
+      if (add === w) add = 0;
+      if (sub === w) sub = 0;
+      s += src[row + add] - src[row + sub];
     }
   }
-  for (let y = 0; y < h; y++) {
+  // Across the band (v clamps): one running sum per column, walked row by row so memory reads stay in order.
+  const acc = new Float64Array(w);
+  const rowAt = (y) => (y < 0 ? 0 : y >= h ? h - 1 : y) * w;
+  for (let k = -r; k <= r; k++) for (let x = 0, o = rowAt(k); x < w; x++) acc[x] += tmp[o + x];
+  for (let y = 0, row = 0; y < h; y++, row += w) {
+    const add = rowAt(y + r + 1), sub = rowAt(y - r);
     for (let x = 0; x < w; x++) {
-      let s = 0;
-      for (let k = -r; k <= r; k++) s += tmp[Math.min(h - 1, Math.max(0, y + k)) * w + x];
-      out[y * w + x] = s / n;
+      out[row + x] = acc[x] / n;
+      acc[x] += tmp[add + x] - tmp[sub + x];
     }
   }
   return out;

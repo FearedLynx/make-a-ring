@@ -16,6 +16,8 @@ export function RingView({ design, getPattern = patternById, mode = 'studio', au
   const viewer = useRef();
   const pending = useRef(0);
   const fine = useRef(0);
+  const shape = useRef(null);
+  const lastChange = useRef(-Infinity);
 
   useEffect(() => {
     viewer.current = new RingViewer(host.current, { mode, autoRotate, zoom });
@@ -31,19 +33,29 @@ export function RingView({ design, getPattern = patternById, mode = 'studio', au
 
   const pats = ['middle', 'sideL', 'sideR'].map((z) => getPattern(design.patterns[z]));
   useEffect(() => {
+    viewer.current.setLook(renderLook(design));
+    // Material and plating only change the look, so the mesh is kept.
+    const key = [JSON.stringify({ ...design, materialId: 0, plating: 0 }), ...pats];
+    if (shape.current && key.every((k, i) => k === shape.current[i])) return;
+    shape.current = key;
+
     const build = (W, detail) => {
       const geom = buildRingGeometry(design, buildHeightmap(design, getPattern, W), detail);
       const { innerD, outerD } = bandMetrics(design);
       viewer.current.setGeometry(geom, innerD, outerD + 2 * design.relief);
-      viewer.current.setLook(renderLook(design));
     };
-    // A full-detail build takes most of a second, so flicking through patterns shows a quick
-    // low-detail ring and the sharp one is built once the input has been still for 300 ms.
+    // A single change goes straight to the sharp ring (about 160 ms), so it never flashes a rough one.
+    // Only while the user flicks quickly (changes under 400 ms apart) does a quicker build keep up,
+    // and the sharp one follows once the input has been still for 200 ms.
+    const now = performance.now();
+    const burst = now - lastChange.current < 400;
+    lastChange.current = now;
     cancelAnimationFrame(pending.current);
     clearTimeout(fine.current);
     pending.current = requestAnimationFrame(() => {
-      build(1024, 0.5);
-      fine.current = setTimeout(() => build(3072, 1.25), 300);
+      if (!burst) return build(3072, 1.25);
+      build(1536, 0.75);
+      fine.current = setTimeout(() => build(3072, 1.25), 200);
     });
   }, [design, ...pats]);
 

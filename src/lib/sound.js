@@ -62,42 +62,8 @@ function noise(c, t, { freq = 3000, q = 1.2, gain = 0.3, decay = 0.03, type = 'b
   src.stop(t + decay + 0.02);
 }
 
-// How each material rings when tapped: base pitch, ring-out time, brightness. Partials follow a struck metal bar
-// (inharmonic 1 : 2.76 : 5.40), which is what makes it read as metal rather than a beep.
-const VOICES = {
-  silver: { f: 2650, decay: 0.75, bright: 1 },
-  'gold-white': { f: 2450, decay: 0.7, bright: 0.9 },
-  'gold-yellow': { f: 2050, decay: 0.85, bright: 0.65 },
-  'gold-rose': { f: 1950, decay: 0.8, bright: 0.6 },
-  titanium: { f: 2900, decay: 0.45, bright: 0.8 },
-  steel: { f: 2750, decay: 0.55, bright: 0.85 },
-  brass: { f: 1750, decay: 0.6, bright: 0.7 },
-  resin: { plastic: true, f: 1150, decay: 0.07 },
-  pla: { plastic: true, f: 950, decay: 0.06 },
-  tpu: { plastic: true, f: 520, decay: 0.05 },
-};
-
-/** Material changed: a clink for metals (gold warmer and lower, silver brighter), a dull tock for prints. */
-export function clink(materialId) {
-  const c = audio();
-  if (!c) return;
-  const v = VOICES[materialId] || VOICES.silver;
-  const t = c.currentTime + 0.005;
-  if (v.plastic) {
-    partial(c, t, v.f, 0.32, v.decay);
-    noise(c, t, { freq: v.f * 1.6, q: 2, gain: 0.18, decay: 0.025 });
-    return;
-  }
-  noise(c, t, { freq: 6000, q: 0.8, gain: 0.12, decay: 0.012 }); // the tap itself
-  partial(c, t, v.f, 0.22, v.decay);
-  partial(c, t, v.f * 2.76, 0.1 * v.bright, v.decay * 0.55);
-  partial(c, t, v.f * 5.4, 0.05 * v.bright, v.decay * 0.3);
-  // a second, quieter touch a moment later: two rings meeting, not a bell
-  partial(c, t + 0.075, v.f * 1.004, 0.08, v.decay * 0.6);
-}
-
 let lastTick = 0;
-/** Measuring tape running out to a new size: a ratchet of ticks (more for a bigger jump), then it locks. */
+/** Measuring tape running out to a new size: just its ratchet of clicks (more for a bigger jump). */
 export function tape(fromUS, toUS) {
   const c = audio();
   if (!c) return;
@@ -109,7 +75,6 @@ export function tape(fromUS, toUS) {
     noise(c, t, { freq: (up ? 2600 : 3400) + (up ? 900 : -900) * k, q: 6, gain: 0.16, decay: 0.014 });
     t += 0.026 + 0.022 * k * k; // fast at first, slowing into the mark
   }
-  snapAt(c, t + 0.02);
 }
 
 /** One ratchet tick while dragging the size slider (throttled). */
@@ -152,20 +117,17 @@ export function panel(open) {
   partial(c, t, open ? 520 : 400, 0.06, 0.04);
 }
 
-/** Saved to My designs: a low stamp thunk. */
+/** Saved to My designs: a bright, happy major arpeggio (C6 E6 G6 C7) that rings out for about a second. */
 export function stamp() {
   const c = audio();
   if (!c) return;
-  const t = c.currentTime + 0.005;
-  const o = c.createOscillator(), g = c.createGain();
-  o.frequency.setValueAtTime(170, t);
-  o.frequency.exponentialRampToValueAtTime(70, t + 0.12);
-  g.gain.setValueAtTime(0.4, t);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-  o.connect(g).connect(master);
-  o.start(t);
-  o.stop(t + 0.18);
-  noise(c, t, { freq: 900, q: 0.9, gain: 0.22, decay: 0.05, type: 'lowpass' });
+  const t = c.currentTime + 0.01;
+  [1046.5, 1318.5, 1568, 2093].forEach((f, i) => {
+    const at = t + i * 0.075;
+    partial(c, at, f, 0.11, 1.3 - i * 0.15);
+    partial(c, at, f * 2, 0.02, 0.35); // a little sparkle on top
+  });
+  partial(c, t + 0.3, 1046.5, 0.05, 1.2); // the root held under the last note
 }
 
 let lastEngrave = 0;

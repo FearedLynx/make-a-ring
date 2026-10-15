@@ -6,7 +6,7 @@ import { PatternArt } from './pattern-art.js';
 import { TemplateCard, SavedCard } from './template-card.js';
 import { TAGS, PATTERNS } from '../lib/patterns.js';
 import { TEMPLATES, hasMiddle, hasSides } from '../lib/templates.js';
-import { store, setPattern, setRails, applyTemplate, deleteCustomPattern, openSavedDesign, deleteSavedDesign } from '../state.js';
+import { store, setPattern, setRails, applyTemplate, deleteCustomPattern, openSavedDesign, deleteSavedDesign, duplicateSavedDesign } from '../state.js';
 import { RailStrip } from './rail-strip.js';
 
 const zoneBadge = { middle: 'Middle', side: 'Sides', any: 'Anywhere' };
@@ -136,7 +136,7 @@ export function Library({ onDraw, onHide }) {
           ${saved.length
             ? html`<ul class="tpl-list">
                 ${saved.map((e) => html`<li key=${e.id}><${SavedCard} entry=${e} on=${currentSaved === e.id}
-                  onClick=${() => currentSaved !== e.id && openSavedDesign(e.id)} onDelete=${() => deleteSavedDesign(e.id)} /></li>`)}
+                  onClick=${() => currentSaved !== e.id && openSavedDesign(e.id)} onDelete=${() => deleteSavedDesign(e.id)} onDuplicate=${() => duplicateSavedDesign(e.id)} /></li>`)}
               </ul>`
             : html`<p class="rail-note">Press <strong>Save</strong> in the top bar to keep this ring here. Built-in templates below never change.</p>`}
           <h3 class="rail-h">Templates</h3>

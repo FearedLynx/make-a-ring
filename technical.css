@@ -568,7 +568,8 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 @media (max-width: 900px) { .save-ctl span { display: none; } }
 .saved-card-wrap { position: relative; }
 .saved-card-wrap .tpl-card { width: 100%; }
-.saved-del { position: absolute; top: 8px; left: 8px; background: var(--surface); box-shadow: var(--shadow); }
+.saved-acts { position: absolute; top: 8px; left: 8px; display: grid; gap: 6px; }
+.saved-acts .icon-btn { background: var(--surface); box-shadow: var(--shadow); }
 .tpl-card.mine .tpl-blurb { color: var(--accent-ink); }
 .start-sub { font: 600 13px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); margin: 22px 0 10px; }
 

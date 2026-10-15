@@ -6,7 +6,7 @@ import { SizeDrawing } from '../components/size-drawing.js';
 import { tape } from '../lib/sound.js';
 import { TEMPLATES } from '../lib/templates.js';
 import { sizeSummary, fmtUs } from '../lib/sizes.js';
-import { store, go, applyTemplate, setDesign, openSavedDesign, deleteSavedDesign } from '../state.js';
+import { store, go, applyTemplate, setDesign, openSavedDesign, deleteSavedDesign, duplicateSavedDesign } from '../state.js';
 
 export function Start() {
   const design = store.use((s) => s.design);
@@ -45,7 +45,8 @@ export function Start() {
           <div class="tpl-grid" role="radiogroup" aria-label="My designs">
             ${saved.map((e) => html`<${SavedCard} key=${e.id} entry=${e} big role="radio" on=${picked === `mine:${e.id}`}
               onClick=${() => setPicked(`mine:${e.id}`)} onDblClick=${next}
-              onDelete=${() => (picked === `mine:${e.id}` && setPicked('heritage'), deleteSavedDesign(e.id))} />`)}
+              onDelete=${() => (picked === `mine:${e.id}` && setPicked('heritage'), deleteSavedDesign(e.id))}
+              onDuplicate=${() => duplicateSavedDesign(e.id)} />`)}
           </div>
           <h2 class="start-sub">Or start from a template</h2>`}
         <div class="tpl-grid" role="radiogroup" aria-label="Templates">

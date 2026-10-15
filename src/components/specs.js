@@ -9,7 +9,7 @@ import { resolveZones } from '../lib/band.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
 import { store, setDesign, setRails, patternById, go, toast } from '../state.js';
 import { RailStrip } from './rail-strip.js';
-import { clink, tick, snap, engrave } from '../lib/sound.js';
+import { tick, snap, engrave } from '../lib/sound.js';
 import { ENGRAVE_KINDS, ENGRAVE_FONTS, ENGRAVE_MARGIN, LETTER_MIN, LETTER_MAX, DEPTH_MIN, DEPTH_MAX, MAX_CUSTOM, getFont, getEngraving, engravingLayout, cleanInitials, cleanCustom } from '../lib/engraving.js';
 
 const profileIcon = {
@@ -273,7 +273,7 @@ export function Specs({ onHide }) {
             <div class="swatches" role="radiogroup" aria-label=${g}>
               ${MATERIALS.filter((x) => x.group === g).map(
                 (x) => html`<button role="radio" aria-checked=${design.materialId === x.id} class=${'swatch' + (design.materialId === x.id ? ' on' : '')}
-                  onClick=${() => (x.id !== design.materialId && clink(x.id), setDesign({ materialId: x.id }))} title=${x.name}>
+                  onClick=${() => setDesign({ materialId: x.id })} title=${x.name}>
                   <span class="swatch-dot" style=${`--c:${x.color}; --m:${x.metalness}`}></span>
                   <span class="swatch-name">${x.name}</span>
                 </button>`

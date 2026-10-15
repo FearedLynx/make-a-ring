@@ -28,7 +28,7 @@ const savedWhen = (t) => {
 };
 
 /** A design from My designs: same card as a template, plus when it was saved and a delete button. */
-export function SavedCard({ entry, on, onClick, onDblClick, onDelete, big = false, role }) {
+export function SavedCard({ entry, on, onClick, onDblClick, onDelete, onDuplicate, big = false, role }) {
   const d = entry.design;
   const thumb = useThumbnail(`mine-${entry.id}-${entry.savedAt}`, d, patternById);
   return html`<div class=${'saved-card-wrap' + (big ? ' big' : '')}>
@@ -40,6 +40,9 @@ export function SavedCard({ entry, on, onClick, onDblClick, onDelete, big = fals
       <span class="tpl-blurb">Yours · saved ${savedWhen(entry.savedAt)}</span>
       ${on && html`<span class="tpl-check"><${Icon} name="check" size=${14} /></span>`}
     </button>
-    ${onDelete && html`<button class="saved-del icon-btn sm" onClick=${onDelete} aria-label=${`Delete ${entry.name}`} title="Delete"><${Icon} name="trash" size=${14} /></button>`}
+    <div class="saved-acts">
+      ${onDelete && html`<button class="icon-btn sm" onClick=${onDelete} aria-label=${`Delete ${entry.name}`} title="Delete"><${Icon} name="trash" size=${14} /></button>`}
+      ${onDuplicate && html`<button class="icon-btn sm" onClick=${onDuplicate} aria-label=${`Duplicate ${entry.name}`} title="Duplicate"><${Icon} name="copy" size=${14} /></button>`}
+    </div>
   </div>`;
 }

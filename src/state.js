@@ -352,6 +352,17 @@ export function openSavedDesign(id, { silent = false } = {}) {
   if (!silent) toast(`Opened “${e.name}”`, { label: 'Undo', run: () => store.set(prev) });
 }
 
+export function duplicateSavedDesign(id) {
+  const s = store.get();
+  const e = s.savedDesigns.find((x) => x.id === id);
+  if (!e) return;
+  const now = Date.now();
+  const copy = { id: `mine-${now}`, name: uniqueName(`${e.name.slice(0, 34)} copy`, s.savedDesigns), design: e.design, savedAt: now };
+  const i = s.savedDesigns.indexOf(e);
+  store.set({ savedDesigns: [...s.savedDesigns.slice(0, i + 1), copy, ...s.savedDesigns.slice(i + 1)] });
+  toast(`Duplicated as “${copy.name}”`, { label: 'Undo', run: () => store.set({ savedDesigns: store.get().savedDesigns.filter((x) => x.id !== copy.id) }) });
+}
+
 export function deleteSavedDesign(id) {
   const s = store.get();
   const e = s.savedDesigns.find((x) => x.id === id);

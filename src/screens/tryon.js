@@ -8,7 +8,6 @@ import { MATERIALS, getMaterial } from '../lib/materials.js';
 import { bandMetrics } from '../lib/band.js';
 import { sizeSummary } from '../lib/sizes.js';
 import { store, setDesign } from '../state.js';
-import { clink } from '../lib/sound.js';
 
 const FINGERS = [
   { value: 'index', label: 'Index' },
@@ -139,7 +138,7 @@ export function TryOn() {
           <div class="swatches compact" role="radiogroup" aria-label="Material">
             ${MATERIALS.map(
               (x) => html`<button role="radio" aria-checked=${design.materialId === x.id} class=${'swatch' + (design.materialId === x.id ? ' on' : '')}
-                onClick=${() => (x.id !== design.materialId && clink(x.id), setDesign({ materialId: x.id }))} title=${x.name} aria-label=${x.name}>
+                onClick=${() => setDesign({ materialId: x.id })} title=${x.name} aria-label=${x.name}>
                 <span class="swatch-dot" style=${`--c:${x.color}; --m:${x.metalness}`}></span>
               </button>`
             )}

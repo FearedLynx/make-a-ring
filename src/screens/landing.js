@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Logo } from '../components/ui.js';
-import { RingView } from '../components/ring-view.js';
+import { RingView, prebuildRings, ringReady } from '../components/ring-view.js';
 import { PatternArt, BandMap } from '../components/pattern-art.js';
 import { ThemeDots, GridToggle, SoundToggle } from '../components/topbar.js';
 import { TEMPLATES, LAYOUTS, designFromTemplate } from '../lib/templates.js';
@@ -57,15 +57,26 @@ export function Landing() {
   const [i, setI] = useState(0);
   const [holdUntil, setHoldUntil] = useState(0);
   const tickRef = useRef();
+  // The sheet only turns once its ring is built, so the title, the band and the ring change in the same frame.
+  const want = useRef(0);
+  const turnTo = (n) => {
+    want.current = n;
+    ringReady(designFromTemplate(SHOWCASE[n])).then(() => want.current === n && setI(n));
+  };
   useEffect(() => {
     if (reduced()) return;
     tickRef.current = setInterval(() => {
-      if (Date.now() > holdUntil) setI((n) => (n + 1) % SHOWCASE.length);
+      if (Date.now() > holdUntil) turnTo((want.current + 1) % SHOWCASE.length);
     }, 4200);
     return () => clearInterval(tickRef.current);
   }, [holdUntil]);
+  // Build the next ring right after this one shows, so the next turn is instant.
+  useEffect(() => {
+    const t = setTimeout(() => prebuildRings([designFromTemplate(SHOWCASE[(i + 1) % SHOWCASE.length])]), 100);
+    return () => clearTimeout(t);
+  }, [i]);
   const step = (d) => {
-    setI((n) => (n + d + SHOWCASE.length) % SHOWCASE.length);
+    turnTo((want.current + d + SHOWCASE.length) % SHOWCASE.length);
     setHoldUntil(Date.now() + 12000); // pause the slideshow after manual control
   };
 

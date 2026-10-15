@@ -68,14 +68,13 @@ export function BandMap({ design, getPattern, activeZones = [], onZone, onSplit,
     ${zones.map((z) => {
       const y0 = z.from * H, zh = (z.to - z.from) * H;
       const active = activeZones.includes(z.id);
-      let d = '', fill = '';
+      // One tile's path, repeated with a translate: building every repeat's path text was the slow part.
+      let d = '', fill = '', tw = 0;
       if (z.pattern) {
-        const tw = W / z.repeats;
-        for (let i = 0; i < z.repeats; i++) {
-          const m = (x, y) => [i * tw + x * tw, z.flip ? y0 + zh - y * zh : y0 + y * zh];
-          d += pathFor(z.pattern.strokes, m);
-          fill += pathFor(z.pattern.strokes, m, true);
-        }
+        tw = W / z.repeats;
+        const m = (x, y) => [x * tw, z.flip ? y0 + zh - y * zh : y0 + y * zh];
+        d = pathFor(z.pattern.strokes, m);
+        fill = pathFor(z.pattern.strokes, m, true);
       }
       const clip = `${idp}-${z.id}`;
       return html`<g class=${'band-zone' + (active ? ' active' : '') + (onZone ? ' clickable' : '')}
@@ -87,8 +86,10 @@ export function BandMap({ design, getPattern, activeZones = [], onZone, onSplit,
         <clipPath id=${clip}><rect x="0" y=${y0} width=${W} height=${zh} /></clipPath>
         <rect class="zone-hit" x="0" y=${y0} width=${W} height=${zh} />
         <g clip-path=${`url(#${clip})`}>
-          <path d=${d} fill="none" stroke-width=${z.lineMM} stroke-linecap="round" stroke-linejoin="round" vector-effect="none" />
-          ${fill && html`<path d=${fill} class="fill" />`}
+          ${d && Array.from({ length: z.repeats }, (_, i) => html`<g transform=${`translate(${i * tw} 0)`}>
+            <path d=${d} fill="none" stroke-width=${z.lineMM} stroke-linecap="round" stroke-linejoin="round" vector-effect="none" />
+            ${fill && html`<path d=${fill} class="fill" />`}
+          </g>`)}
         </g>
         ${labelled && html`<text x="1" y=${y0 + zh / 2} class="zone-label">${names[z.id]}</text>`}
       </g>`;

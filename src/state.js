@@ -221,14 +221,14 @@ export function applyTemplate(id, { silent = false } = {}) {
   if (!silent) toast('New ring from the template', { label: 'Undo', run: () => store.set(prev) });
 }
 
+// Linked sides move together.
+const withPattern = (d, zone, id) =>
+  ({ ...d.patterns, ...(zone === 'middle' ? { middle: id } : d.linked ? { sideL: id, sideR: id } : { [zone]: id }) });
+
 export function setPattern(zone, id) {
   const s = store.get();
   const d = s.design;
-  const patterns = { ...d.patterns };
-  if (zone === 'middle') patterns.middle = id;
-  else if (d.linked) patterns.sideL = patterns.sideR = id;
-  else patterns[zone] = id;
-  setDesign({ patterns });
+  setDesign({ patterns: withPattern(d, zone, id) });
   const name = patternById(id)?.name || 'Plain';
   const label = zone === 'middle' ? 'Middle' : d.linked ? 'Sides' : zone === 'sideL' ? 'Left side' : 'Right side';
   announce(`${label}: ${name}`);
@@ -245,6 +245,14 @@ export function cyclePattern(axis, dir) {
   const i = list.indexOf(d.patterns[zone] ?? null);
   const next = list[(i + dir + list.length) % list.length];
   setPattern(zone, next);
+}
+
+/** The design one carousel step away (null if the layout has no such zone), so the studio can build its ring early. */
+export function steppedDesign(axis, dir, s = store.get()) {
+  const d = s.design;
+  if (axis === 'middle' ? !hasMiddle(d.layout) : !hasSides(d.layout)) return null;
+  const zone = axis === 'middle' ? 'middle' : d.linked ? 'sideL' : s.activeSide;
+  return normalize({ ...d, patterns: withPattern(d, zone, neighbours(zone, dir, s)) });
 }
 
 export function neighbours(zone, offset, s = store.get()) {

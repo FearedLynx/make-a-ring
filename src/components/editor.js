@@ -66,6 +66,9 @@ const loadStrokes = (list) => {
 /** True when acting on stroke `s` should also act on the other copies in its group. */
 const linkedTo = (s, symOn) => !!s?.g && (!s.sym || symOn);
 
+// Copied shapes outlive the editor, so they can be pasted into another pattern.
+let clipboard = null;
+
 /** Indices of `idx` plus every copy linked to them. */
 function withPartners(strokes, idx, symOn) {
   const out = new Set(idx);
@@ -451,6 +454,38 @@ export function PatternEditor() {
     commit(strokes.map((s, i) => (pick.has(i) && !s.fill && !s.closed ? { ...s, pts: steady(s.pts, Math.max(50, stead.amt), aspect) } : s)));
     setFlash('Smoothed');
   };
+  // ── Copy / paste / duplicate. Pastes keep their symmetry groups (fresh ids) and land offset by two grid
+  // cells, mirrored copies moving as mirrors; each further paste steps further so copies don't stack.
+  const [clipCount, setClipCount] = useState(clipboard ? clipboard.length : 0);
+  const pasteStep = useRef(0);
+  const copySel = () => {
+    if (!sel.size) return null;
+    const pick = withPartners(strokes, sel, symOn);
+    clipboard = copyStrokes([...pick].sort((a, b) => a - b).map((i) => strokes[i]));
+    pasteStep.current = 0;
+    setClipCount(clipboard.length);
+    setFlash(`Copied ${clipboard.length} shape${clipboard.length === 1 ? '' : 's'}`);
+    return clipboard;
+  };
+  const paste = () => {
+    if (!clipboard?.length) return;
+    pasteStep.current += 1;
+    const k = pasteStep.current * 2;
+    const start = strokes.length;
+    const clones = loadStrokes(clipboard);
+    const idx = new Set(clones.map((_, j) => start + j));
+    commit(moveStrokes([...strokes, ...clones], idx, [k / (GRID * aspect), k / GRID], true));
+    setTool('move');
+    setSel(idx);
+    setFlash('Pasted. Drag it into place');
+  };
+  const duplicate = () => copySel() && paste();
+  const selectAll = () => {
+    if (!strokes.length) return;
+    setTool('move');
+    setSel(new Set(strokes.map((_, i) => i)));
+  };
+
   const addGenerated = () => {
     const g = groupSeq++;
     commit([...strokes, ...generate(gen.kind, gen, aspect).map((s) => ({ ...s, g, t: I }))]);
@@ -464,6 +499,12 @@ export function PatternEditor() {
     if (e.key === ' ') spaceDown.current = true;
     if ((e.ctrlKey || e.metaKey) && k === 'z') return e.preventDefault(), e.shiftKey ? redo() : undo();
     if ((e.ctrlKey || e.metaKey) && k === 'y') return e.preventDefault(), redo();
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+      if (k === 'c' && sel.size) return e.preventDefault(), copySel();
+      if (k === 'v' && clipboard?.length) return e.preventDefault(), paste();
+      if (k === 'd' && sel.size) return e.preventDefault(), duplicate();
+      if (k === 'a') return e.preventDefault(), selectAll();
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const t = TOOLS.find((x) => x.key.toLowerCase() === k);
     if (t) return pickTool(t.id);
@@ -634,7 +675,11 @@ export function PatternEditor() {
             html`<span class="ed-sep"></span>
               <span class="ed-sel-count">${sel.size} selected</span>
               <button class="chip sm" onClick=${smoothSel}><${Icon} name="steady" size=${14} /> Smooth</button>
+              <button class="chip sm" onClick=${copySel} title="Copy (Ctrl+C)"><${Icon} name="copy" size=${14} /> Copy</button>
+              <button class="chip sm" onClick=${duplicate} title="Duplicate (Ctrl+D)"><${Icon} name="plus" size=${14} /> Duplicate</button>
               <button class="chip sm" onClick=${deleteSel}><${Icon} name="trash" size=${14} /> Delete</button>`}
+            ${clipCount > 0 &&
+            html`<button class="chip sm" onClick=${paste} title="Paste (Ctrl+V)"><${Icon} name="copy" size=${14} /> Paste ${clipCount}</button>`}
             <span class="spacer"></span>
             <span class="ed-hint">${tool === 'line' ? 'Shift locks 0° / 45° / 90°' : tool === 'square' ? 'Shift for a free rectangle' : tool === 'stamp' ? ', . rotate · [ ] size' : view.z > 1 ? 'Scroll or Space + drag to pan' : 'Ctrl + scroll to zoom'}</span>
           </div>

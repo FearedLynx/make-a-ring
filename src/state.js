@@ -1,6 +1,8 @@
 import { createStore } from './lib/store.js';
 import { PATTERNS, fitsZone } from './lib/patterns.js';
-import { designFromTemplate, hasZone, hasSides, hasMiddle } from './lib/templates.js';
+import { designFromTemplate, sanitizeDesign, hasZone, hasSides, hasMiddle } from './lib/templates.js';
+import { MATERIALS, getMaterial } from './lib/materials.js';
+import { onFontLoaded } from './lib/engraving.js';
 
 const SCREENS = ['landing', 'start', 'studio', 'tryon', 'review'];
 
@@ -24,16 +26,26 @@ function screenFromHash() {
 }
 
 // A shared link carries the design (and any custom patterns it uses) in ?d=
+let sharedLinkBroken = false;
 function designFromUrl() {
+  const d = new URLSearchParams(location.search).get('d');
+  if (!d) return null;
   try {
-    const d = new URLSearchParams(location.search).get('d');
-    if (!d) return null;
     const json = decodeURIComponent(escape(atob(d.replace(/-/g, '+').replace(/_/g, '/'))));
-    return JSON.parse(json);
+    const parsed = JSON.parse(json);
+    if (!parsed || typeof parsed !== 'object' || !parsed.design) throw new Error('no design');
+    return parsed;
   } catch {
+    sharedLinkBroken = true; // told to the person once the app is up (see the end of this file)
     return null;
   }
 }
+
+const MATERIAL_IDS = MATERIALS.map((m) => m.id);
+export const cleanDesign = (d) => sanitizeDesign(d, MATERIAL_IDS);
+/** Custom patterns from storage or links: keep only well-formed ones. */
+const cleanPatterns = (list) =>
+  (Array.isArray(list) ? list : []).filter((p) => p && typeof p.id === 'string' && Array.isArray(p.strokes) && p.strokes.every((st) => st && Array.isArray(st.pts)));
 
 // Side panels: content widths (the 44 px category strip comes on top) and the open category.
 // Smaller screens start with slimmer panels so the stage gets the room; the resizer still widens them.
@@ -48,16 +60,24 @@ function loadRails() {
 }
 
 const shared = designFromUrl();
-const storedCustom = load('mar.custom', []);
-const custom = shared?.custom
-  ? [...storedCustom, ...shared.custom.filter((p) => !storedCustom.some((c) => c.id === p.id))]
-  : storedCustom;
+const storedCustom = cleanPatterns(load('mar.custom', []));
+const sharedCustom = cleanPatterns(shared?.custom);
+const custom = [...storedCustom, ...sharedCustom.filter((p) => !storedCustom.some((c) => c.id === p.id))];
+
+/** Saved designs from storage: keep only well-formed entries, each design sanitized. */
+const cleanSaved = (list) =>
+  (Array.isArray(list) ? list : [])
+    .filter((x) => x && typeof x.id === 'string' && x.design && typeof x.design === 'object')
+    .map((x) => ({ id: x.id, name: String(x.name || 'My ring').slice(0, 40), design: cleanDesign(x.design), savedAt: +x.savedAt || 0 }));
+const storedDesign = load('mar.design', null); // read before the store starts saving over it
 
 export const store = createStore({
   screen: screenFromHash(),
-  design: shared?.design || load('mar.design', null) || designFromTemplate('heritage'),
-  ringName: shared?.name || load('mar.name', 'My first ring'),
+  design: cleanDesign(shared?.design || storedDesign),
+  ringName: (typeof shared?.name === 'string' && shared.name.slice(0, 40)) || load('mar.name', 'My first ring'),
   customPatterns: custom,
+  savedDesigns: cleanSaved(load('mar.saved', [])),
+  currentSaved: load('mar.current', null), // id in savedDesigns of the design being edited, or null
   activeSide: 'sideL',
   libZone: 'all',
   editor: null, // { zone: 'middle' | 'side', base?: pattern }
@@ -74,13 +94,15 @@ export const store = createStore({
   tour: null, // { id, step }
 });
 
-if (shared) history.replaceState(null, '', location.pathname + location.hash);
+if (shared || sharedLinkBroken) history.replaceState(null, '', location.pathname + location.hash);
 
 store.subscribe((s) => {
   save('mar.design', s.design);
   save('mar.custom', s.customPatterns);
   save('mar.name', s.ringName);
   save('mar.rails', s.rails);
+  save('mar.saved', s.savedDesigns);
+  save('mar.current', s.currentSaved);
 });
 
 // ── Theme ─────────────────────────────────────────────────────
@@ -161,7 +183,15 @@ export function patternsForZone(zone, s = store.get()) {
 
 // ── Design actions ────────────────────────────────────────────
 export function setDesign(patch) {
-  store.set((s) => ({ design: { ...s.design, ...patch } }));
+  store.set((s) => ({ design: normalize({ ...s.design, ...patch }) }));
+}
+
+// Keep combinations honest: an antique patina is a metal finish, so a plain printed polymer goes back to polished
+// (and the patina leaves the price). Plating gives polymers a metal skin, so plated prints keep it.
+function normalize(d) {
+  const m = getMaterial(d.materialId);
+  if (d.finish === 'antique' && !m.metalness && (!m.platable || d.plating === 'none')) return { ...d, finish: 'polished' };
+  return d;
 }
 
 let toastTimer;
@@ -178,7 +208,7 @@ export function announce(msg) {
 export function applyTemplate(id, { silent = false } = {}) {
   const prev = store.get().design;
   const next = designFromTemplate(id, { sizeUS: prev.sizeUS, ...(prev.engraving ? { engraving: prev.engraving } : {}) }); // size and engraving are personal, keep them
-  store.set({ design: next, activeSide: 'sideL' });
+  store.set({ design: next, activeSide: 'sideL', currentSaved: null }); // built-in templates are never saved over
   if (!silent) toast('Template applied', { label: 'Undo', run: () => store.set({ design: prev }) });
 }
 
@@ -257,3 +287,81 @@ export function shareUrl() {
     .replace(/=+$/, '');
   return `${location.origin}${location.pathname}?d=${b64}#/studio`;
 }
+
+// ── My designs: rings saved on this device, reopened from the template pickers ──
+// Built-in templates are never written to; saving either updates the design you opened from My designs,
+// or adds a new entry.
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+export function currentSavedEntry(s = store.get()) {
+  return s.savedDesigns.find((x) => x.id === s.currentSaved) || null;
+}
+/** True when the open design differs from its saved copy (or has never been saved). */
+export function hasUnsavedChanges(s = store.get()) {
+  const e = currentSavedEntry(s);
+  return !e || !same(e.design, s.design) || e.name !== s.ringName;
+}
+
+function uniqueName(base, list) {
+  if (!list.some((x) => x.name === base)) return base;
+  let n = 2;
+  while (list.some((x) => x.name === `${base} ${n}`)) n++;
+  return `${base} ${n}`;
+}
+
+export function saveDesign({ asNew = false } = {}) {
+  const s = store.get();
+  const now = Date.now();
+  const existing = !asNew && currentSavedEntry(s);
+  if (existing) {
+    store.set({ savedDesigns: s.savedDesigns.map((x) => (x.id === existing.id ? { ...x, name: s.ringName, design: s.design, savedAt: now } : x)) });
+    toast(`Updated “${s.ringName}” in My designs`);
+    return;
+  }
+  const name = uniqueName((s.ringName || '').trim() || 'My ring', s.savedDesigns);
+  const entry = { id: `mine-${now}`, name, design: s.design, savedAt: now };
+  store.set({ savedDesigns: [entry, ...s.savedDesigns], currentSaved: entry.id, ringName: name });
+  toast(`Saved “${name}” to My designs`);
+}
+
+export function openSavedDesign(id, { silent = false } = {}) {
+  const s = store.get();
+  const e = s.savedDesigns.find((x) => x.id === id);
+  if (!e) return;
+  const prev = { design: s.design, ringName: s.ringName, currentSaved: s.currentSaved };
+  store.set({ design: cleanDesign(e.design), ringName: e.name, currentSaved: e.id, activeSide: 'sideL' });
+  if (!silent) toast(`Opened “${e.name}”`, { label: 'Undo', run: () => store.set(prev) });
+}
+
+export function deleteSavedDesign(id) {
+  const s = store.get();
+  const e = s.savedDesigns.find((x) => x.id === id);
+  if (!e) return;
+  const prev = { savedDesigns: s.savedDesigns, currentSaved: s.currentSaved };
+  store.set({ savedDesigns: s.savedDesigns.filter((x) => x.id !== id), currentSaved: s.currentSaved === id ? null : s.currentSaved });
+  toast(`Deleted “${e.name}”`, { label: 'Undo', run: () => store.set(prev) });
+}
+
+// Opening a share link replaces the ring on screen. Keep the one you had in My designs first, so nothing is lost.
+if (shared && storedDesign) {
+  const mine = cleanDesign(storedDesign);
+  if (!same(mine, store.get().design)) {
+    const s = store.get();
+    let keptId = s.savedDesigns.find((x) => same(x.design, mine))?.id;
+    if (!keptId) {
+      keptId = `mine-${Date.now()}`;
+      const name = uniqueName(`${String(load('mar.name', 'My ring')).slice(0, 30)} (kept)`, s.savedDesigns);
+      store.set({ savedDesigns: [{ id: keptId, name, design: mine, savedAt: Date.now() }, ...s.savedDesigns] });
+    }
+    store.set({ currentSaved: null });
+    setTimeout(() => toast('Opened a shared ring. Yours is kept in My designs.', { label: 'Back to mine', run: () => openSavedDesign(keptId, { silent: true }) }), 600);
+  }
+}
+
+if (sharedLinkBroken) setTimeout(() => toast('That share link is damaged or cut short, so your own ring was kept.'), 600);
+
+// Engraving fonts load on demand; once one arrives, rebuild the ring if it uses it (the letters were drawn in a fallback).
+onFontLoaded((id) => {
+  const e = store.get().design.engraving;
+  if (e && e.kind !== 'none' && (e.font || 'sans') === id) store.set((st) => ({ design: { ...st.design } }));
+});

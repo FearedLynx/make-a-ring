@@ -1,19 +1,24 @@
 import { useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Logo } from '../components/ui.js';
-import { TemplateCard } from '../components/template-card.js';
+import { TemplateCard, SavedCard } from '../components/template-card.js';
+import { Mandrel } from '../components/mandrel.js';
 import { TEMPLATES } from '../lib/templates.js';
 import { sizeSummary, fmtUs } from '../lib/sizes.js';
-import { store, go, applyTemplate, setDesign } from '../state.js';
+import { store, go, applyTemplate, setDesign, openSavedDesign, deleteSavedDesign } from '../state.js';
 
 export function Start() {
   const design = store.use((s) => s.design);
   const [step, setStep] = useState(1);
-  const [picked, setPicked] = useState(design.templateId || 'heritage');
+  const saved = store.use((s) => s.savedDesigns);
+  const currentSaved = store.use((s) => s.currentSaved);
+  // `picked` is a template id, or "mine:<id>" for one of My designs.
+  const [picked, setPicked] = useState(currentSaved && saved.some((x) => x.id === currentSaved) ? `mine:${currentSaved}` : design.templateId || 'heritage');
   const size = sizeSummary(design.sizeUS);
 
   const next = () => {
-    applyTemplate(picked, { silent: true });
+    if (picked.startsWith('mine:')) openSavedDesign(picked.slice(5), { silent: true });
+    else applyTemplate(picked, { silent: true });
     setStep(2);
     window.scrollTo(0, 0);
   };
@@ -33,6 +38,14 @@ export function Start() {
       html`<section>
         <h1 class="screen-title">Pick a starting point</h1>
         <p class="lead">Every template can be changed completely later: patterns, layout, material, everything.</p>
+        ${saved.length > 0 &&
+        html`<h2 class="start-sub">Continue one of yours</h2>
+          <div class="tpl-grid" role="radiogroup" aria-label="My designs">
+            ${saved.map((e) => html`<${SavedCard} key=${e.id} entry=${e} big role="radio" on=${picked === `mine:${e.id}`}
+              onClick=${() => setPicked(`mine:${e.id}`)} onDblClick=${next}
+              onDelete=${() => (picked === `mine:${e.id}` && setPicked('heritage'), deleteSavedDesign(e.id))} />`)}
+          </div>
+          <h2 class="start-sub">Or start from a template</h2>`}
         <div class="tpl-grid" role="radiogroup" aria-label="Templates">
           ${TEMPLATES.map((t) => {
             return html`<${TemplateCard} t=${t} sizeUS=${design.sizeUS} big role="radio" on=${picked === t.id}
@@ -53,6 +66,7 @@ export function Start() {
           <span class="size-big">US ${size.us}</span>
           <span class="size-alt">EU ${size.eu} · UK ${size.uk} · Ø ${size.diameter.toFixed(1)} mm</span>
         </div>
+        <${Mandrel} sizeUS=${design.sizeUS} />
         <div class="size-chips" role="radiogroup" aria-label="Common sizes">
           ${[4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 13].map(
             (v) => html`<button role="radio" aria-checked=${design.sizeUS === v} class=${'chip' + (design.sizeUS === v ? ' on' : '')}

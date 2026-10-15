@@ -1,4 +1,4 @@
-import { render } from 'preact';
+import { render, Component } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { html } from './lib/html.js';
 import { store, startTour } from './state.js';
@@ -22,7 +22,7 @@ const SHORTCUTS = [
   ['Pattern editor', [['P L S C D', 'Pen, line, square, circle, dot'], ['T / V / E', 'Stamp, move, eraser'], ['B', 'Steady on / off'],
     ['M', 'Cycle symmetry: off, mirror, 4-way, rotate, kaleido'], ['Shift', 'Line: lock to 0° / 45° / 90°. Square: free rectangle'],
     [', / .', 'Rotate the stamp'], ['[ / ]', 'Stamp smaller / bigger'], ['G / N', 'Show grid / snap to grid'], ['+ / − / 0', 'Zoom in, out, fit'],
-    ['Delete', 'Remove the selected strokes'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Arrows + Enter', 'Draw with the keyboard on the canvas'], ['Esc', 'Finish a line']]],
+    ['Delete', 'Remove the selected strokes'], ['Ctrl+C / Ctrl+V', 'Copy and paste shapes (also between patterns)'], ['Ctrl+D', 'Duplicate the selection'], ['Ctrl+A', 'Select every shape'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Arrows + Enter', 'Draw with the keyboard on the canvas'], ['Esc', 'Finish a line']]],
 ];
 
 function Shortcuts() {
@@ -69,4 +69,31 @@ function App() {
   `;
 }
 
-render(html`<${App} />`, document.getElementById('app'));
+/** If anything throws while rendering, show a way back instead of a blank page. */
+class Boundary extends Component {
+  state = { error: null };
+  componentDidCatch(error) {
+    console.error(error);
+    this.setState({ error });
+  }
+  render({ children }, { error }) {
+    if (!error) return children;
+    const reset = () => {
+      try {
+        localStorage.removeItem('mar.design');
+      } catch {}
+      location.href = location.pathname + '#/studio';
+      location.reload();
+    };
+    return html`<main class="crash" id="main" role="alert">
+      <h1>Something went wrong</h1>
+      <p>Your saved designs and patterns are kept. Resetting only replaces the ring you were working on with the Heritage template.</p>
+      <div class="crash-actions">
+        <button class="btn primary" onClick=${reset}>Reset design</button>
+        <button class="btn ghost" onClick=${() => location.reload()}>Reload</button>
+      </div>
+    </main>`;
+  }
+}
+
+render(html`<${Boundary}><${App} /><//>`, document.getElementById('app'));

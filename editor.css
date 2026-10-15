@@ -133,3 +133,21 @@
 /* Touch screens: keyboard hints and cursor read-outs mean nothing without a keyboard and mouse. */
 [data-input='touch'] .tool-key, [data-input='touch'] .ed-hint, [data-input='touch'] .ed-xy,
 [data-input='touch'] .keys-only, [data-input='touch'] .ed-sym .field-label kbd { display: none; }
+
+/* Tablet and desktop: tools in two columns so the whole toolbox fits at 100% zoom on a 1080p screen
+   (one column was ~920 px tall and scrolled with an invisible scrollbar). */
+@media (min-width: 761px) {
+  .ed-body { grid-template-rows: minmax(0, 1fr); }
+  .ed-tools { display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 3px; padding: 10px 6px; }
+  .ed-tools > hr, .ed-tools > .ed-sym { grid-column: 1 / -1; }
+  .ed-tools .tool { min-width: 0; padding: 5px 2px 4px; font-size: 10.5px; gap: 1px; }
+  .ed-tools > hr { margin: 3px 0; }
+  .ed-tools .tool .tool-key { top: 2px; right: 2px; font-size: 8px; }
+  .ed-sym { grid-template-columns: 1fr 1fr; gap: 3px; }
+  .ed-sym .field-label { grid-column: 1 / -1; }
+  .ed-sym .sym-btn { flex-direction: column; gap: 2px; padding: 4px 2px; font-size: 10px; text-align: center; justify-content: center; }
+}
+@media (min-width: 1181px) {
+  /* Each column scrolls on its own; the modal body itself never needs to. */
+  .editor-modal .modal-body { overflow: hidden; }
+}

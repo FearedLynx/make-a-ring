@@ -161,3 +161,43 @@ export function designFromTemplate(id, keep = {}) {
     ...keep,
   };
 }
+
+const PROFILES = ['flat', 'domed', 'comfort', 'bevel'];
+const STYLES = ['raised', 'engraved'];
+const FINISHES = ['polished', 'satin', 'antique'];
+const PLATING_IDS = ['none', 'gold', 'silver', 'rose'];
+const num = (v, lo, hi, fallback) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback);
+const pick = (v, list, fallback) => (list.includes(v) ? v : fallback);
+const idOrNull = (v) => (typeof v === 'string' && v ? v : null);
+
+/**
+ * Any design from storage, a share link or a saved file goes through here first: unknown or broken
+ * fields fall back to the Heritage template, so a bad value can never white-screen the app.
+ * `materialIds` is passed in to avoid a circular import with materials.js.
+ */
+export function sanitizeDesign(d, materialIds = []) {
+  const ref = designFromTemplate('heritage');
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return ref;
+  const p = d.patterns && typeof d.patterns === 'object' ? d.patterns : {};
+  const r = d.repeats && typeof d.repeats === 'object' ? d.repeats : {};
+  const out = {
+    ...ref,
+    ...d,
+    layout: pick(d.layout, Object.keys(LAYOUTS), ref.layout),
+    sizeUS: num(d.sizeUS, 3, 14, ref.sizeUS),
+    width: num(d.width, 2, 12, ref.width),
+    thickness: num(d.thickness, 1, 3, ref.thickness),
+    relief: num(d.relief, 0.1, 0.7, ref.relief),
+    profile: pick(d.profile, PROFILES, ref.profile),
+    style: pick(d.style, STYLES, ref.style),
+    finish: pick(d.finish, FINISHES, ref.finish),
+    plating: pick(d.plating, PLATING_IDS, 'none'),
+    materialId: materialIds.length && !materialIds.includes(d.materialId) ? ref.materialId : d.materialId || ref.materialId,
+    linked: typeof d.linked === 'boolean' ? d.linked : true,
+    patterns: { middle: idOrNull(p.middle), sideL: idOrNull(p.sideL), sideR: idOrNull(p.sideR) },
+    repeats: { middle: num(r.middle, 0, 80, 0), side: num(r.side, 0, 80, 0) },
+    splits: d.splits && typeof d.splits === 'object' ? d.splits : {},
+  };
+  if (out.engraving != null && typeof out.engraving !== 'object') delete out.engraving;
+  return out;
+}

@@ -31,7 +31,7 @@ These notes complement Javier's `FIX-PLAN.md` on `responsive-and-export`, which 
 
 ## What a design judge sees (first-impression review of `387f9dd`)
 
-- **First 10 seconds.** The headline "Make a / ring." looks great but promises nothing. The pitch is in a small lede under the stage, and the problem ($2,000+ custom rings) only shows up several screens down.
+- **First 10 seconds.** The headline "Make a / ring." looks great but promises nothing. The pitch is in a small lede under the stage, and the problem (custom rings are out of reach without a jeweller) only shows up several screens down; don't quote a price, the $2,000 figure was removed as unsourced.
   - Add a large kicker under the headline, e.g. "Draw it. Wrap it. Wear it. A custom ring in three minutes, no jeweller needed."
   - Move the three inline steps above the lede.
 - **The wow moment** (draw one tile and watch it wrap around the 3D ring) takes 5+ clicks and two auto-tours to reach: landing → Start step 1 → Start step 2 → studio → 10-step tour → Draw → editor tour.
@@ -152,7 +152,7 @@ Keep the carousel input as decided above (Javier's controls). Nothing here chang
 ## Submission kit
 
 **Tagline candidates (≤15 words, problem-first)**
-- "Custom rings cost a jeweller and $2,000. Draw yours in three minutes instead."
+- "A custom ring without a jeweller: draw it in three minutes, print or cast it." (no price claim; the $2,000 figure was removed as unsourced)
 - "Your sketch, wrapped around a real ring, ready to print tonight."
 - "Draw one tile. It wraps your ring. You download the file."
 

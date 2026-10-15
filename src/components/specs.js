@@ -9,7 +9,7 @@ import { resolveZones } from '../lib/band.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
 import { store, setDesign, setRails, patternById, go, toast } from '../state.js';
 import { RailStrip } from './rail-strip.js';
-import { ENGRAVE_KINDS, ENGRAVE_DEPTH, ENGRAVE_MARGIN, LETTER_MIN, LETTER_MAX, MAX_CUSTOM, STROKE_RATIO, getEngraving, engravingLayout, cleanInitials, cleanCustom } from '../lib/engraving.js';
+import { ENGRAVE_KINDS, ENGRAVE_FONTS, ENGRAVE_MARGIN, LETTER_MIN, LETTER_MAX, DEPTH_MIN, DEPTH_MAX, MAX_CUSTOM, getFont, getEngraving, engravingLayout, cleanInitials, cleanCustom } from '../lib/engraving.js';
 
 const profileIcon = {
   flat: 'M3 6h18v12H3Z',
@@ -104,11 +104,12 @@ function EngravingPanel({ design }) {
   const L = engravingLayout(design);
   const twoNames = e.kind === 'for' || e.kind === 'heart';
   const m = getMaterial(design.materialId);
-  const minH = Math.min(LETTER_MAX, Math.ceil((m.minDetail / STROKE_RATIO) * 10) / 10);
+  const font = getFont(e.font);
+  const minH = Math.min(LETTER_MAX, Math.ceil((m.minDetail / font.stroke) * 10) / 10);
   const engChecks = runChecks(design, patternById).checks.filter((c) => /ngrav/.test(c.title) && c.level !== 'ok');
   return html`<section class="spec-sec" id="spec-engraving">
     <h3 class="sr-only">Inside engraving</h3>
-    <p class="hint engr-lead">Cut ${ENGRAVE_DEPTH} mm into the inside of the band, in a clean sans that prints reliably.</p>
+    <p class="hint engr-lead">Cut into the inside of the band. Pick a style, a font, and how big and deep the letters are.</p>
     <div class="engr-kinds" role="radiogroup" aria-label="Engraving style">
       ${ENGRAVE_KINDS.map((k) => html`<button role="radio" aria-checked=${e.kind === k.id} class=${'chip sm' + (e.kind === k.id ? ' on' : '')}
         title=${k.hint || ''} onClick=${() => set({ kind: k.id })}>${k.label}</button>`)}
@@ -132,9 +133,21 @@ function EngravingPanel({ design }) {
     <p class="hint">${(e.text || '').length} / ${MAX_CUSTOM}. Letters, numbers, spaces and . , & ' + − ♥</p>`}
 
     ${e.kind !== 'none' &&
-    html`<${Slider} label="Letter height" value=${e.size} min=${LETTER_MIN} max=${LETTER_MAX} step=${0.1} unit=" mm"
+    html`<span class="field-label">Font</span>
+      <div class="engr-fonts" role="radiogroup" aria-label="Engraving font">
+        ${ENGRAVE_FONTS.map((f) => html`<button role="radio" aria-checked=${font.id === f.id} class=${'engr-font' + (font.id === f.id ? ' on' : '')}
+          title=${f.hint} onClick=${() => set({ font: f.id })}>
+          <span class="engr-font-sample" style=${`font: ${f.css.replace('100px', '17px')}`} aria-hidden="true">Ag</span>
+          <span class="engr-font-name">${f.label}</span>
+        </button>`)}
+      </div>
+      <p class="hint">${font.hint}.</p>
+      <${Slider} label="Letter height" value=${e.size} min=${LETTER_MIN} max=${LETTER_MAX} step=${0.1} unit=" mm"
         format=${(v) => `${v.toFixed(1)} mm`} onInput=${(v) => set({ size: +v.toFixed(1) })} />
-      <p class="hint">${m.name} needs letters of at least ${minH} mm; this band fits up to ${L ? L.maxH : (design.width - 1.4).toFixed(1)} mm.</p>
+      <p class="hint">${m.name} needs ${font.label.toLowerCase()} letters of at least ${minH} mm; this band fits up to ${L ? L.maxH : (design.width - 1.4).toFixed(1)} mm.</p>
+      <${Slider} label="Depth" value=${L ? L.depth : e.depth} min=${DEPTH_MIN} max=${DEPTH_MAX} step=${0.05} unit=" mm"
+        format=${(v) => `${v.toFixed(2)} mm`} onInput=${(v) => set({ depth: +v.toFixed(2) })} />
+      <p class="hint">Deeper reads better and survives polishing, but keep it under about 1.5× the stroke width${L ? ` (${(L.strokeMM * 1.5).toFixed(2)} mm here)` : ''}.</p>
       ${L && html`<${EngravingPreview} design=${design} L=${L} />`}
       ${engChecks.length > 0 && html`<${ChecksList} design=${design} only=${(c) => engChecks.some((x) => x.title === c.title)} />`}`}
   </section>`;
@@ -144,15 +157,16 @@ function EngravingPanel({ design }) {
 function EngravingPreview({ design, L }) {
   const span = Math.min(L.innerCirc, Math.max(L.lengthMM + 10, 24));
   const W = design.width;
-  const fontSize = L.h / 0.727; // cap height of the sans is about 0.727 em
+  const fontSize = L.h / L.capEm; // so capital letters come out exactly L.h mm tall
   const tooLong = L.lengthMM > L.maxLength;
   return html`<figure class="engr-preview">
     <svg viewBox=${`0 0 ${span} ${W}`} role="img" aria-label=${`Inside of the band, ${W} mm wide, engraved “${L.text}” in ${L.h} mm letters`}>
       <rect class="engr-band" x="0" y="0" width=${span} height=${W} />
       <rect class="engr-safe" x="0" y=${ENGRAVE_MARGIN} width=${span} height=${Math.max(0, W - 2 * ENGRAVE_MARGIN)} />
-      <text class=${'engr-text' + (L.h > L.maxH || tooLong ? ' bad' : '')} x=${span / 2} y=${W / 2 + L.h / 2} font-size=${fontSize}>${L.text}</text>
+      <text class=${'engr-text' + (L.h > L.maxH || tooLong ? ' bad' : '')} x=${span / 2} y=${W / 2 + L.h / 2}
+        style=${`font: ${L.font.css.replace('100px', `${fontSize}px`)}`}>${L.text}</text>
     </svg>
-    <figcaption>Inside, laid flat · ${span.toFixed(0)} of ${L.innerCirc.toFixed(0)} mm shown · text ${L.lengthMM.toFixed(0)} mm long</figcaption>
+    <figcaption>Inside, laid flat · ${span.toFixed(0)} of ${L.innerCirc.toFixed(0)} mm shown · text ${L.lengthMM.toFixed(0)} mm long · ${L.depth} mm deep</figcaption>
   </figure>`;
 }
 
@@ -275,7 +289,7 @@ export function Specs({ onHide }) {
             onChange=${(v) => setDesign({ plating: v })} />`}
         <span class="field-label">Finish</span>
         <${Segmented} label="Finish" size="full" value=${design.finish}
-          options=${[{ value: 'polished', label: 'Polished' }, { value: 'satin', label: 'Satin' }, { value: 'antique', label: 'Antique' }]}
+          options=${[{ value: 'polished', label: 'Polished' }, { value: 'satin', label: 'Satin' }, ...(m.metalness || (m.platable && design.plating !== 'none') ? [{ value: 'antique', label: 'Antique' }] : [])]}
           onChange=${(v) => setDesign({ finish: v })} />
       </section>`}
 

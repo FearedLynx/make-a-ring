@@ -10,7 +10,7 @@ import { getMaterial, PLATINGS } from '../lib/materials.js';
 import { sizeSummary, usToDiameter, diameterToUs } from '../lib/sizes.js';
 import { buildHeightmap } from '../lib/heightmap.js';
 import { buildRingGeometry } from '../lib/ringGeometry.js';
-import { engravingLayout, ENGRAVE_DEPTH } from '../lib/engraving.js';
+import { engravingLayout } from '../lib/engraving.js';
 import * as THREE from 'three';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
@@ -71,13 +71,37 @@ function ExportModal({ open, onClose, design, name, rows }) {
   const [phase, setPhase] = useState('choose'); // choose | working | done | failed
   const [step, setStep] = useState(0);
   const [files, setFiles] = useState([]);
+  const [measure, setMeasure] = useState(null); // { tris, verts } of the print mesh, measured when the dialog opens
+  const meshRef = useRef(null);
 
+  // Build the print mesh once when the dialog opens, so each format can show its size before
+  // anything is generated; "Generate" then reuses it.
   useEffect(() => {
-    if (open) {
-      setPhase('choose');
-      setStep(0);
-    }
+    if (!open) return;
+    setPhase('choose');
+    setStep(0);
+    setMeasure(null);
+    let alive = true;
+    const t = setTimeout(() => {
+      if (!alive) return;
+      try {
+        meshRef.current?.geometry.dispose();
+        const mesh = printMesh(design);
+        meshRef.current = mesh;
+        const g = mesh.geometry;
+        setMeasure({ tris: (g.index ? g.index.count : g.attributes.position.count) / 3, verts: g.attributes.position.count });
+      } catch (err) {
+        console.error(err);
+      }
+    }, 60);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
   }, [open]);
+  useEffect(() => () => meshRef.current?.geometry.dispose(), []);
+  // Binary STL is exact: 84 bytes of header plus 50 per triangle. OBJ text averages ~31 bytes per vertex line and ~24 per face line.
+  const estBytes = (id) => (!measure ? null : id === 'stl' ? 84 + 50 * measure.tris : 31 * measure.verts + 24 * measure.tris);
   useEffect(() => () => files.forEach((f) => URL.revokeObjectURL(f.url)), [files]);
 
   const size = sizeSummary(design.sizeUS);
@@ -90,7 +114,8 @@ function ExportModal({ open, onClose, design, name, rows }) {
     setStep(0);
     try {
       await nextFrame();
-      const mesh = printMesh(design);
+      const mesh = meshRef.current || printMesh(design);
+      meshRef.current = null;
       setStep(1);
       await nextFrame();
       const { checks } = runChecks(design, patternById);
@@ -125,6 +150,7 @@ function ExportModal({ open, onClose, design, name, rows }) {
               onChange=${() => setFormats(formats.includes(f.id) ? formats.filter((x) => x !== f.id) : [...formats, f.id])} />
             <span class="format-name">.${f.name.toLowerCase()}</span>
             <span class="format-desc">${f.desc}</span>
+            <span class="format-size">${measure ? `≈ ${fmtBytes(estBytes(f.id))} · ${Math.round(measure.tris).toLocaleString('en-US')} triangles` : 'Measuring…'}</span>
           </label>`
         )}
       </fieldset>
@@ -189,7 +215,7 @@ export function Review() {
     ['Material', `${m.name}${m.platable && design.plating !== 'none' ? ` + ${PLATINGS[design.plating].name.toLowerCase()}` : ''}`],
     ['Process', m.process],
     ['Finish', design.finish],
-    engr && ['Inside engraving', `“${engr.text}” · ${engr.h} mm letters · ${ENGRAVE_DEPTH} mm deep`],
+    engr && ['Inside engraving', `“${engr.text}” · ${engr.font.label} · ${engr.h} mm letters · ${engr.depth} mm deep`],
     ['Weight', `≈ ${price.grams.toFixed(1)} g`],
   ].filter(Boolean);
 

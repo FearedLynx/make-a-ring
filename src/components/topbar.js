@@ -1,7 +1,26 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Logo } from './ui.js';
-import { store, go, toast, shareUrl, THEMES, setTheme, startTour, setGrid } from '../state.js';
+import { store, go, toast, shareUrl, THEMES, setTheme, startTour, setGrid, saveDesign, currentSavedEntry, hasUnsavedChanges } from '../state.js';
+
+/**
+ * Save to My designs. Editing one of your saved designs: "Save" updates it and "Save as new" forks a copy.
+ * Anything else (a template, a shared ring, a blank band) is saved as a new design, so built-ins never change.
+ */
+function SaveControl() {
+  const s = store.use((st) => st);
+  const entry = currentSavedEntry(s);
+  const dirty = hasUnsavedChanges(s);
+  return html`<div class="save-ctl" role="group" aria-label="Save design">
+    <button class=${'btn sm save-btn' + (dirty ? ' dirty' : '')} onClick=${() => saveDesign()} disabled=${!!entry && !dirty}
+      title=${entry ? (dirty ? `Update “${entry.name}” in My designs` : 'All changes saved') : 'Save to My designs'}>
+      <${Icon} name=${!dirty ? 'check' : 'save'} size=${14} /><span>${entry ? (dirty ? 'Save' : 'Saved') : 'Save'}</span>
+    </button>
+    ${entry && html`<button class="btn sm ghost save-new" onClick=${() => saveDesign({ asNew: true })} title="Save as a new design" aria-label="Save as new design">
+      <${Icon} name="plus" size=${14} /><span>As new</span>
+    </button>`}
+  </div>`;
+}
 
 const STEPS = [
   { id: 'studio', label: 'Design' },
@@ -95,6 +114,7 @@ export function TopBar() {
         <input value=${name} onInput=${(e) => store.set({ ringName: e.currentTarget.value })} maxlength="40" />
         <${Icon} name="pen" size=${13} />
       </label>
+      <${SaveControl} />
       <div class="view-prefs"><${ThemeDots} /><${GridToggle} /></div>
       <${HelpMenu} />
       <button class="btn ghost sm share-btn" onClick=${copyShareLink} aria-label="Copy share link"><${Icon} name="share" size=${15} /><span>Share</span></button>

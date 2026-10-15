@@ -3,10 +3,10 @@ import { useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Segmented } from './ui.js';
 import { PatternArt } from './pattern-art.js';
-import { TemplateCard } from './template-card.js';
+import { TemplateCard, SavedCard } from './template-card.js';
 import { TAGS, PATTERNS } from '../lib/patterns.js';
 import { TEMPLATES, hasMiddle, hasSides } from '../lib/templates.js';
-import { store, setPattern, setRails, applyTemplate, deleteCustomPattern } from '../state.js';
+import { store, setPattern, setRails, applyTemplate, deleteCustomPattern, openSavedDesign, deleteSavedDesign } from '../state.js';
 import { RailStrip } from './rail-strip.js';
 
 const zoneBadge = { middle: 'Middle', side: 'Sides', any: 'Anywhere' };
@@ -67,6 +67,8 @@ export function Library({ onDraw, onHide }) {
   const custom = store.use((s) => s.customPatterns);
   const libZone = store.use((s) => s.libZone);
   const tab = store.use((s) => s.rails.libCat) || 'patterns';
+  const saved = store.use((s) => s.savedDesigns);
+  const currentSaved = store.use((s) => s.currentSaved);
   const [q, setQ] = useState('');
   const [tag, setTag] = useState(null);
 
@@ -130,10 +132,18 @@ export function Library({ onDraw, onHide }) {
 
     ${tab === 'templates' &&
       html`<div class="rail-body" id="lib-panel" role="tabpanel" aria-labelledby="lib-tab-templates">
-          <p class="rail-note">Templates set the layout, patterns and material. Your size is kept.</p>
+          <h3 class="rail-h">My designs <span class="muted">${saved.length}</span></h3>
+          ${saved.length
+            ? html`<ul class="tpl-list">
+                ${saved.map((e) => html`<li key=${e.id}><${SavedCard} entry=${e} on=${currentSaved === e.id}
+                  onClick=${() => currentSaved !== e.id && openSavedDesign(e.id)} onDelete=${() => deleteSavedDesign(e.id)} /></li>`)}
+              </ul>`
+            : html`<p class="rail-note">Press <strong>Save</strong> in the top bar to keep this ring here. Built-in templates below never change.</p>`}
+          <h3 class="rail-h">Templates</h3>
+          <p class="rail-note">Templates set the layout, patterns and material. Your size and engraving are kept.</p>
           <ul class="tpl-list">
             ${TEMPLATES.map((t) => {
-              return html`<li><${TemplateCard} t=${t} sizeUS=${design.sizeUS} on=${design.templateId === t.id} onClick=${() => applyTemplate(t.id)} /></li>`;
+              return html`<li><${TemplateCard} t=${t} sizeUS=${design.sizeUS} on=${!currentSaved && design.templateId === t.id} onClick=${() => applyTemplate(t.id)} /></li>`;
             })}
           </ul>
         </div>`}

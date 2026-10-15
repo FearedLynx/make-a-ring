@@ -1,14 +1,40 @@
 // Printability checks and price estimate. Each check can carry a one-click fix.
 import { getMaterial, MATERIALS, PLATINGS } from './materials.js';
 import { bandMetrics, resolveZones } from './band.js';
-import { engravingLayout, getEngraving, ENGRAVE_DEPTH, STROKE_RATIO, LETTER_MIN, LETTER_MAX } from './engraving.js';
+import { engravingLayout, getEngraving, LETTER_MIN, LETTER_MAX, DEPTH_MIN } from './engraving.js';
 
 // Wall at the rim and mean wall across the band, as fractions of the thickness. Both follow the
 // profile shapes in ringGeometry.js (comfort: outer rim 0.8·t minus the 0.22·t inner curve).
 const PROFILE_EDGE = { flat: 1, domed: 0.55, comfort: 0.58, bevel: 0.65 };
 const PROFILE_FILL = { flat: 1, domed: 0.903, comfort: 0.884, bevel: 0.965 };
 
+/**
+ * Every fix is tried on a copy of the design before it is offered. If one application doesn't clear
+ * the check, the fix the check then suggests is chained (up to 3 steps); if it still doesn't clear,
+ * no button is shown, so a click on "fix" always makes the warning go away.
+ */
 export function runChecks(design, getPattern) {
+  const result = rawChecks(design, getPattern);
+  for (const c of result.checks) {
+    if (!c.fix) continue;
+    let patch = {};
+    let next = c.fix;
+    let cleared = false;
+    for (let step = 0; step < 3 && next; step++) {
+      patch = { ...patch, ...next.patch };
+      const after = rawChecks({ ...design, ...patch }, getPattern).checks.find((x) => x.title === c.title && x.level !== 'ok');
+      if (!after) {
+        cleared = true;
+        break;
+      }
+      next = after.fix;
+    }
+    c.fix = cleared ? { ...c.fix, patch } : null;
+  }
+  return result;
+}
+
+function rawChecks(design, getPattern) {
   const m = getMaterial(design.materialId);
   const zones = resolveZones(design, getPattern);
   const checks = [];
@@ -16,7 +42,7 @@ export function runChecks(design, getPattern) {
 
   // 1. Wall thickness (thinnest point of the profile, minus anything cut in from outside or inside).
   const eng = engravingLayout(design);
-  const cutIn = (design.style === 'engraved' ? design.relief : 0) + (eng ? ENGRAVE_DEPTH : 0);
+  const cutIn = (design.style === 'engraved' ? design.relief : 0) + (eng ? eng.depth : 0);
   const edge = design.thickness * PROFILE_EDGE[design.profile];
   const thinnest = Math.min(edge, design.thickness - cutIn);
   if (thinnest < m.minWall) {
@@ -81,7 +107,8 @@ export function runChecks(design, getPattern) {
   if (eng) {
     const e = getEngraving(design);
     const setSize = (mm) => ({ engraving: { ...e, size: +mm.toFixed(1) } });
-    const needH = Math.min(LETTER_MAX, Math.ceil((m.minDetail / STROKE_RATIO) * 10) / 10);
+    const needH = Math.min(LETTER_MAX, Math.ceil((m.minDetail / eng.font.stroke) * 10) / 10);
+    const setDepth = (mm) => ({ engraving: { ...e, depth: +mm.toFixed(2) } });
     const fitLen = Math.floor(((eng.maxLength / eng.lengthMM) * eng.h) * 10) / 10;
     if (eng.h > eng.maxH) {
       add('error', 'Engraving taller than the band',
@@ -96,8 +123,20 @@ export function runChecks(design, getPattern) {
       add(eng.strokeMM < m.minDetail * 0.7 ? 'error' : 'warn', 'Engraved letters too fine',
         `Letter strokes are ${eng.strokeMM.toFixed(2)} mm; ${m.process} resolves ${m.minDetail} mm, so they may fill in.`,
         fits ? { label: `Set letters to ${needH} mm`, patch: setSize(needH) } : !m.metalness ? null : { label: 'Switch to tough resin (0.3 mm detail)', patch: { materialId: 'resin' } });
+    } else if (eng.depth > design.thickness * 0.3) {
+      const safe = Math.max(DEPTH_MIN, Math.floor(design.thickness * 0.3 * 20) / 20);
+      add('error', 'Engraving cut too deep', `${eng.depth} mm into a ${design.thickness} mm band leaves a weak spot behind the letters.`,
+        { label: `Set depth to ${safe} mm`, patch: setDepth(safe) });
+    } else if (eng.depth > eng.strokeMM * 1.5) {
+      // A groove much deeper than it is wide traps casting investment and polishing compound.
+      const safe = Math.max(DEPTH_MIN, Math.floor(eng.strokeMM * 1.2 * 20) / 20);
+      add('warn', 'Engraving deeper than the letters are wide', `${eng.depth} mm deep grooves in ${eng.strokeMM.toFixed(2)} mm strokes are hard to cast and clean.`,
+        { label: `Set depth to ${safe} mm`, patch: setDepth(safe) });
+    } else if (eng.depth < 0.15 && m.metalness) {
+      add('warn', 'Shallow engraving may polish away', `${eng.depth} mm is easy to lose when the ring is polished. 0.2 mm or more keeps it crisp.`,
+        { label: 'Set depth to 0.2 mm', patch: setDepth(0.2) });
     } else {
-      add('ok', 'Inside engraving', `“${eng.text}”: ${eng.h} mm letters, ${ENGRAVE_DEPTH} mm deep, ${eng.lengthMM.toFixed(0)} mm long.`);
+      add('ok', 'Inside engraving', `“${eng.text}” in ${eng.font.label}: ${eng.h} mm letters, ${eng.depth} mm deep, ${eng.lengthMM.toFixed(0)} mm long.`);
     }
   }
 
@@ -108,8 +147,9 @@ export function runChecks(design, getPattern) {
   }
 
   // 6. Comfort & material notes.
-  if (design.width >= 8) add('info', 'Wide band fits snugly', 'Bands over 8 mm usually feel tighter. Consider going up half a size.',
-    { label: 'Go up ½ size', patch: { sizeUS: Math.min(14, design.sizeUS + 0.5) } });
+  // Remembers the width it was applied for, so the note goes away once acted on and comes back if the band changes.
+  if (design.width >= 8 && design.sizedForWidth !== design.width) add('info', 'Wide band fits snugly', 'Bands over 8 mm usually feel tighter. Consider going up half a size.',
+    { label: 'Go up ½ size', patch: { sizeUS: Math.min(14, design.sizeUS + 0.5), sizedForWidth: design.width } });
   if (m.id === 'tpu') add('info', 'Flexible fit', 'TPU stretches a little, so it forgives about half a size either way.');
   if (m.platable && design.plating !== 'none') add('info', 'Plating compensated', 'Plating adds about 0.05 mm. The inner diameter is enlarged to match.');
   if (m.platable && design.plating === 'none') add('info', 'Tip: plate it later', `Printed ${m.name} can be electroplated in gold or silver for a metal finish.`,
@@ -138,7 +178,7 @@ export function estimate(design) {
     { label: m.leadDays ? m.process : m.id === 'resin' ? 'Printing at home (resin, power, supports)' : 'Printing at home (filament, power, supports)', value: m.setup },
   ];
   if (plating) lines.push({ label: plating.name, value: plating.price });
-  if (design.finish === 'antique') lines.push({ label: 'Antique patina', value: m.metalness ? 12 : 0 });
+  if (design.finish === 'antique' && (m.metalness || plating)) lines.push({ label: 'Antique patina', value: 12 });
   const total = lines.reduce((a, l) => a + l.value, 0);
   return { grams, volume, lines, total, leadDays: m.leadDays };
 }

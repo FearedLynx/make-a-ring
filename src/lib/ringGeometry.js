@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { sampleHeight } from './heightmap.js';
 import { usToDiameter } from './sizes.js';
-import { buildEngravingMap, engravingLayout, ENGRAVE_DEPTH } from './engraving.js';
+import { buildEngravingMap, engravingLayout } from './engraving.js';
 
 function profileFns(profile, r, t) {
   const dome = (s) => Math.sqrt(Math.max(0, 1 - s * s));
@@ -35,6 +35,7 @@ export function buildRingGeometry(design, hm, detail = 1.25) {
   const sign = design.style === 'engraved' ? -1 : 1;
   const antique = design.finish === 'antique';
   const engr = buildEngravingMap(design); // text cut into the inside, or null
+  const engrDepth = engr ? engravingLayout(design).depth : 0;
 
   // Each section is a list of rows; a row is { s, rho(u) , outerSurface }.
   const outerRows = Math.round(detail * Math.min(200, Math.max(90, w / 0.045)));
@@ -81,7 +82,7 @@ export function buildRingGeometry(design, hm, detail = 1.25) {
           rho = inner(row.s);
           if (engr) {
             const h = sampleHeight(engr, u, (row.s + 1) / 2);
-            rho += ENGRAVE_DEPTH * h; // cut outwards, into the metal
+            rho += engrDepth * h; // cut outwards, into the metal
             if (antique && h > 0.05) shade = 1 - 0.55 * h;
           }
         } else {

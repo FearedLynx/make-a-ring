@@ -544,3 +544,72 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .engr-text.bad { fill: var(--error); }
 .engr-preview figcaption { font: 11px var(--mono); color: var(--ink-3); margin-top: 5px; }
 #spec-engraving .checks { margin-top: 10px; }
+
+/* Export: file size per format, measured before generating */
+.format-size { grid-column: 2 / -1; font: 11.5px var(--mono); color: var(--ink-3); }
+
+/* Crash screen from the error boundary in main.js */
+.crash { max-width: 560px; margin: 18vh auto; padding: 0 16px; display: grid; gap: 14px; }
+.crash h1 { font: 600 32px/1.1 var(--display); }
+.crash p { color: var(--ink-2); }
+.crash-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.engr-fonts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.engr-font { display: grid; justify-items: center; gap: 1px; padding: 6px 2px 5px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink-2); min-width: 0; }
+.engr-font:hover { border-color: var(--line-2); color: var(--ink); }
+.engr-font.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); color: var(--ink); }
+.engr-font-sample { line-height: 1.1; }
+.engr-font-name { font: 10px var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* My designs */
+.save-ctl { display: inline-flex; gap: 4px; align-items: center; }
+.save-btn { border: 1px solid var(--line-2); background: var(--surface); }
+.save-btn.dirty { border-color: var(--ink); }
+.save-btn:disabled { opacity: 1; color: var(--ok); border-color: transparent; background: transparent; cursor: default; }
+@media (max-width: 900px) { .save-ctl span { display: none; } }
+.saved-card-wrap { position: relative; }
+.saved-card-wrap .tpl-card { width: 100%; }
+.saved-del { position: absolute; top: 8px; left: 8px; background: var(--surface); box-shadow: var(--shadow); }
+.tpl-card.mine .tpl-blurb { color: var(--accent-ink); }
+.start-sub { font: 600 13px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); margin: 22px 0 10px; }
+
+/* Landing §4: cost wheel (one equal slice per way of making it; the selected one is the only accent) */
+.cost-wheel { display: grid; grid-template-columns: minmax(260px, 420px) minmax(0, 1fr); gap: 48px; align-items: center; }
+.cw-svg { width: 100%; height: auto; overflow: visible; }
+.cw-slice { cursor: pointer; outline: none; }
+.cw-slice path { fill: var(--surface); stroke: var(--bg); stroke-width: 2; transition: fill 0.2s; }
+.cw-slice:hover path { fill: var(--accent-soft); }
+.cw-slice.on path { fill: var(--accent); }
+.cw-slice:focus-visible path { stroke: var(--ink); stroke-width: 2.5; }
+.cw-label { font: 600 12.5px var(--font, Inter, sans-serif); fill: var(--ink); text-anchor: middle; pointer-events: none; }
+.cw-price { font: 11px var(--mono); fill: var(--ink-3); text-anchor: middle; pointer-events: none; }
+.cw-slice.on .cw-label, .cw-slice.on .cw-price { fill: var(--ink); } /* dark ink on the accent: about 5:1, white was under 4:1 */
+.cw-center-k { font: 600 11px var(--mono); fill: var(--ink-3); text-anchor: middle; text-transform: uppercase; letter-spacing: 0.08em; }
+.cw-center-v { font: 800 28px var(--display); fill: var(--ink); text-anchor: middle; }
+.cw-center-s { font: 12px var(--mono); fill: var(--ink-2); text-anchor: middle; }
+.cw-text { display: grid; gap: 12px; align-content: center; max-width: 52ch; }
+.cw-kicker { font: 12px var(--mono); color: var(--accent-ink); text-transform: uppercase; letter-spacing: 0.06em; }
+.cw-text .cw-range { font: 800 clamp(28px, 3.4vw, 44px)/1 var(--display); color: var(--ink); }
+.cw-text p:not(.cw-range) { font-size: 17px; line-height: 1.5; color: var(--ink-2); }
+.cw-text p.cw-foot { font-size: 13px; color: var(--ink-3); }
+@media (prefers-reduced-motion: reduce) { .cw-slice path { transition: none; } }
+@media (max-width: 760px) { .cost-wheel { grid-template-columns: 1fr; gap: 20px; } .cw-svg { max-width: 340px; margin: 0 auto; } }
+
+/* Size step: decorative ring mandrel (components/mandrel.js). Two columns on desktop; under the size card on
+   tablets; a compact strip on phones so the size pills stay near the top. */
+.mandrel-card { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius, 16px); display: grid; place-items: center; overflow: hidden; height: 220px; padding: 8px 0; }
+.mandrel { height: 100%; width: auto; max-width: 100%; overflow: hidden; }
+.mdl-cone { fill: color-mix(in srgb, var(--ink) 4%, var(--surface)); /* opaque, so the back of the ring hides behind it */ stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; }
+.mdl-ring { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+.mdl-ring.back { opacity: 0.55; }
+.mdl-glint { fill: none; stroke: var(--surface); stroke-width: 1.3; stroke-linecap: round; stroke-dasharray: 0.16 1.2; stroke-dashoffset: 1.25; opacity: 0; }
+.mdl-tick line { stroke: var(--ink-3); stroke-width: 1.2; transition: stroke 0.15s; }
+.mdl-tick text { font: 10px var(--mono); fill: var(--ink-3); transition: fill 0.15s; }
+.mdl-tick.on line { stroke: var(--accent); stroke-width: 2; }
+.mdl-tick.on text { fill: var(--accent-ink); font-weight: 600; }
+@media (min-width: 1024px) {
+  .size-step { max-width: 1040px; grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); column-gap: 40px; align-items: start; }
+  .size-step > :not(.mandrel-card) { grid-column: 1; }
+  .size-step > .mandrel-card { grid-column: 2; grid-row: 1 / span 7; align-self: stretch; height: auto; min-height: 420px; max-height: 620px; position: sticky; top: 16px; }
+}
+@media (max-width: 639px) { .mandrel-card { height: 160px; } }
+@media (prefers-reduced-motion: reduce) { .mdl-tick line, .mdl-tick text { transition: none; } }

@@ -133,17 +133,132 @@ export const PATTERNS = [
     filled(circle(A, 0.5, 0.5, 0.2)),
   ]),
 
-  // ── Patterns that work anywhere ────────────────────────────────
-  def('wave', 'Ocean Wave', 'any', ['organic', 'minimal'], 1.6, 0.09, () => [
+  // ── More middle patterns ───────────────────────────────────────
+  def('wave', 'Ocean Wave', 'middle', ['organic', 'minimal'], 1.6, 0.09, () => [
     line(...sample(40, (t) => [t, 0.5 + 0.3 * Math.sin(t * TAU)])),
   ]),
-  def('zigzag', 'Zigzag', 'any', ['geometric', 'bold'], 0.8, 0.09, () => [
+  def('zigzag', 'Zigzag', 'middle', ['geometric', 'bold'], 0.8, 0.09, () => [
     line([0, 0.22], [0.5, 0.78], [1, 0.22]),
   ]),
-  def('rope', 'Rope Twist', 'any', ['classic'], 0.45, 0.1, () => [
+  def('chevron', 'Double Chevron', 'middle', ['geometric', 'bold'], 0.9, 0.075, () => [
+    line([0, 0.14], [0.5, 0.52], [1, 0.14]),
+    line([0, 0.48], [0.5, 0.86], [1, 0.48]),
+  ]),
+  def('infinity', 'Infinity', 'middle', ['romantic', 'minimal'], 1.6, 0.07, () => [
+    closed(sample(64, (t) => {
+      const a = t * TAU, sn = Math.sin(a), cs = Math.cos(a), k = 1 + sn * sn;
+      return [0.5 + (0.42 * cs) / k, 0.5 + (0.9 * sn * cs) / k];
+    })),
+  ]),
+  def('compass', 'Compass Star', 'middle', ['celestial', 'classic'], 1, 0.065, (A) => [
+    closed(star(A, 0.5, 0.5, 0.42, 0.14, 8)),
+  ]),
+  def('sunburst', 'Sunburst', 'middle', ['celestial', 'bold'], 1, 0.07, (A) => [
+    closed(circle(A, 0.5, 0.5, 0.15)),
+    ...Array.from({ length: 8 }, (_, k) => {
+      const a = (k * TAU) / 8;
+      return line([0.5 + (Math.cos(a) * 0.24) / A, 0.5 + Math.sin(a) * 0.24], [0.5 + (Math.cos(a) * 0.4) / A, 0.5 + Math.sin(a) * 0.4]);
+    }),
+  ]),
+  def('celtic-knot', 'Celtic Knot', 'middle', ['celtic', 'classic'], 1.1, 0.065, (A) => [
+    closed(ellipse(A, 0.5, 0.5, 0.4, 0.16, 0.785)),
+    closed(ellipse(A, 0.5, 0.5, 0.4, 0.16, -0.785)),
+    closed(circle(A, 0.5, 0.5, 0.12)),
+  ]),
+  def('trefoil', 'Trefoil', 'middle', ['celtic', 'classic'], 1, 0.065, (A) => [
+    ...[-90, 30, 150].map((deg) => {
+      const a = (deg * Math.PI) / 180;
+      return closed(circle(A, 0.5 + (Math.cos(a) * 0.16) / A, 0.53 + Math.sin(a) * 0.16, 0.17));
+    }),
+  ]),
+  def('olive', 'Olive Branch', 'middle', ['floral', 'organic'], 1.4, 0.06, (A) => [
+    line(...sample(32, (t) => [t, 0.5 + 0.06 * Math.sin(t * TAU)])),
+    closed(ellipse(A, 0.18, 0.36, 0.14, 0.055, -0.6)),
+    closed(ellipse(A, 0.42, 0.64, 0.14, 0.055, 0.6)),
+    closed(ellipse(A, 0.66, 0.36, 0.14, 0.055, -0.6)),
+    closed(ellipse(A, 0.9, 0.64, 0.14, 0.055, 0.6)),
+  ]),
+  def('tulip', 'Tulip', 'middle', ['floral', 'romantic'], 0.9, 0.065, (A) => [
+    line(...bezier([0.32, 0.2], [0.28, 0.66], [0.72, 0.66], [0.68, 0.2])),
+    line([0.32, 0.2], [0.41, 0.34], [0.5, 0.17], [0.59, 0.34], [0.68, 0.2]),
+    line([0.5, 0.54], [0.5, 0.9]),
+    closed(ellipse(A, 0.63, 0.76, 0.12, 0.05, -0.6)),
+  ]),
+  def('honeycomb', 'Honeycomb', 'middle', ['geometric'], 1.15, 0.07, (A) => {
+    const hex = Array.from({ length: 6 }, (_, k) => [0.5 + (Math.cos((k * TAU) / 6) * 0.3) / A, 0.5 + Math.sin((k * TAU) / 6) * 0.3]);
+    return [closed(hex), line([0, 0.5], hex[3]), line(hex[0], [1, 0.5])];
+  }),
+  def('tide', 'Tide', 'middle', ['organic', 'minimal'], 1.4, 0.07, () => [
+    line(...sample(40, (t) => [t, 0.33 + 0.14 * Math.sin(t * TAU)])),
+    line(...sample(40, (t) => [t, 0.67 + 0.14 * Math.sin(t * TAU + Math.PI)])),
+  ]),
+  def('pinstripe', 'Pinstripe', 'middle', ['minimal'], 0.3, 0.1, () => [line([0.5, 0.12], [0.5, 0.88])]),
+  def('crosshatch', 'Crosshatch', 'middle', ['geometric', 'classic'], 0.9, 0.07, () => [
+    line([0, 0.12], [1, 0.88]),
+    line([0, 0.88], [1, 0.12]),
+  ]),
+  def('starfield', 'Starfield', 'middle', ['celestial', 'minimal'], 1.2, 0.06, (A) => [
+    filled(circle(A, 0.2, 0.7, 0.08)),
+    filled(circle(A, 0.78, 0.3, 0.07)),
+    closed(star(A, 0.46, 0.32, 0.16, 0.065)),
+    filled(circle(A, 0.66, 0.74, 0.06)),
+  ]),
+
+  // ── More side patterns (y=0 is the ring edge) ──────────────────
+  def('rope', 'Rope Twist', 'side', ['classic'], 0.45, 0.1, () => [
     line(...bezier([0.05, 0.92], [0.2, 0.4], [0.8, 0.6], [0.95, 0.08])),
   ]),
-  def('beads', 'Beads', 'any', ['minimal'], 0.55, 0.1, (A) => [filled(circle(A, 0.5, 0.5, 0.22))]),
+  def('beads', 'Beads', 'side', ['minimal'], 0.55, 0.1, (A) => [filled(circle(A, 0.5, 0.5, 0.22))]),
+  def('braid', 'Braid', 'side', ['celtic', 'classic'], 1.2, 0.08, () => [
+    line(...sample(40, (t) => [t, 0.5 + 0.28 * Math.sin(t * TAU)])),
+    line(...sample(40, (t) => [t, 0.5 - 0.28 * Math.sin(t * TAU)])),
+  ]),
+  def('dentil', 'Dentil', 'side', ['classic', 'geometric'], 0.55, 0.1, () => [
+    line([0, 0.75], [0.25, 0.75], [0.25, 0.3], [0.75, 0.3], [0.75, 0.75], [1, 0.75]),
+  ]),
+  def('beaded-rail', 'Beaded Rail', 'side', ['classic'], 0.6, 0.09, (A) => [
+    line([0, 0.22], [1, 0.22]),
+    filled(circle(A, 0.5, 0.64, 0.17)),
+  ]),
+  def('ivy', 'Ivy', 'side', ['floral', 'organic'], 1.3, 0.07, (A) => [
+    line(...sample(32, (t) => [t, 0.5 + 0.18 * Math.sin(t * TAU)])),
+    closed(ellipse(A, 0.25, 0.22, 0.16, 0.07, -0.4)),
+    closed(ellipse(A, 0.75, 0.78, 0.16, 0.07, -0.4)),
+  ]),
+  def('star-row', 'Star Row', 'side', ['celestial'], 0.8, 0.085, (A) => [closed(star(A, 0.5, 0.52, 0.32, 0.13))]),
+  def('heart-row', 'Heart Row', 'side', ['romantic'], 0.8, 0.085, (A) => [closed(heart(A, 0.5, 0.5, 0.3))]),
+  def('battlement', 'Battlement', 'side', ['bold', 'geometric'], 0.9, 0.1, () => [
+    line([0, 0.85], [0.3, 0.85], [0.3, 0.18], [0.7, 0.18], [0.7, 0.85], [1, 0.85]),
+  ]),
+  def('ladder', 'Ladder', 'side', ['minimal'], 0.6, 0.1, () => [
+    line([0, 0.2], [1, 0.2]),
+    line([0, 0.8], [1, 0.8]),
+    line([0.5, 0.2], [0.5, 0.8]),
+  ]),
+  def('loops', 'Loop Line', 'side', ['organic'], 1, 0.08, () => [
+    line(...sample(60, (t) => [t + 0.2 * Math.sin(t * TAU), 0.5 + 0.28 * Math.cos(t * TAU)])),
+  ]),
+  def('fan-arcs', 'Fan Arcs', 'side', ['classic', 'organic'], 1.1, 0.08, (A) => [
+    line(...sample(28, (t) => [0.5 + (Math.cos(Math.PI * t) * 0.62) / A, Math.sin(Math.PI * t) * 0.62])),
+    line(...sample(20, (t) => [0.5 + (Math.cos(Math.PI * t) * 0.34) / A, Math.sin(Math.PI * t) * 0.34])),
+  ]),
+  def('stitch', 'Stitch', 'side', ['minimal'], 0.6, 0.11, () => [line([0.25, 0.3], [0.75, 0.7])]),
+  def('fern', 'Fern', 'side', ['organic', 'floral'], 0.45, 0.08, () => [
+    line([0, 0.5], [1, 0.5]),
+    line([0.15, 0.18], [0.6, 0.5], [0.15, 0.82]),
+  ]),
+  def('diamond-chain', 'Diamond Chain', 'side', ['geometric', 'classic'], 1, 0.08, () => [
+    line([0, 0.5], [0.22, 0.5]),
+    closed([[0.22, 0.5], [0.5, 0.2], [0.78, 0.5], [0.5, 0.8]]),
+    line([0.78, 0.5], [1, 0.5]),
+  ]),
+  def('ripple', 'Ripple', 'side', ['organic', 'minimal'], 0.7, 0.09, () => [
+    line(...sample(28, (t) => [t, 0.5 + 0.16 * Math.sin(t * TAU)])),
+  ]),
+  def('chainlink', 'Chainlink', 'side', ['bold', 'classic'], 1.2, 0.08, (A) => [
+    closed(ellipse(A, 0.28, 0.5, 0.36, 0.24)),
+    closed(ellipse(A, 0.78, 0.5, 0.36, 0.24)),
+  ]),
 ];
 
 export const TAGS = ['classic', 'geometric', 'floral', 'organic', 'minimal', 'bold', 'celtic', 'celestial', 'romantic'];

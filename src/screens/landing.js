@@ -12,6 +12,7 @@ import { PATTERNS } from '../lib/patterns.js';
 import { sizeSummary } from '../lib/sizes.js';
 import { estimate, money } from '../lib/checks.js';
 import { go, patternById } from '../state.js';
+import { CostWheel } from '../components/cost-wheel.js';
 
 const SHOWCASE = ['heritage', 'botanica', 'nordic', 'everwrap', 'twin-rails', 'solitaire'];
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -41,6 +42,17 @@ const scrollTo = (id) => (e) => {
   document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth' });
 };
 
+const COST_ROUTES = [
+  { id: 'home', short: 'Home print', label: 'Printed at home', ids: ['pla', 'resin', 'tpu'],
+    text: 'Print it in PLA, resin or flexible TPU on your own printer for the cost of a little material. Electroplate it later in gold or silver if you want a metal look.' },
+  { id: 'metal', short: 'Metal print', label: 'Metal 3D printed', ids: ['steel', 'titanium'],
+    text: 'Send the same file to a metal 3D-printing service for stainless steel or titanium. Light, tough and skin-friendly; a service typically takes one to two weeks.' },
+  { id: 'cast', short: 'Silver · brass', label: 'Cast in silver or brass', ids: ['silver', 'brass'],
+    text: 'A casting house prints your file in wax and casts it in sterling silver or brass, the classic lost-wax route. It typically takes about a week.' },
+  { id: 'gold', short: '14k gold', label: 'Cast in 14k gold', ids: ['gold-yellow', 'gold-rose', 'gold-white'],
+    text: 'The same wax-and-cast route in 14k yellow, rose or white gold. Most of the price is the gold itself, so a slimmer band costs noticeably less.' },
+];
+
 export function Landing() {
   const [i, setI] = useState(0);
   const [holdUntil, setHoldUntil] = useState(0);
@@ -63,17 +75,12 @@ export function Landing() {
   const mat = getMaterial(design.materialId);
   const price = estimate(design).total;
   // Price range per way of making it, all for the same Heritage band, from the same estimate the studio shows.
-  const costRows = [
-    ['Printed at home', ['pla', 'resin', 'tpu']],
-    ['Metal 3D printed', ['steel', 'titanium']],
-    ['Cast in silver or brass', ['silver', 'brass']],
-    ['Cast in 14k gold', ['gold-yellow', 'gold-rose', 'gold-white']],
-  ].map(([label, ids]) => {
-    const totals = ids.map((id) => estimate(designFromTemplate('heritage', { materialId: id })).total);
-    return { label, lo: Math.min(...totals), hi: Math.max(...totals) };
+  const costRows = COST_ROUTES.map((r) => {
+    const totals = r.ids.map((id) => estimate(designFromTemplate('heritage', { materialId: id })).total);
+    return { ...r, lo: Math.min(...totals), hi: Math.max(...totals) };
   });
-  const costMax = Math.ceil(Math.max(...costRows.map((r) => r.hi)) / 250) * 250;
-  const bandDesign = designFromTemplate('heritage', { sizeUS: 9 });
+  // The unrolled band under the hero follows the ring on screen.
+  const bandDesign = designFromTemplate(tpl.id, { sizeUS: 9 });
 
   return html`<div class="lp">
     <header class="lp-head">
@@ -140,7 +147,7 @@ export function Landing() {
         <div class="lp-ribbon-track">
           ${[0, 1].map(() => html`<div class="lp-ribbon-seg"><${BandMap} design=${bandDesign} getPattern=${patternById} /></div>`)}
         </div>
-        <span class="lp-ribbon-label">Unrolled band · Heritage template</span>
+        <span class="lp-ribbon-label">Unrolled band · ${tpl.name} template</span>
       </div>
 
       <section class="lp-sec" id="process">
@@ -190,15 +197,7 @@ export function Landing() {
 
       <section class="lp-sec" id="cost">
         <${SectionBar} n="4" title="Cost" meta="estimate for the Heritage band, 7 mm, US 7" />
-        <div class="lp-cost">
-          <div class="lp-bars" role="img" aria-label=${costRows.map((r) => `${r.label}: ${money(r.lo)} to ${money(r.hi)}`).join('. ')}>
-            ${costRows.map((r) => html`<div class="lp-bar-row accent"><span>${r.label}</span>
-              <div class="lp-bar-track"><i style=${`left:${(r.lo / costMax) * 100}%;width:${Math.max(1.2, ((r.hi - r.lo) / costMax) * 100)}%`}></i></div>
-              <b>${money(r.lo)}–${money(r.hi)}</b></div>`)}
-            <div class="lp-axis">${[0, 0.25, 0.5, 0.75, 1].map((f) => html`<span>${f ? money(f * costMax) : "$0"}</span>`)}</div>
-          </div>
-          <p class="lp-note">Print it in PLA or resin at home and electroplate it later, or send the same file to a casting house for silver or gold. Prices are estimates for the metal and making only; a jeweller's quote for a custom design adds design and labour on top.</p>
-        </div>
+        <${CostWheel} routes=${costRows} />
       </section>
 
       <a class="lp-mega" href="#/start" onClick=${(e) => (e.preventDefault(), go('start'))}>

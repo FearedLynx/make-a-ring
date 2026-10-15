@@ -67,3 +67,16 @@
   .stamp-grid { grid-template-columns: repeat(4, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .ed-seam circle { animation: none; } }
+
+/* Below desktop the editor scrolls as one column; the canvas keeps a usable drawing height
+   instead of being squeezed into whatever height is left. */
+@media (max-width: 1180px) {
+  .editor-modal .modal-body { display: block; }
+  .editor-modal .ed-body { flex: none; }
+  .editor-modal .ed-canvas-wrap { overflow: visible; }
+  .editor-modal .ed-canvas { flex: none; height: min(62vh, 520px); }
+}
+@media (max-width: 760px) {
+  .editor-modal .ed-canvas-wrap { padding: 10px; }
+  .editor-modal .ed-canvas { height: min(58vh, 440px); }
+}

@@ -7,51 +7,110 @@ import { BandMap } from '../components/pattern-art.js';
 import { ChecksList } from '../components/specs.js';
 import { LAYOUTS } from '../lib/templates.js';
 import { getMaterial, PLATINGS } from '../lib/materials.js';
-import { sizeSummary } from '../lib/sizes.js';
+import { sizeSummary, usToDiameter, diameterToUs } from '../lib/sizes.js';
+import { buildHeightmap } from '../lib/heightmap.js';
+import { buildRingGeometry } from '../lib/ringGeometry.js';
+import * as THREE from 'three';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
 import { store, go, patternById } from '../state.js';
 
 const FORMATS = [
-  { id: 'stl', name: 'STL', desc: 'Works with every slicer and casting house.', mb: 12.6 },
-  { id: '3mf', name: '3MF', desc: 'Keeps units and material. Best for modern slicers.', mb: 3.4 },
-  { id: 'obj', name: 'OBJ', desc: 'For jewellers who want to keep editing in CAD.', mb: 17.9 },
+  { id: 'stl', name: 'STL', desc: 'Works with every slicer and casting house.' },
+  { id: 'obj', name: 'OBJ', desc: 'For jewellers who want to keep editing in CAD.' },
 ];
 
-const STEPS = [
+const steps = (plated) => [
   'Building a watertight mesh',
   'Checking wall thickness and detail size',
-  'Compensating inner diameter',
+  plated ? 'Compensating inner diameter for plating' : 'Setting the inner diameter',
   'Packaging files and maker brief',
 ];
 
+const PLATING_MM = 0.05; // plating thickness the checker promises to compensate for
 const slug = (s) => (s || 'ring').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'ring';
+const nextFrame = () => new Promise((r) => setTimeout(r, 30)); // lets the progress list repaint between heavy steps
+const fmtBytes = (b) => (b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1e3))} KB`);
 
-function ExportModal({ open, onClose, design, name }) {
-  const [formats, setFormats] = useState(['stl', '3mf']);
+const isPlated = (design) => getMaterial(design.materialId).platable && design.plating !== 'none';
+
+/** Welded, watertight ring mesh in millimetres, the same surface the 3D preview shows. */
+function printMesh(design) {
+  // Plating grows every surface; open the inside by the same amount so the plated ring still fits.
+  const d = isPlated(design)
+    ? { ...design, sizeUS: diameterToUs(usToDiameter(design.sizeUS) + 2 * PLATING_MM), thickness: design.thickness - PLATING_MM }
+    : design;
+  const geom = buildRingGeometry(d, buildHeightmap(d, patternById));
+  geom.deleteAttribute('color');
+  geom.deleteAttribute('normal');
+  const welded = mergeVertices(geom);
+  geom.dispose();
+  return new THREE.Mesh(welded);
+}
+
+function makerBrief(name, rows, checks) {
+  return [
+    `Make-a-Ring maker brief: ${name || 'Untitled ring'}`,
+    '',
+    ...rows.map(([k, v]) => `${k.padEnd(16)}${v}`),
+    '',
+    'Printability',
+    ...checks.map((c) => `[${c.level}] ${c.title}: ${c.detail}`),
+    '',
+    'Units are millimetres. The ring axis is Y. Inner diameter in the file already includes any plating compensation.',
+  ].join('\n');
+}
+
+function ExportModal({ open, onClose, design, name, rows }) {
+  const [formats, setFormats] = useState(['stl']);
   const [brief, setBrief] = useState(true);
-  const [phase, setPhase] = useState('choose'); // choose | working | done
+  const [phase, setPhase] = useState('choose'); // choose | working | done | failed
   const [step, setStep] = useState(0);
-  const timers = useRef([]);
+  const [files, setFiles] = useState([]);
 
   useEffect(() => {
     if (open) {
       setPhase('choose');
       setStep(0);
     }
-    return () => timers.current.forEach(clearTimeout);
   }, [open]);
+  useEffect(() => () => files.forEach((f) => URL.revokeObjectURL(f.url)), [files]);
 
-  const start = () => {
-    setPhase('working');
-    STEPS.forEach((_, i) => timers.current.push(setTimeout(() => setStep(i + 1), 650 * (i + 1))));
-    timers.current.push(setTimeout(() => setPhase('done'), 650 * STEPS.length + 350));
-  };
   const size = sizeSummary(design.sizeUS);
   const base = `${slug(name)}_US${size.us.replace('½', '.5').replace('¼', '.25').replace('¾', '.75')}_${design.materialId}`;
-  const files = [
-    ...FORMATS.filter((f) => formats.includes(f.id)).map((f) => ({ name: `${base}.${f.id}`, size: `${(f.mb * (design.width / 7)).toFixed(1)} MB` })),
-    ...(brief ? [{ name: `${base}_maker-brief.pdf`, size: '240 KB' }] : []),
-  ];
+  const count = formats.length + (brief ? 1 : 0);
+  const STEPS = steps(isPlated(design));
+
+  const start = async () => {
+    setPhase('working');
+    setStep(0);
+    try {
+      await nextFrame();
+      const mesh = printMesh(design);
+      setStep(1);
+      await nextFrame();
+      const { checks } = runChecks(design, patternById);
+      setStep(2);
+      await nextFrame();
+      setStep(3);
+      await nextFrame();
+      const out = [];
+      if (formats.includes('stl')) out.push([`${base}.stl`, new Blob([new STLExporter().parse(mesh, { binary: true })], { type: 'model/stl' })]);
+      if (formats.includes('obj')) out.push([`${base}.obj`, new Blob([new OBJExporter().parse(mesh)], { type: 'model/obj' })]);
+      if (brief) out.push([`${base}_maker-brief.txt`, new Blob([makerBrief(name, rows, checks)], { type: 'text/plain' })]);
+      mesh.geometry.dispose();
+      setStep(STEPS.length);
+      const made = out.map(([fname, blob]) => ({ name: fname, size: fmtBytes(blob.size), url: URL.createObjectURL(blob) }));
+      setFiles(made);
+      setPhase('done');
+      if (made.length === 1) save(made[0]);
+    } catch (err) {
+      console.error(err);
+      setPhase('failed');
+    }
+  };
 
   return html`<${Modal} open=${open} onClose=${onClose} title="Download print files">
     ${phase === 'choose' &&
@@ -68,8 +127,8 @@ function ExportModal({ open, onClose, design, name }) {
         )}
       </fieldset>
       <label class="check-row"><input type="checkbox" checked=${brief} onChange=${() => setBrief(!brief)} />
-        Include a maker brief (PDF): dimensions, material and the printability report</label>
-      <button class="btn primary full" disabled=${!formats.length} onClick=${start}><${Icon} name="download" size=${16} /> Generate ${files.length} file${files.length > 1 ? 's' : ''}</button>
+        Include a maker brief: dimensions, material and the printability report</label>
+      <button class="btn primary full" disabled=${!formats.length} onClick=${start}><${Icon} name="download" size=${16} /> Generate ${count} file${count > 1 ? 's' : ''}</button>
     </div>`}
     ${phase !== 'choose' &&
     html`<div class="export">
@@ -80,14 +139,26 @@ function ExportModal({ open, onClose, design, name }) {
           </li>`
         )}
       </ol>
+      ${phase === 'failed' &&
+      html`<p class="error-note" role="alert"><${Icon} name="alert" size=${14} /> The files could not be built on this device. Try again, or use a computer.</p>
+        <button class="btn primary full" onClick=${start}>Try again</button>`}
       ${phase === 'done' &&
-      html`<ul class="file-list">
-          ${files.map((f) => html`<li><${Icon} name="file" size=${16} /><span>${f.name}</span><span class="muted">${f.size}</span></li>`)}
+      html`<ul class="file-list" aria-label="Your files">
+          ${files.map((f) => html`<li><a href=${f.url} download=${f.name}>
+            <${Icon} name="file" size=${16} /><span>${f.name}</span><span class="muted">${f.size}</span><${Icon} name="download" size=${16} />
+          </a></li>`)}
         </ul>
-        <p class="proto-note"><${Icon} name="info" size=${14} /> Prototype: file generation is simulated. The real product would download these files here.</p>
+        ${files.length > 1 && html`<button class="btn ghost full" onClick=${() => files.forEach((f, i) => setTimeout(() => save(f), i * 400))}><${Icon} name="download" size=${16} /> Download all</button>`}
         <button class="btn primary full" onClick=${onClose}>Done</button>`}
     </div>`}
   <//>`;
+}
+
+function save(f) {
+  const a = document.createElement('a');
+  a.href = f.url;
+  a.download = f.name;
+  a.click();
 }
 
 export function Review() {
@@ -165,7 +236,7 @@ export function Review() {
 
         <div class="card export-card">
           <h2>Print-ready files</h2>
-          <p class="muted">STL, 3MF or OBJ, already checked against ${m.name} limits.</p>
+          <p class="muted">STL or OBJ in millimetres, already checked against ${m.name} limits.</p>
           <button class="btn primary full" disabled=${errors > 0} onClick=${() => store.set({ exportOpen: true })}>
             <${Icon} name="download" size=${16} /> Download print files
           </button>
@@ -179,6 +250,6 @@ export function Review() {
         <${StepNav} back=${{ to: 'tryon', label: 'Try on' }} />
       </section>
     </main>
-    <${ExportModal} open=${exportOpen} onClose=${() => store.set({ exportOpen: false })} design=${design} name=${name} />
+    <${ExportModal} open=${exportOpen} onClose=${() => store.set({ exportOpen: false })} design=${design} name=${name} rows=${rows} />
   </div>`;
 }

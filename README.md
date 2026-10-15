@@ -4,7 +4,7 @@ Design a custom, print-ready ring: scroll through patterns like a game character
 draw your own, try it on, and download files for printing or casting.
 
 Built for **HyperBloom October 2026 (UI/UX & Web Design)**. Frontend-only prototype:
-prices are estimates and the file download is simulated.
+prices are estimates. The STL and OBJ downloads are real, generated in the browser.
 
 ## Run it
 
@@ -26,7 +26,7 @@ Upload the folder as a static site (Deployxa, GitHub Pages, Netlify, Vercel). Th
 2. **Start** (`#/start`): pick a template (3D thumbnails), then your size.
 3. **Studio** (`#/studio`): the cross carousel. ↑/↓ changes the middle, ←/→ changes the sides, the ring updates live. Library search on the left; size, layout, band, relief, material and printability checks on the right. Use **Draw your own** to open the pattern editor.
 4. **Try on** (`#/tryon`): illustrated hand (5 skin tones, 2 shapes, 4 fingers, close-up) or your own photo.
-5. **Review** (`#/review`): spec sheet, checks, price breakdown, mocked STL/3MF/OBJ export, share link.
+5. **Review** (`#/review`): spec sheet, checks, price breakdown, real STL/OBJ export (built in the browser) with a maker brief, share link.
 
 ## Look & feel
 

@@ -64,7 +64,8 @@ export function buildHeightmap(design, getPattern) {
   const img = ctx.getImageData(0, 0, W, H).data;
   let data = new Float32Array(W * H);
   for (let i = 0; i < W * H; i++) data[i] = img[i * 4] / 255;
-  data = blur(data, W, H);
+  // Two box passes (close to a Gaussian) give the relief soft edges a few mesh vertices wide, so diagonal lines do not stair-step.
+  data = blur(blur(data, W, H, 2), W, H, 2);
   return { data, W, H, ranges };
 }
 

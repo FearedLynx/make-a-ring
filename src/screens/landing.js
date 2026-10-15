@@ -170,9 +170,9 @@ export function Landing() {
               ${MATERIALS.map((m) => html`<tr>
                 <th scope="row"><span class="swatch-dot" style=${`--c:${m.color}; --m:${m.metalness}`}></span>${m.name}</th>
                 <td>${m.process}</td>
-                <td class="num">${m.minWall.toFixed(1)} mm</td>
-                <td class="num">${m.minDetail.toFixed(2)} mm</td>
-                <td class="num">${money(estimate(designFromTemplate('blank', { materialId: m.id })).total)}</td>
+                <td class="num" data-label="Min wall">${m.minWall.toFixed(1)} mm</td>
+                <td class="num" data-label="Min line">${m.minDetail.toFixed(2)} mm</td>
+                <td class="num" data-label="From">${money(estimate(designFromTemplate('blank', { materialId: m.id })).total)}</td>
               </tr>`)}
             </tbody>
           </table>

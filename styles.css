@@ -110,6 +110,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+body { overflow-x: clip; } /* safety net: the page itself never scrolls sideways */
 body {
   background: var(--bg);
   color: var(--ink);
@@ -329,7 +330,7 @@ label.btn { cursor: pointer; }
 .cross-center { grid-area: center; position: relative; min-height: 0; }
 .cross-center .ring-view { position: absolute; inset: 0; cursor: grab; }
 .cross-center .ring-view:active { cursor: grabbing; }
-.cross-top, .cross-bottom, .cross-left, .cross-right { touch-action: none; }
+.cross-top, .cross-bottom, .cross-left, .cross-right { touch-action: pan-y; }
 
 .stage-card {
   border: 1px solid rgba(255, 255, 255, 0.7); background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(6px);

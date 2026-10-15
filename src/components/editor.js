@@ -380,6 +380,8 @@ export function PatternEditor() {
     if (keep.length !== strokes.length) commit(keep), setSel(new Set());
   };
   const onWheel = (e) => {
+    // Nothing to pan at the default zoom, so let the wheel scroll the page.
+    if (view.z <= 1 && !e.ctrlKey && !e.metaKey && !(tool === 'stamp' && e.altKey)) return;
     e.preventDefault();
     if (tool === 'stamp' && e.altKey) return setStamp((s) => ({ ...s, angle: (s.angle + (e.deltaY > 0 ? 15 : -15) + 360) % 360 }));
     if (e.ctrlKey || e.metaKey) {

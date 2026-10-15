@@ -305,6 +305,17 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .lp-table thead th:nth-child(n + 3) { text-align: right; }
 .lp-table tbody tr:hover { background: var(--surface); }
 .lp-table .swatch-dot { display: inline-block; vertical-align: -6px; margin-right: 12px; }
+/* Phones: each material becomes a card-like row instead of a table that scrolls sideways. */
+@media (max-width: 760px) {
+  .lp-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .lp-table tbody { display: block; }
+  .lp-table tr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px; padding: 14px 0; border-bottom: 1px solid var(--line-2); }
+  .lp-table th, .lp-table td { padding: 0; border: 0; white-space: normal; }
+  .lp-table tbody th, .lp-table td:not(.num) { grid-column: 1 / -1; }
+  .lp-table td:not(.num) { color: var(--ink-3); }
+  .lp-table .num { text-align: left; }
+  .lp-table .num::before { content: attr(data-label); display: block; font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
+}
 .lp-cost { display: grid; grid-template-columns: 1.6fr 1fr; gap: 48px; align-items: end; }
 .lp-bars { display: grid; gap: 14px; }
 .lp-bar-row { display: grid; grid-template-columns: 190px 1fr 150px; gap: 14px; align-items: center; font-size: 14px; }

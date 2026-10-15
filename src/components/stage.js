@@ -28,7 +28,10 @@ function useSwipe(onStep) {
 function useWheelStep(onStep) {
   const last = useRef(0);
   return (e) => {
-    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    // Sideways swipes are free; a vertical wheel needs Ctrl so it keeps scrolling the page.
+    const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+    if (!sideways && !e.ctrlKey && !e.metaKey) return;
+    const d = sideways ? e.deltaX : e.deltaY;
     if (Math.abs(d) < 4) return;
     e.preventDefault();
     const now = performance.now();
@@ -67,7 +70,7 @@ export function Stage({ onDraw }) {
       showTip(
         'carousel-keys',
         isTouch()
-          ? 'Tip: swipe the pattern cards instead of tapping them. It is quicker.'
+          ? 'Tip: swipe the side cards sideways instead of tapping them. It is quicker.'
           : 'Tip: use the arrow keys. ↑ ↓ change the middle, ← → change the sides. Press ? to see every shortcut.'
       );
     }
@@ -125,7 +128,7 @@ export function Stage({ onDraw }) {
   return html`<section class="stage" aria-label="Ring designer stage">
     <p class="stage-hint" id="stage-help">
       ${isTouch()
-        ? html`<span>swipe cards to change patterns</span><span>drag ring to rotate</span>`
+        ? html`<span>tap cards to change patterns</span><span>drag ring to rotate</span>`
         : html`<span><kbd>↑</kbd><kbd>↓</kbd> middle</span><span><kbd>←</kbd><kbd>→</kbd> sides</span><span>drag to rotate</span>`}
     </p>
     <span class="reg tl" aria-hidden="true"></span><span class="reg tr" aria-hidden="true"></span>

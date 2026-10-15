@@ -4,8 +4,6 @@ import * as THREE from 'three';
 import { sampleHeight } from './heightmap.js';
 import { usToDiameter } from './sizes.js';
 
-const NU = 1080; // segments around the ring (~0.06 mm each)
-
 function profileFns(profile, r, t) {
   const dome = (s) => Math.sqrt(Math.max(0, 1 - s * s));
   switch (profile) {
@@ -25,7 +23,9 @@ const smooth = (e0, e1, x) => {
   return t * t * (3 - 2 * t);
 };
 
-export function buildRingGeometry(design, hm) {
+/** `detail` scales the mesh density: 1.25 for the live preview, higher for exported files. */
+export function buildRingGeometry(design, hm, detail = 1.25) {
+  const NU = Math.round(1080 * detail); // segments around the ring (~0.05 mm each at detail 1)
   const r = usToDiameter(design.sizeUS) / 2;
   const t = design.thickness;
   const w = design.width;
@@ -35,7 +35,7 @@ export function buildRingGeometry(design, hm) {
   const antique = design.finish === 'antique';
 
   // Each section is a list of rows; a row is { s, rho(u) , outerSurface }.
-  const outerRows = Math.round(Math.min(200, Math.max(90, w / 0.045)));
+  const outerRows = Math.round(detail * Math.min(200, Math.max(90, w / 0.045)));
   const sections = [
     { rows: Array.from({ length: outerRows + 1 }, (_, j) => ({ s: -1 + (2 * j) / outerRows, kind: 'outer' })) },
     { rows: [0, 0.5, 1].map((k) => ({ s: 1, kind: 'wall', k, from: 'outer' })) },
@@ -43,10 +43,11 @@ export function buildRingGeometry(design, hm) {
     { rows: [0, 0.5, 1].map((k) => ({ s: -1, kind: 'wall', k, from: 'inner' })) },
   ];
 
-  const positions = [];
-  const colors = [];
-  const indices = [];
-  let base = 0;
+  const nRows = sections.reduce((n, sec) => n + sec.rows.length, 0);
+  const positions = new Float32Array(NU * nRows * 3);
+  const colors = new Float32Array(NU * nRows * 3);
+  const indices = new Uint32Array(NU * (nRows - sections.length) * 6);
+  let base = 0, p = 0, q = 0;
 
   for (const sec of sections) {
     const rows = sec.rows.length;
@@ -69,8 +70,9 @@ export function buildRingGeometry(design, hm) {
           const a = outer(row.s), b = inner(row.s);
           rho = row.from === 'outer' ? a + (b - a) * row.k : b + (a - b) * row.k;
         }
-        positions.push(rho * c, (row.s * w) / 2, rho * sn);
-        colors.push(shade, shade, shade);
+        positions.set([rho * c, (row.s * w) / 2, rho * sn], p);
+        colors.fill(shade, p, p + 3);
+        p += 3;
       }
     }
     for (let i = 0; i < NU; i++) {
@@ -80,16 +82,17 @@ export function buildRingGeometry(design, hm) {
         const b = base + i2 * rows + j;
         const cc = base + i2 * rows + j + 1;
         const d = base + i * rows + j + 1;
-        indices.push(a, d, cc, a, cc, b);
+        indices.set([a, d, cc, a, cc, b], q);
+        q += 6;
       }
     }
     base += NU * rows;
   }
 
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  g.setIndex(indices);
+  g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  g.setIndex(new THREE.BufferAttribute(indices, 1));
   g.computeVertexNormals();
   g.computeBoundingSphere();
   return g;

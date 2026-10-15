@@ -17,21 +17,21 @@ export const TOURS = {
     {
       target: '.cross-center', anim: 'rotate', detect: 'drag',
       title: 'This is your ring',
-      body: () => (touch() ? 'Drag to rotate it and pinch to zoom. Try it now.' : html`Drag to rotate it, scroll to zoom. ${K('R')} resets the view. Try it now.`),
+      body: () => (touch() ? 'Drag sideways to rotate it and pinch to zoom. Try it now.' : html`Drag to rotate it, ${K('Ctrl')} + scroll to zoom. ${K('R')} resets the view. Try it now.`),
       done: 'Nice. Every change you make shows up here instantly.',
     },
     {
       target: '.cross-top', anim: 'vertical', allowKeys: ['ArrowUp', 'ArrowDown'],
       watch: changed((s) => s.design.patterns.middle),
       title: 'Middle patterns scroll up and down',
-      body: () => (touch() ? 'Tap or swipe the card above the ring.' : html`Click the card above the ring, or press ${K('↑')} ${K('↓')}.`),
+      body: () => (touch() ? 'Tap the card above the ring.' : html`Click the card above the ring, or press ${K('↑')} ${K('↓')}.`),
       done: 'That is the middle zone changing.',
     },
     {
       target: '.cross-right', anim: 'horizontal', allowKeys: ['ArrowLeft', 'ArrowRight'],
       watch: changed((s) => [s.design.patterns.sideL, s.design.patterns.sideR]),
       title: 'Side patterns scroll left and right',
-      body: () => (touch() ? 'Tap or swipe a side card.' : html`Click a side card, or press ${K('←')} ${K('→')}.`),
+      body: () => (touch() ? 'Tap a side card, or swipe it sideways.' : html`Click a side card, or press ${K('←')} ${K('→')}.`),
       done: 'Both sides changed together.',
     },
     {
@@ -235,7 +235,7 @@ export function Tour() {
         if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 24) complete();
         start = null;
       };
-      const wheel = (e) => inside(spotRef.current, e.clientX, e.clientY) && complete();
+      const wheel = (e) => (e.ctrlKey || e.metaKey) && inside(spotRef.current, e.clientX, e.clientY) && complete();
       addEventListener('pointerdown', down, true);
       addEventListener('pointerup', up, true);
       addEventListener('wheel', wheel, true);

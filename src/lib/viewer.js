@@ -85,6 +85,15 @@ export class RingViewer {
       this.controls.autoRotate = autoRotate && !reducedMotion();
       this.controls.autoRotateSpeed = 1.6;
       this.controls.enableZoom = zoom;
+      // Never trap page scrolling. Mouse: plain wheel scrolls the page, Ctrl + wheel (or a trackpad
+      // pinch) zooms. Touch: one finger scrolls the page or spins the ring sideways, two fingers
+      // pinch-zoom and rotate.
+      el.addEventListener('wheel', (e) => e.ctrlKey || e.metaKey || e.stopPropagation(), { capture: true });
+      this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
+      this.renderer.domElement.style.touchAction = 'pan-y';
+      const twoFingers = (e) => e.touches.length > 1 && e.cancelable && e.preventDefault();
+      this.renderer.domElement.addEventListener('touchstart', twoFingers, { passive: false });
+      this.renderer.domElement.addEventListener('touchmove', twoFingers, { passive: false });
     }
 
     this.size = 0;

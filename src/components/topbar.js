@@ -97,7 +97,7 @@ export function TopBar() {
       </label>
       <div class="view-prefs"><${ThemeDots} /><${GridToggle} /></div>
       <${HelpMenu} />
-      <button class="btn ghost sm share-btn" onClick=${copyShareLink}><${Icon} name="share" size=${15} /><span>Share</span></button>
+      <button class="btn ghost sm share-btn" onClick=${copyShareLink} aria-label="Copy share link"><${Icon} name="share" size=${15} /><span>Share</span></button>
     </div>
   </header>`;
 }

@@ -140,7 +140,7 @@ export function Landing() {
           <li><span class="lp-n">01</span><h3>Start somewhere</h3><p>Pick a template or a blank band. A size finder helps if you don't know your size.</p></li>
           <li><span class="lp-n">02</span><h3>Scroll to style</h3><p>Up and down changes the middle, left and right the sides. The ring updates live.</p></li>
           <li><span class="lp-n">03</span><h3>Draw your own</h3><p>Sketch one tile, mirror it, smooth it. It repeats seamlessly around the band.</p></li>
-          <li><span class="lp-n">04</span><h3>Check & download</h3><p>Try it on a hand, fix any printability warning in one click, and download STL or 3MF.</p></li>
+          <li><span class="lp-n">04</span><h3>Check & download</h3><p>Try it on a hand, fix any printability warning in one click, and download STL or OBJ.</p></li>
         </ol>
       </section>
 
@@ -202,7 +202,7 @@ export function Landing() {
         <div><dt>Project</dt><dd>Make-a-Ring</dd></div>
         <div><dt>For</dt><dd>HyperBloom October 2026</dd></div>
         <div><dt>Status</dt><dd>Frontend prototype</dd></div>
-        <div><dt>Note</dt><dd>Prices and file downloads are illustrative</dd></div>
+        <div><dt>Note</dt><dd>Prices are illustrative estimates</dd></div>
       </dl>
     </footer>
   </div>`;

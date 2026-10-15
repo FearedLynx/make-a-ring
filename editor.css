@@ -1,5 +1,8 @@
 /* Pattern editor v3: cursors, symmetry, tabs, stamps, bends, seam guides. */
 
+/* Row wrappers only matter on phones; elsewhere their buttons sit straight in the tool column. */
+.ed-tool-row, .ed-edit-row { display: contents; }
+
 /* Custom cursors (some built-in cursors render as a question mark on Windows) */
 .ed-canvas.tool-pen {
   cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M3 21l1.5-5L16 4.5a2.1 2.1 0 0 1 3 3L7.5 19z' fill='white' stroke='black' stroke-width='1.5' stroke-linejoin='round'/><path d='M3 21l1.5-5 3 3z' fill='black'/></svg>") 3 21, crosshair;
@@ -67,3 +70,66 @@
   .stamp-grid { grid-template-columns: repeat(4, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .ed-seam circle { animation: none; } }
+
+/* Below desktop the editor scrolls as one column; the canvas keeps a usable drawing height
+   instead of being squeezed into whatever height is left. */
+@media (max-width: 1180px) {
+  .editor-modal .modal-body { display: block; }
+  .editor-modal .ed-body { flex: none; }
+  .editor-modal .ed-canvas-wrap { overflow: visible; }
+  .editor-modal .ed-canvas { flex: none; height: min(62vh, 520px); }
+}
+@media (max-width: 760px) {
+  .editor-modal .ed-canvas-wrap { padding: 10px; }
+  .editor-modal .ed-canvas { height: min(58vh, 440px); }
+}
+
+/* ── Phones: full-screen editor, canvas near the top, tools pinned as swipeable rows ── */
+@media (max-width: 760px) {
+  .modal-backdrop:has(.editor-modal) { padding: 0; }
+  .modal.wide.editor-modal { width: 100%; height: 100dvh; max-height: none; border-radius: 0; }
+  .editor-modal .modal-head { padding: 8px 10px 8px 16px; }
+  .editor-modal .modal-head h2 { font-size: 17px; }
+  .editor-modal .modal-body { display: block; overflow-y: auto; }
+
+  /* Header: name + save on one row, zone + remix + help on the next. Cancel duplicates the ✕. */
+  .ed-top { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; padding: 8px 12px; }
+  .ed-top .field.inline { grid-column: 1 / 3; min-width: 0; margin: 0; }
+  .ed-top .field.inline input { width: 100%; min-width: 0; }
+  .ed-top .ed-save { grid-column: 3; grid-row: 1; padding: 8px 14px; }
+  .ed-top .ed-save-more, .ed-top .ed-cancel, .ed-top .spacer { display: none; }
+  .ed-top .segmented { grid-column: 1; }
+  .ed-remix span { display: none; }
+  .ed-remix { padding: 8px 10px; }
+
+  /* Tools: a swipeable row of tools with undo/redo pinned at its end, then a row of symmetry modes.
+     The whole bar stays at the top while the editor scrolls. */
+  .editor-modal .ed-tools { position: sticky; top: 0; z-index: 4; background: var(--surface); display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  .editor-modal .ed-tools hr { display: none; }
+  .editor-modal .ed-tool-row, .editor-modal .ed-sym { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+  .editor-modal .ed-tool-row::-webkit-scrollbar, .editor-modal .ed-sym::-webkit-scrollbar { display: none; }
+  .editor-modal .ed-tool-row { grid-row: 1; grid-column: 1; }
+  .editor-modal .ed-edit-row { grid-row: 1; grid-column: 2; display: flex; gap: 2px; border-left: 1px solid var(--line); padding-left: 4px; }
+  .editor-modal .ed-edit-row .tool { flex: none; min-width: 36px; padding: 6px; align-content: center; }
+  .editor-modal .ed-edit-row .tool span { display: none; }
+  .editor-modal .ed-tool-row .tool { flex: none; min-width: 50px; padding: 6px 4px; }
+  .editor-modal .ed-sym { grid-row: 2; grid-column: 1 / -1; width: auto; }
+  .editor-modal .ed-sym .field-label { display: none; }
+  .editor-modal .sym-btn { flex: none; padding: 5px 9px; border-color: var(--line); white-space: nowrap; }
+
+  .editor-modal .ed-canvas-wrap { padding: 8px 8px 12px; gap: 8px; }
+  .editor-modal .ed-canvas { height: auto; aspect-ratio: 1.05; max-height: 62dvh; min-height: 0; }
+  .editor-modal .ed-view { gap: 4px; padding: 4px 6px; }
+  .editor-modal .ed-status { gap: 12px; font-size: 11px; }
+  .editor-modal .ed-empty { top: 60px; font-size: 12px; }
+  .ed-tabs { overflow-x: auto; scrollbar-width: none; }
+  .ed-tabs button { flex: none; padding: 10px 10px 8px; }
+  .ed-tab-body { padding: 4px 12px 12px; }
+  .stamp-grid { grid-template-columns: repeat(4, 1fr); }
+  .ed-preview { padding: 12px; }
+}
+
+/* Touch screens: keyboard hints and cursor read-outs mean nothing without a keyboard and mouse. */
+[data-input='touch'] .tool-key, [data-input='touch'] .ed-hint, [data-input='touch'] .ed-xy,
+[data-input='touch'] .keys-only, [data-input='touch'] .ed-sym .field-label kbd { display: none; }

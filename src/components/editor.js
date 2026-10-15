@@ -91,6 +91,18 @@ function moveStrokes(strokes, sel, delta, symOn) {
   return out;
 }
 
+/** True on phone-width screens; follows rotation and resizing. */
+function useNarrow(query = '(max-width: 760px)') {
+  const [on, setOn] = useState(() => matchMedia(query).matches);
+  useEffect(() => {
+    const mq = matchMedia(query);
+    const onChange = () => setOn(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [query]);
+  return on;
+}
+
 function distToStroke(p, s) {
   let best = Infinity;
   const n = s.pts.length;
@@ -144,6 +156,7 @@ export function PatternEditor() {
   const drag = useRef(null);
   const toolClicks = useRef(0);
   const spaceDown = useRef(false);
+  const narrow = useNarrow();
 
   // (Re)initialise whenever the editor opens.
   useEffect(() => {
@@ -212,7 +225,9 @@ export function PatternEditor() {
 
   // ── View: zoom & pan ──
   const TW = aspect * 100, TH = 100, pad = 14;
-  const base = { x: -TW - pad, y: -pad - 10, w: 3 * TW + 2 * pad, h: TH + 2 * pad + 20 };
+  // Phones show the tile with a sliver of each neighbour instead of three whole tiles, so the tile is big enough to draw on.
+  const side = narrow ? 0.18 * TW : TW;
+  const base = { x: -side - pad, y: -pad - 10, w: TW + 2 * side + 2 * pad, h: TH + 2 * pad + 20 };
   const cx = view.cx ?? TW / 2, cy = view.cy ?? TH / 2;
   const vw = base.w / view.z, vh = base.h / view.z;
   const vb = { x: cx - vw / 2, y: cy - vh / 2, w: vw, h: vh };
@@ -571,21 +586,21 @@ export function PatternEditor() {
         </label>
         <${Segmented} label="Where this pattern goes" value=${zone} onChange=${setZone}
           options=${[{ value: 'middle', label: 'Middle' }, { value: 'side', label: 'Sides' }]} />
-        <button class="btn ghost sm" onClick=${remix}><${Icon} name="copy" size=${14} /> Remix current</button>
+        <button class="btn ghost sm ed-remix" onClick=${remix} aria-label="Remix current pattern" title="Remix current"><${Icon} name="copy" size=${14} /> <span>Remix current</span></button>
         <button class="icon-btn" onClick=${() => startTour('editor')} aria-label="Editor tour" title="Editor tour"><${Icon} name="help" /></button>
         <div class="spacer"></div>
-        <button class="btn ghost" onClick=${close}>Cancel</button>
-        <button class="btn primary" onClick=${save} disabled=${!strokes.length}><${Icon} name="check" size=${16} /> Save & apply</button>
+        <button class="btn ghost ed-cancel" onClick=${close}>Cancel</button>
+        <button class="btn primary ed-save" onClick=${save} disabled=${!strokes.length}><${Icon} name="check" size=${16} /> Save<span class="ed-save-more"> & apply</span></button>
       </div>
 
       <div class="ed-body">
         <div class="ed-tools" role="toolbar" aria-label="Drawing tools">
-          ${TOOLS.map(
+          <div class="ed-tool-row">${TOOLS.map(
             (t) => html`<button class=${'tool' + (tool === t.id ? ' on' : '')} aria-pressed=${tool === t.id}
               onClick=${() => pickTool(t.id, true)} title=${`${t.label} (${t.key})`}>
               <${Icon} name=${t.icon} /><span>${t.label}</span><kbd class="tool-key">${t.key}</kbd>
             </button>`
-          )}
+          )}</div>
           <hr />
           <div class="ed-sym" role="radiogroup" aria-label="Symmetry">
             <span class="field-label">Symmetry <kbd>M</kbd></span>
@@ -596,9 +611,11 @@ export function PatternEditor() {
             )}
           </div>
           <hr />
-          <button class="tool" onClick=${undo} disabled=${!hist.past.length} title="Undo (Ctrl+Z)"><${Icon} name="undo" /><span>Undo</span></button>
-          <button class="tool" onClick=${redo} disabled=${!hist.future.length} title="Redo (Ctrl+Shift+Z)"><${Icon} name="redo" /><span>Redo</span></button>
-          <button class="tool" onClick=${() => (commit([]), setSel(new Set()))} disabled=${!strokes.length} title="Clear"><${Icon} name="trash" /><span>Clear</span></button>
+          <div class="ed-edit-row">
+          <button class="tool" onClick=${undo} disabled=${!hist.past.length} aria-label="Undo" title="Undo (Ctrl+Z)"><${Icon} name="undo" /><span>Undo</span></button>
+          <button class="tool" onClick=${redo} disabled=${!hist.future.length} aria-label="Redo" title="Redo (Ctrl+Shift+Z)"><${Icon} name="redo" /><span>Redo</span></button>
+          <button class="tool" onClick=${() => (commit([]), setSel(new Set()))} disabled=${!strokes.length} aria-label="Clear the tile" title="Clear"><${Icon} name="trash" /><span>Clear</span></button>
+          </div>
         </div>
 
         <div class="ed-canvas-wrap">
@@ -660,8 +677,8 @@ export function PatternEditor() {
             html`<line class="ed-rubber" x1=${live.pts[live.pts.length - 1][0] * TW} y1=${live.pts[live.pts.length - 1][1] * TH} x2=${cursor[0] * TW} y2=${cursor[1] * TH} />`}
             ${cursor && tool !== 'stamp' && html`<circle class="ed-cursor" cx=${cursor[0] * TW} cy=${cursor[1] * TH} r=${2.2 / view.z} />`}
             ${zone === 'side' && html`<text class="ed-edge" x=${TW / 2} y="-5">ring edge</text>`}
-            <text class="ed-tile-label" x=${-TW / 2} y=${TH + pad + 6}>repeats</text>
-            <text class="ed-tile-label" x=${TW * 1.5} y=${TH + pad + 6}>repeats</text>
+            ${!narrow && html`<text class="ed-tile-label" x=${-TW / 2} y=${TH + pad + 6}>repeats</text>
+            <text class="ed-tile-label" x=${TW * 1.5} y=${TH + pad + 6}>repeats</text>`}
             <g class="ed-dims">
               <line x1="0" x2=${TW} y1=${TH + 8} y2=${TH + 8} /><line x1="0" x2="0" y1=${TH + 5} y2=${TH + 11} /><line x1=${TW} x2=${TW} y1=${TH + 5} y2=${TH + 11} />
               <text x=${TW / 2} y=${TH + 15}>${tileW.toFixed(2)} mm</text>
@@ -671,8 +688,8 @@ export function PatternEditor() {
           </svg>
           ${!strokes.length && !live && html`<p class="ed-empty">Draw <strong>one tile</strong>, or start from a stamp or the Generate tab. It repeats around the whole ring.</p>`}
           <div class="ed-status" aria-live="polite">
-            <span>X ${cursor ? (cursor[0] * tileW).toFixed(2) : '—'} mm</span>
-            <span>Y ${cursor ? (cursor[1] * zh).toFixed(2) : '—'} mm</span>
+            <span class="ed-xy">X ${cursor ? (cursor[0] * tileW).toFixed(2) : '—'} mm</span>
+            <span class="ed-xy">Y ${cursor ? (cursor[1] * zh).toFixed(2) : '—'} mm</span>
             <span>Tile ${tileW.toFixed(2)} × ${zh.toFixed(2)} mm</span>
             <span>${strokes.length} stroke${strokes.length === 1 ? '' : 's'}</span>
             ${flash && html`<span class="ed-flash"><${Icon} name="check" size=${12} /> ${flash}</span>`}
@@ -759,7 +776,7 @@ export function PatternEditor() {
           <span class="field-label">Live on your ring</span>
           <${Pure} a=${preview} b=${draft} render=${() => html`<${RingView} design=${preview} getPattern=${getP} mode="studio" className="ed-ring" />`} />
           <${Pure} a=${preview} b=${draft} z=${zone} render=${() => html`<${BandMap} design=${preview} getPattern=${getP} activeZones=${zone === 'middle' ? ['middle'] : ['sideL', 'sideR']} />`} />
-          <p class="hint">The ring updates when you lift the pen. Press <kbd>?</kbd> for every shortcut.</p>
+          <p class="hint">The ring updates when you lift the pen.<span class="keys-only"> Press <kbd>?</kbd> for every shortcut.</span></p>
         </div>
       </div>
     </div>

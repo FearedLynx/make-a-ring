@@ -1,0 +1,95 @@
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { html } from '../lib/html.js';
+import { Icon, Logo } from './ui.js';
+import { store, go, toast, shareUrl, THEMES, setTheme, startTour } from '../state.js';
+
+const STEPS = [
+  { id: 'studio', label: 'Design' },
+  { id: 'tryon', label: 'Try on' },
+  { id: 'review', label: 'Review & files' },
+];
+
+export async function copyShareLink() {
+  const url = shareUrl();
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Share link copied. Anyone with it can open this design');
+  } catch {
+    window.prompt('Copy this link to share your design', url);
+  }
+}
+
+export function ThemeDots({ className = '' }) {
+  const theme = store.use((s) => s.theme);
+  return html`<div class=${'theme-dots ' + className} role="radiogroup" aria-label="Colour theme">
+    ${THEMES.map(
+      (t) => html`<button role="radio" aria-checked=${theme === t.id} aria-label=${`${t.name} theme`} title=${`${t.name} theme`}
+        class=${'theme-dot' + (theme === t.id ? ' on' : '')} style=${`--sw:${t.swatch}; --swbg:${t.bg}`}
+        onClick=${() => setTheme(t.id)}></button>`
+    )}
+  </div>`;
+}
+
+function HelpMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  const screen = store.use((s) => s.screen);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => !ref.current?.contains(e.target) && setOpen(false);
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [open]);
+  const item = (label, icon, run) => html`<button role="menuitem" onClick=${() => (setOpen(false), run())}><${Icon} name=${icon} size=${15} />${label}</button>`;
+  return html`<div class="help-menu" ref=${ref}>
+    <button class="icon-btn" aria-haspopup="menu" aria-expanded=${open} aria-label="Help" title="Help" onClick=${() => setOpen(!open)}><${Icon} name="help" /></button>
+    ${open &&
+    html`<div class="menu" role="menu" onKeyDown=${(e) => e.key === 'Escape' && setOpen(false)}>
+      ${screen === 'studio' && item('Replay studio tour', 'sparkle', () => startTour('studio'))}
+      ${item('Keyboard shortcuts', 'keyboard', () => store.set({ shortcutsOpen: true }))}
+      ${item('Pattern editor tour', 'pen', () => {
+        if (store.get().screen !== 'studio') go('studio');
+        store.set({ editor: { zone: 'middle' } });
+        setTimeout(() => startTour('editor'), 500);
+      })}
+    </div>`}
+  </div>`;
+}
+
+export function TopBar() {
+  const screen = store.use((s) => s.screen);
+  const name = store.use((s) => s.ringName);
+  const idx = STEPS.findIndex((s) => s.id === screen);
+  return html`<header class="topbar">
+    <${Logo} />
+    <nav class="steps" aria-label="Design steps">
+      <ol>
+        ${STEPS.map(
+          (s, i) => html`<li>
+            <a href=${`#/${s.id}`} class=${(s.id === screen ? 'on' : '') + (i < idx ? ' done' : '')} aria-current=${s.id === screen ? 'step' : undefined}>
+              <span class="step-n">${i < idx ? html`<${Icon} name="check" size=${12} />` : String(i + 1).padStart(2, '0')}</span><span class="step-label">${s.label}</span>
+            </a>
+          </li>`
+        )}
+      </ol>
+    </nav>
+    <div class="topbar-right">
+      <label class="ring-name">
+        <span class="sr-only">Ring name</span>
+        <input value=${name} onInput=${(e) => store.set({ ringName: e.currentTarget.value })} maxlength="40" />
+        <${Icon} name="pen" size=${13} />
+      </label>
+      <${ThemeDots} />
+      <${HelpMenu} />
+      <button class="btn ghost sm share-btn" onClick=${copyShareLink}><${Icon} name="share" size=${15} /><span>Share</span></button>
+    </div>
+  </header>`;
+}
+
+export function StepNav({ back, next }) {
+  return html`<div class="step-nav">
+    ${back && html`<button class="btn ghost" onClick=${() => go(back.to)}><${Icon} name="left" size=${16} /> ${back.label}</button>`}
+    <div class="spacer"></div>
+    ${next && html`<button class="btn primary" onClick=${() => go(next.to)}>${next.label} <${Icon} name="right" size=${16} /></button>`}
+  </div>`;
+}

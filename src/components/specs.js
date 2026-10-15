@@ -1,0 +1,208 @@
+// Specs rail: size, layout, band shape, relief, material, printability and price.
+import { html } from '../lib/html.js';
+import { Icon, Segmented, Slider } from './ui.js';
+import { useEffect, useState } from 'preact/hooks';
+import { LAYOUTS, SPLIT, getSplit, splitPatch, hasMiddle, hasSides } from '../lib/templates.js';
+import { MATERIALS, PLATINGS, getMaterial } from '../lib/materials.js';
+import { sizeSummary, US_MIN, US_MAX, fmtUs } from '../lib/sizes.js';
+import { resolveZones } from '../lib/band.js';
+import { runChecks, estimate, money } from '../lib/checks.js';
+import { store, setDesign, patternById, go, toast } from '../state.js';
+
+const profileIcon = {
+  flat: 'M3 6h18v12H3Z',
+  domed: 'M3 18V11C3 6 21 6 21 11v7Z',
+  comfort: 'M3 17V9c0-4 18-4 18 0v8c0 2-18 2-18 0Z',
+  bevel: 'M3 18V9l3-3h12l3 3v9Z',
+};
+
+const layoutIcon = (id) => {
+  const z = LAYOUTS[id].zones;
+  return html`<svg width="34" height="22" viewBox="0 0 34 22" aria-hidden="true">
+    <rect x="1" y="1" width="32" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="1.4" />
+    ${z.map((zz) => html`<rect x=${2 + zz.from * 30} y="3" width=${(zz.to - zz.from) * 30} height="16" rx="1.5"
+      fill=${zz.id === 'middle' ? 'var(--zone-mid)' : 'var(--zone-side)'} opacity="0.85" />`)}
+  </svg>`;
+};
+
+const REPEAT_MIN = 2, REPEAT_MAX = 80;
+
+function Repeats({ label, axis, design, natural }) {
+  const v = design.repeats[axis];
+  const cur = v || natural;
+  const [text, setText] = useState(String(cur));
+  const [err, setErr] = useState('');
+  useEffect(() => setText(String(cur)), [cur]);
+  const set = (n) => setDesign({ repeats: { ...design.repeats, [axis]: n } });
+  const commit = () => {
+    const n = parseInt(text, 10);
+    if (!text.trim()) return set(0), setErr('');
+    if (Number.isNaN(n) || n < REPEAT_MIN || n > REPEAT_MAX) {
+      setErr(`Enter a whole number from ${REPEAT_MIN} to ${REPEAT_MAX}.`);
+      setText(String(cur));
+      return;
+    }
+    setErr('');
+    set(n);
+  };
+  const id = `rep-${axis}`;
+  return html`<div class="repeat-row">
+    <label for=${id}>${label}</label>
+    <div class="stepper" role="group" aria-label=${`${label} repeats`}>
+      <button onClick=${() => set(Math.max(REPEAT_MIN, cur - 1))} aria-label="Fewer repeats">−</button>
+      <input id=${id} inputmode="numeric" value=${text} aria-describedby=${err ? id + '-err' : undefined}
+        onInput=${(e) => setText(e.currentTarget.value.replace(/[^0-9]/g, ''))}
+        onBlur=${commit} onKeyDown=${(e) => e.key === 'Enter' && (e.preventDefault(), commit(), e.currentTarget.blur())} />
+      <button onClick=${() => set(Math.min(REPEAT_MAX, cur + 1))} aria-label="More repeats">+</button>
+    </div>
+    <button class=${'link-btn' + (v ? '' : ' is-auto')} disabled=${!v} onClick=${() => set(0)} title="Fit the repeats to the ring automatically">${v ? 'Auto' : 'auto'}</button>
+    ${err && html`<p class="field-err" id=${id + '-err'} role="alert">${err}</p>`}
+  </div>`;
+}
+
+function SplitControl({ design }) {
+  const cfg = SPLIT[design.layout];
+  if (!cfg) return null;
+  const s = getSplit(design);
+  const mid = design.layout === 'rails' ? 'polished centre' : 'middle';
+  return html`<${Slider} label=${cfg.label} value=${s} min=${cfg.min} max=${cfg.max} step=${0.01} unit=""
+    format=${(v) => `${(v * design.width).toFixed(1)} mm ${cfg.unit}`}
+    hint=${`${mid[0].toUpperCase() + mid.slice(1)}: ${((1 - 2 * s) * design.width).toFixed(1)} mm. You can also drag the handles on the unrolled band.`}
+    onInput=${(v) => setDesign(splitPatch(design, v))} />`;
+}
+
+export function ChecksList({ design, compact = false }) {
+  const { checks } = runChecks(design, patternById);
+  const shown = compact ? checks.filter((c) => c.level !== 'ok') : checks;
+  const icon = { error: 'alert', warn: 'alert', info: 'info', ok: 'check' };
+  if (!shown.length) return html`<p class="checks-clear"><${Icon} name="check" size=${16} /> Ready to print. All checks pass.</p>`;
+  return html`<ul class="checks">
+    ${shown.map(
+      (c) => html`<li class=${'check ' + c.level}>
+        <span class="check-icon"><${Icon} name=${icon[c.level]} size=${15} /></span>
+        <div>
+          <strong>${c.title}</strong>
+          <p>${c.detail}</p>
+          ${c.fix &&
+          html`<button class="fix-btn" onClick=${() => {
+            const prev = store.get().design;
+            setDesign(c.fix.patch);
+            toast(`Fixed: ${c.fix.label}`, { label: 'Undo', run: () => store.set({ design: prev }) });
+          }}><${Icon} name="sparkle" size=${13} /> ${c.fix.label}</button>`}
+        </div>
+      </li>`
+    )}
+  </ul>`;
+}
+
+export function Specs({ onHide }) {
+  const design = store.use((s) => s.design);
+  store.use((s) => s.customPatterns);
+  const size = sizeSummary(design.sizeUS);
+  const m = getMaterial(design.materialId);
+  const zones = resolveZones(design, patternById);
+  const nat = (id) => zones.find((z) => z.id === id && z.pattern)?.repeats;
+  const { errors, warnings } = runChecks(design, patternById);
+  const price = estimate(design);
+  const groups = [...new Set(MATERIALS.map((x) => x.group))];
+
+  return html`<aside class="rail specs" aria-label="Ring specifications">
+    <div class="rail-title">
+      <span>Specification</span>
+      ${onHide && html`<button class="rail-hide" onClick=${onHide} aria-label="Hide specs panel" title="Hide panel (])"><${Icon} name="panelR" size=${16} /></button>`}
+    </div>
+    <div class="rail-body">
+      <section class="spec-sec">
+        <div class="spec-head"><h3>Size</h3>
+          <button class="link-btn" onClick=${() => store.set({ sizeFinderOpen: true })}><${Icon} name="ruler" size=${14} /> Find my size</button>
+        </div>
+        <div class="size-display">
+          <span class="size-big">US ${size.us}</span>
+          <span class="size-alt">EU ${size.eu} · UK ${size.uk} · Ø ${size.diameter.toFixed(1)} mm</span>
+        </div>
+        <${Slider} label="Ring size (US)" value=${design.sizeUS} min=${US_MIN} max=${US_MAX} step=${0.25} unit=""
+          format=${fmtUs} onInput=${(v) => setDesign({ sizeUS: v })} />
+      </section>
+
+      <section class="spec-sec" id="spec-layout">
+        <h3>Layout</h3>
+        <${Segmented} label="Layout" size="full layout-seg" value=${design.layout}
+          options=${Object.keys(LAYOUTS).map((id) => ({ value: id, title: LAYOUTS[id].hint, node: html`${layoutIcon(id)}<span>${LAYOUTS[id].name}</span>` }))}
+          onChange=${(v) => setDesign({ layout: v })} />
+        <p class="hint">${LAYOUTS[design.layout].hint}</p>
+        <${SplitControl} design=${design} />
+      </section>
+
+      <section class="spec-sec">
+        <h3>Band</h3>
+        <${Slider} label="Width" value=${design.width} min=${2} max=${12} step=${0.5} onInput=${(v) => setDesign({ width: v })} />
+        <${Slider} label="Thickness" value=${design.thickness} min=${1} max=${3} step=${0.1} onInput=${(v) => setDesign({ thickness: +v.toFixed(1) })} />
+        <span class="field-label">Profile</span>
+        <${Segmented} label="Profile" size="full layout-seg" value=${design.profile}
+          options=${['flat', 'domed', 'comfort', 'bevel'].map((p) => ({
+            value: p,
+            node: html`<svg width="22" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d=${profileIcon[p]} fill="currentColor" opacity=".8" /></svg><span>${p[0].toUpperCase() + p.slice(1)}</span>`,
+          }))}
+          onChange=${(v) => setDesign({ profile: v })} />
+      </section>
+
+      <section class="spec-sec">
+        <h3>Pattern relief</h3>
+        <${Segmented} label="Relief style" size="full" value=${design.style}
+          options=${[{ value: 'raised', label: 'Raised' }, { value: 'engraved', label: 'Engraved' }]}
+          onChange=${(v) => setDesign({ style: v })} />
+        <${Slider} label="Depth" value=${design.relief} min=${0.1} max=${0.7} step=${0.05} onInput=${(v) => setDesign({ relief: +v.toFixed(2) })} />
+        ${hasMiddle(design.layout) && nat('middle') && html`<${Repeats} label="Middle repeats" axis="middle" design=${design} natural=${nat('middle')} />`}
+        ${hasSides(design.layout) && (nat('sideL') || nat('sideR')) && html`<${Repeats} label="Side repeats" axis="side" design=${design} natural=${nat('sideL') || nat('sideR')} />`}
+      </section>
+
+      <section class="spec-sec">
+        <h3>Material</h3>
+        ${groups.map(
+          (g) => html`<div class="mat-group">
+            <span class="field-label">${g}</span>
+            <div class="swatches" role="radiogroup" aria-label=${g}>
+              ${MATERIALS.filter((x) => x.group === g).map(
+                (x) => html`<button role="radio" aria-checked=${design.materialId === x.id} class=${'swatch' + (design.materialId === x.id ? ' on' : '')}
+                  onClick=${() => setDesign({ materialId: x.id })} title=${x.name}>
+                  <span class="swatch-dot" style=${`--c:${x.color}; --m:${x.metalness}`}></span>
+                  <span class="swatch-name">${x.name}</span>
+                </button>`
+              )}
+            </div>
+          </div>`
+        )}
+        <p class="mat-process"><strong>${m.process}</strong> · min wall ${m.minWall} mm · min detail ${m.minDetail} mm
+          ${m.leadDays ? ` · ships in ~${m.leadDays} days` : ' · print it yourself'}</p>
+        ${m.platable &&
+        html`<span class="field-label">Plating after printing</span>
+          <${Segmented} label="Plating" size="full" value=${design.plating}
+            options=${Object.keys(PLATINGS).map((k) => ({ value: k, label: k === 'none' ? 'None' : PLATINGS[k].name.replace(' plating', '') }))}
+            onChange=${(v) => setDesign({ plating: v })} />`}
+        <span class="field-label">Finish</span>
+        <${Segmented} label="Finish" size="full" value=${design.finish}
+          options=${[{ value: 'polished', label: 'Polished' }, { value: 'satin', label: 'Satin' }, { value: 'antique', label: 'Antique' }]}
+          onChange=${(v) => setDesign({ finish: v })} />
+      </section>
+
+      <section class="spec-sec" id="spec-checks" aria-labelledby="checks-h">
+        <div class="spec-head">
+          <h3 id="checks-h">Printability</h3>
+          <span class=${'pill ' + (errors ? 'error' : warnings ? 'warn' : 'ok')}>
+            ${errors ? `${errors} to fix` : warnings ? `${warnings} warning${warnings > 1 ? 's' : ''}` : 'All good'}
+          </span>
+        </div>
+        <${ChecksList} design=${design} />
+      </section>
+    </div>
+
+    <div class="price-card">
+      <div>
+        <span class="muted">Estimated</span>
+        <strong class="price">${money(price.total)}</strong>
+        <span class="muted small">Bespoke jeweller: $2,000+</span>
+      </div>
+      <button class="btn primary" onClick=${() => go('tryon')}>Try it on <${Icon} name="right" size=${16} /></button>
+    </div>
+  </aside>`;
+}

@@ -15,8 +15,8 @@ export function engravingFor(design) {
 export function toGeometry({ positions, colors, normals, indices, sphere }) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  g.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3, true));
+  g.setAttribute('normal', new THREE.BufferAttribute(normals, 3, true));
   g.setIndex(new THREE.BufferAttribute(indices, 1));
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(...sphere.center), sphere.radius);
   return g;

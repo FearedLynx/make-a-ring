@@ -1,13 +1,13 @@
 // The cross carousel: middle patterns scroll up/down, side patterns scroll left/right,
-// the 3D ring sits in the centre and updates instantly.
+// the 3D ring sits in the centre and updates instantly: the rings one step away are built ahead of time.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon } from './ui.js';
 import { PatternArt, BandMap } from './pattern-art.js';
-import { RingView } from './ring-view.js';
+import { RingView, prebuildRings } from './ring-view.js';
 import { hasMiddle, hasSides, LAYOUTS, splitPatch } from '../lib/templates.js';
 import {
-  store, cyclePattern, neighbours, patternById, patternsForZone, setLinked, setDesign, announce, showTip,
+  store, cyclePattern, neighbours, patternById, patternsForZone, setLinked, setDesign, announce, showTip, steppedDesign,
 } from '../state.js';
 
 const isTouch = () => document.documentElement.dataset.input === 'touch';
@@ -61,6 +61,12 @@ export function Stage({ onDraw }) {
   const mid = hasMiddle(design.layout);
   const sides = hasSides(design.layout);
   const sideZone = design.linked ? 'sideL' : activeSide;
+
+  // Next steps first: they are the most likely.
+  useEffect(() => {
+    const t = setTimeout(() => prebuildRings([['middle', 1], ['side', 1], ['middle', -1], ['side', -1]].map(([a, d]) => steppedDesign(a, d)).filter(Boolean)), 100);
+    return () => clearTimeout(t);
+  }, [design, activeSide]);
 
   const clicks = useRef(0);
   const step = (axis, dir, source = 'key') => {

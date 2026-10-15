@@ -69,7 +69,7 @@ export function buildRingArrays(design, hm, detail = 1.25, engraving = null) {
 
   const nRows = sections.reduce((n, sec) => n + sec.rows.length, 0);
   const positions = new Float32Array(NU * nRows * 3);
-  const colors = new Float32Array(NU * nRows * 3);
+  const colors = new Uint8Array(NU * nRows * 3); // 0..255 shade; bytes keep the cached rings and GPU upload small
   const indices = new Uint32Array(NU * (nRows - sections.length) * 6);
   let base = 0, p = 0, q = 0;
 
@@ -101,7 +101,7 @@ export function buildRingArrays(design, hm, detail = 1.25, engraving = null) {
         positions[p] = rho * c;
         positions[p + 1] = (row.s * w) / 2;
         positions[p + 2] = rho * sn;
-        colors[p] = colors[p + 1] = colors[p + 2] = shade;
+        colors[p] = colors[p + 1] = colors[p + 2] = Math.round(shade * 255);
         p += 3;
       }
     }
@@ -140,7 +140,10 @@ function boundingSphere(pos) {
   return { center: c, radius: Math.sqrt(r2) };
 }
 
-/** Same result as three's computeVertexNormals, on the raw arrays: about 10x faster on a 300k-vertex ring. */
+/**
+ * Same result as three's computeVertexNormals, on the raw arrays: about 10x faster on a 300k-vertex ring.
+ * Stored as 16-bit (read back as -1..1), half the size of floats with no visible difference.
+ */
 function vertexNormals(pos, idx) {
   const nor = new Float32Array(pos.length);
   for (let k = 0; k < idx.length; k += 3) {
@@ -152,13 +155,14 @@ function vertexNormals(pos, idx) {
     nor[b] += nx; nor[b + 1] += ny; nor[b + 2] += nz;
     nor[c] += nx; nor[c + 1] += ny; nor[c + 2] += nz;
   }
+  const out = new Int16Array(nor.length);
   for (let i = 0; i < nor.length; i += 3) {
-    const l = Math.sqrt(nor[i] * nor[i] + nor[i + 1] * nor[i + 1] + nor[i + 2] * nor[i + 2]) || 1;
-    nor[i] /= l;
-    nor[i + 1] /= l;
-    nor[i + 2] /= l;
+    const l = (Math.sqrt(nor[i] * nor[i] + nor[i + 1] * nor[i + 1] + nor[i + 2] * nor[i + 2]) || 1) / 32767;
+    out[i] = Math.round(nor[i] / l);
+    out[i + 1] = Math.round(nor[i + 1] / l);
+    out[i + 2] = Math.round(nor[i + 2] / l);
   }
-  return nor;
+  return out;
 }
 
 /**

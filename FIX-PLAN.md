@@ -3,6 +3,32 @@
 Deadline: **Oct 19, 2026, 23:00 GMT+2** (HyperBloom October, UI/UX & Web Design).
 Reviewed build: `60f072d` on `responsive-and-export`, Oct 15.
 
+## Status (updated Oct 15, evening)
+
+Work happens on branch **`submission-fixes`** (branched from `main` at `fcaf696`, which now contains both earlier branches). Pick up any unticked box below.
+
+Done on `submission-fixes`:
+- **§2 lag and export** (`7c3fded`):
+  - Each change builds a quick low-detail ring (1024 px heightmap, detail 0.5, about 115 ms), then the full one (3072 px, detail 1.25) after 300 ms idle (`ring-view.js`). Eight quick presses gave one 116 ms long task.
+  - Export detail is **1.0, not 0.75**: plain ring 19.9 MB, engraved 28.5 MB, both still watertight. 1.0 was kept because the original complaint was a pixelated OBJ.
+  - Thumbnails render at 1536 px and detail 0.6; all 8 show in about 6 s.
+- **§3 honesty and correctness**:
+  - The partner-workshop line and the $2,000–5,000 comparison are gone from all three places. The landing cost chart is computed from `estimate()` for four ways of making Heritage.
+  - Comfort wall factor is 0.58.
+  - Profile fill factors now match the geometry, so weight is within ±4.4% of the mesh volume for all 8 templates (the real mesh volume is not computed; the factors were corrected instead).
+  - Detail-check fix logic respects the 0.38 mm clamp and offers a finer material. Nordic is now antique silver and has no warnings.
+  - UK sizes round to the nearest half letter, and the picker has half sizes. The Start list has 4½, 9½, 10½, 11½ and 13.
+  - Copy: "Find your size", "Estimate, not a quote", "resin" cost line, and a nominal-dimensions note in the maker brief.
+
+Still open, in order:
+1. **§1 deploy** (Javier's go + Deployxa account), vendor libs, static hero, og tags.
+2. **§5 robustness**: malformed design white screen, share link overwriting your design, long share links.
+3. **§4 studio first 10 s**: tour length, Printable chip under "Try it on", Sides matched as outline, Plain swatch, pattern name under the ring.
+4. **§6 accessibility bundle.**
+5. Smaller: PLA keeps the "antique" finish (reset finish when switching to a non-metal); show the triangle count and file size before export.
+
+Note: the first tagline in `JUDGING-NOTES.md` ("Custom rings cost a jeweller and $2,000") repeats the claim we removed. Use one of the other two.
+
 ## How this review was made
 
 Five simulated judges each used the site at desktop (1440×900) and phone (390×844) sizes, measured it, and read the code. They then read each other's reports, argued, and revised their scores. Each persona was built from a seat on the Devpost judging page or from one of the published criteria. They are **not** the real judges and say nothing about what the real judges think.
@@ -51,31 +77,31 @@ Five simulated judges each used the site at desktop (1440×900) and phone (390×
 - [ ] Add `<link rel="modulepreload">` for the deep modules.
 
 ### 2. Make the carousel instant and the export sane (~6–8 h)
-- [ ] Each pattern step blocks the main thread for **777–986 ms** (measured on a real GPU). Eight quick presses take 6.8 s to settle. The cause is the preview mesh at detail 1.25 plus a 3072-px heightmap, both added on Oct 15 to fix pixelation (`ring-view.js:33`).
+- [x] Each pattern step blocks the main thread for **777–986 ms** (measured on a real GPU). Eight quick presses take 6.8 s to settle. The cause is the preview mesh at detail 1.25 plus a 3072-px heightmap, both added on Oct 15 to fix pixelation (`ring-view.js:33`).
   - Build at about detail 0.5 (with a smaller heightmap) while the user is stepping, then rebuild at 1.25 after 300 ms of no input.
   - Cancel stale builds.
   - Target: under 150 ms per step.
-- [ ] Template thumbnails on Start: 7 of 8 are still blank after 5 s. Render them at low detail, or ship pre-rendered PNGs.
-- [ ] Lower the export detail from 1.5 (`review.js:46`).
+- [x] Template thumbnails on Start: 7 of 8 are still blank after 5 s. Render them at low detail, or ship pre-rendered PNGs.
+- [x] Lower the export detail from 1.5 (`review.js:46`).
   - Detail 0.75 gives 234,900 triangles and about 12 MB. That is still about 5 samples across the thinnest 0.38 mm line, which is finer than polishing tolerance.
   - Today a plain ring is 42 MB, and an engraved one is 55–61 MB (1.2M triangles, above some print services' caps).
   - Show the triangle count and file size before generating.
 
 ### 3. Honesty and correctness pass (~3 h)
-- [ ] Reword "Made by a partner workshop in about 7 days" (`review.js:237`) and "ships in ~7 days" (`specs.js:270`), because no partner exists. Suggested: "A casting house typically takes ~7 days."
-- [ ] "Bespoke jeweller $2,000–5,000" is unsourced and hard-coded in 3 places (`landing.js:186`, `review.js:237`, `specs.js:304`). Cite it, or change it to "custom jeweller quote: varies".
+- [x] Reword "Made by a partner workshop in about 7 days" (`review.js:237`) and "ships in ~7 days" (`specs.js:270`), because no partner exists. Suggested: "A casting house typically takes ~7 days."
+- [x] "Bespoke jeweller $2,000–5,000" is unsourced and hard-coded in 3 places (`landing.js:186`, `review.js:237`, `specs.js:304`). Cite it, or change it to "custom jeweller quote: varies".
   - The "cast" bar hard-codes $80 (`landing.js:187`) while the table above it shows brass at $35 and silver at $63. Compute the low end instead.
   - The section header says "6 mm band", but the numbers come from Heritage, which is 7 mm.
-- [ ] Comfort-fit wall check is wrong. The rim wall is really 0.58·t, but `checks.js:6` uses 0.8·t, so it passes walls up to 28% under the limit. Set `PROFILE_EDGE.comfort = 0.58`.
-- [ ] The Nordic template (titanium, shown in the hero) opens with "Morse lines 0.38 mm < 0.5 mm" and no fix. Built-in lines are clamped to exactly 0.38 (`band.js:33`), and the widen fix needs > 0.38 (`checks.js:55`). Make Nordic print-clean and relax that condition.
-- [ ] Weight and price come from profile fill factors (`PROFILE_FILL`), not the real mesh. The brief says 6.8 g of silver; the mesh volume gives 7.9 g (+16%). Sum the signed volume of the built mesh (about 10 lines).
-- [ ] UK sizes come out half a letter low because `ukSize` rounds down (`sizes.js:14`). Round to the nearest half letter, and add half sizes to the UK picker (`size-finder.js:91,114`).
-- [ ] The Start size list skips 4½, 9½, 10½, 11½ and 13, while the size finder has them.
-- [ ] Small copy fixes:
+- [x] Comfort-fit wall check is wrong. The rim wall is really 0.58·t, but `checks.js:6` uses 0.8·t, so it passes walls up to 28% under the limit. Set `PROFILE_EDGE.comfort = 0.58`.
+- [x] The Nordic template (titanium, shown in the hero) opens with "Morse lines 0.38 mm < 0.5 mm" and no fix. Built-in lines are clamped to exactly 0.38 (`band.js:33`), and the widen fix needs > 0.38 (`checks.js:55`). Make Nordic print-clean and relax that condition.
+- [x] Weight and price come from profile fill factors (`PROFILE_FILL`), not the real mesh. The brief says 6.8 g of silver; the mesh volume gives 7.9 g (+16%). Sum the signed volume of the built mesh (about 10 lines).
+- [x] UK sizes come out half a letter low because `ukSize` rounds down (`sizes.js:14`). Round to the nearest half letter, and add half sizes to the UK picker (`size-finder.js:91,114`).
+- [x] The Start size list skips 4½, 9½, 10½, 11½ and 13, while the size finder has them.
+- [x] Small copy fixes:
   - Resin's cost line says "filament" (`checks.js:131`).
   - Soften "Fits the first time".
   - Add one line to the maker brief: "Nominal dimensions; the caster applies shrink and finish allowance."
-- [ ] After switching to PLA, Finish still says "antique" and the price still lists patina. Reset both.
+- [ ] (open) After switching to PLA, Finish still says "antique" and the price still lists patina. Reset both.
 
 ### 4. The studio's first 10 seconds (~4–6 h)
 - [ ] Cut the auto-starting 10-step tour to 3–4 steps (rotate the ring, middle, sides, draw). Turn layout, search, checks and price into the one-off contextual tips that already exist. On phone, the tour card covers the ring.

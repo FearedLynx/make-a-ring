@@ -3,7 +3,6 @@
 import { layoutZones } from './templates.js';
 import { bandMetrics, resolveZones } from './band.js';
 
-const W = 3072; // ~50 px per mm around a typical ring
 let canvas;
 
 function ctx2d(w, h) {
@@ -13,7 +12,8 @@ function ctx2d(w, h) {
   return canvas.getContext('2d', { willReadFrequently: true });
 }
 
-export function buildHeightmap(design, getPattern) {
+/** `W` is the resolution around the ring: 3072 (~50 px per mm) for full detail, less for quick previews. */
+export function buildHeightmap(design, getPattern, W = 3072) {
   const { circ } = bandMetrics(design);
   const pxPerMM = W / circ;
   const H = Math.max(64, Math.min(640, Math.round(design.width * pxPerMM)));
@@ -65,7 +65,8 @@ export function buildHeightmap(design, getPattern) {
   let data = new Float32Array(W * H);
   for (let i = 0; i < W * H; i++) data[i] = img[i * 4] / 255;
   // Two box passes (close to a Gaussian) give the relief soft edges a few mesh vertices wide, so diagonal lines do not stair-step.
-  data = blur(blur(data, W, H, 2), W, H, 2);
+  const r = W >= 2048 ? 2 : 1;
+  data = blur(blur(data, W, H, r), W, H, r);
   return { data, W, H, ranges };
 }
 

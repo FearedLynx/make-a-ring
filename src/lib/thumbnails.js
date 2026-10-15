@@ -29,9 +29,9 @@ function pump() {
     const job = queue.shift();
     if (!cache.has(job.key)) {
       const v = getViewer();
-      const hm = buildHeightmap(job.design, job.getPattern);
+      const hm = buildHeightmap(job.design, job.getPattern, 1536); // a 420 px still needs far less detail than the studio
       const { innerD, outerD } = bandMetrics(job.design);
-      v.setGeometry(buildRingGeometry(job.design, hm), innerD, outerD + 2 * job.design.relief);
+      v.setGeometry(buildRingGeometry(job.design, hm, 0.6), innerD, outerD + 2 * job.design.relief);
       v.resetView();
       v.setLook(renderLook(job.design));
       cache.set(job.key, v.snapshot());

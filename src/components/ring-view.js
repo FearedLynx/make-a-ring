@@ -15,12 +15,14 @@ export function RingView({ design, getPattern = patternById, mode = 'studio', au
   const host = useRef();
   const viewer = useRef();
   const pending = useRef(0);
+  const fine = useRef(0);
 
   useEffect(() => {
     viewer.current = new RingViewer(host.current, { mode, autoRotate, zoom });
     onViewer?.(viewer.current);
     return () => {
       cancelAnimationFrame(pending.current);
+      clearTimeout(fine.current);
       viewer.current.dispose();
     };
   }, []);
@@ -29,13 +31,19 @@ export function RingView({ design, getPattern = patternById, mode = 'studio', au
 
   const pats = ['middle', 'sideL', 'sideR'].map((z) => getPattern(design.patterns[z]));
   useEffect(() => {
-    cancelAnimationFrame(pending.current);
-    pending.current = requestAnimationFrame(() => {
-      const hm = buildHeightmap(design, getPattern);
-      const geom = buildRingGeometry(design, hm);
+    const build = (W, detail) => {
+      const geom = buildRingGeometry(design, buildHeightmap(design, getPattern, W), detail);
       const { innerD, outerD } = bandMetrics(design);
       viewer.current.setGeometry(geom, innerD, outerD + 2 * design.relief);
       viewer.current.setLook(renderLook(design));
+    };
+    // A full-detail build takes most of a second, so flicking through patterns shows a quick
+    // low-detail ring and the sharp one is built once the input has been still for 300 ms.
+    cancelAnimationFrame(pending.current);
+    clearTimeout(fine.current);
+    pending.current = requestAnimationFrame(() => {
+      build(1024, 0.5);
+      fine.current = setTimeout(() => build(3072, 1.25), 300);
     });
   }, [design, ...pats]);
 

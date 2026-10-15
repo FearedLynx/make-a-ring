@@ -43,7 +43,7 @@ function printMesh(design) {
   const d = isPlated(design)
     ? { ...design, sizeUS: diameterToUs(usToDiameter(design.sizeUS) + 2 * PLATING_MM), thickness: design.thickness - PLATING_MM }
     : design;
-  const geom = buildRingGeometry(d, buildHeightmap(d, patternById), 1.5);
+  const geom = buildRingGeometry(d, buildHeightmap(d, patternById), 1);
   geom.deleteAttribute('color');
   geom.deleteAttribute('normal');
   const welded = mergeVertices(geom);

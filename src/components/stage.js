@@ -76,7 +76,7 @@ export function Stage({ onDraw }) {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (document.body.classList.contains('modal-open') || document.body.classList.contains('tour-open')) return;
+      if (document.body.classList.contains('modal-open')) return;
       const t = e.target;
       if (t.closest?.('input, textarea, select, [contenteditable], .segmented')) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;

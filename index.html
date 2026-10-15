@@ -11,12 +11,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="technical.css" />
+    <link rel="stylesheet" href="tour.css" />
+    <link rel="stylesheet" href="editor.css" />
     <script>
       // Theme and device are set before first paint to avoid a flash.
       (function () {
         var d = document.documentElement, t = 'beige';
         try { t = localStorage.getItem('mar.theme') || 'beige'; } catch (e) {}
         d.dataset.theme = t;
+        try { d.dataset.grid = localStorage.getItem('mar.grid') || 'on'; } catch (e) { d.dataset.grid = 'on'; }
         function device() {
           var coarse = matchMedia('(pointer: coarse)').matches, w = innerWidth;
           d.dataset.device = w < 700 ? 'phone' : coarse || w < 1180 ? 'tablet' : 'desktop';

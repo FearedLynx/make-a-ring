@@ -56,6 +56,7 @@ export const store = createStore({
   announce: '',
   tryOn: { tone: 1, build: 'slender', finger: 'ring', close: true, mode: 'illustration', photo: null, pos: { x: 0.5, y: 0.5, scale: 1, rot: 0 } },
   theme: document.documentElement.dataset.theme || 'beige',
+  grid: document.documentElement.dataset.grid !== 'off',
   rails: load('mar.rails', { lib: 300, spec: 340, libOpen: true, specOpen: true }),
   tip: null, // { id, text }
   tour: null, // { id, step }
@@ -85,6 +86,14 @@ export function setTheme(id) {
   store.set({ theme: id });
 }
 
+export function setGrid(on) {
+  document.documentElement.dataset.grid = on ? 'on' : 'off';
+  try {
+    localStorage.setItem('mar.grid', on ? 'on' : 'off');
+  } catch {}
+  store.set({ grid: on });
+}
+
 // ── One-off tips ("don't show again") and guided tours ───────
 const offTips = () => load('mar.tips.off', []);
 export function showTip(id, text) {
@@ -98,7 +107,7 @@ export function dismissTip(forever = false) {
 }
 export const tourDone = (id) => load('mar.tours.done', []).includes(id);
 export function startTour(id) {
-  store.set({ tour: { id, step: 0 }, tip: null });
+  store.set({ tour: { id, step: 0, snapshot: id === 'studio' ? store.get().design : null }, tip: null });
 }
 export function endTour() {
   const t = store.get().tour;

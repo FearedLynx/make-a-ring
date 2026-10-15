@@ -372,3 +372,22 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 }
 [data-device='desktop'] .topbar .step-label { display: inline; }
 .ed-empty { top: 74px; }
+
+/* ── Grid toggle (next to the themes) ── */
+.view-prefs { display: flex; align-items: center; gap: 6px; }
+.grid-toggle { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink-2); }
+.grid-toggle:hover { color: var(--ink); border-color: var(--line-2); }
+.grid-toggle .gt-strike { stroke: #d92d20; stroke-width: 2.2; stroke-linecap: round; opacity: 0; transition: opacity 0.15s; }
+.grid-toggle.off .gt-strike { opacity: 1; }
+.grid-toggle.off g { opacity: 0.35; }
+[data-grid='off'] .stage { background-image: radial-gradient(ellipse at 50% 42%, var(--stage-a) 0%, var(--stage-b) 100%); background-size: auto; }
+[data-grid='off'] .lp-hero, [data-grid='off'] .lp-studio-fig { background-image: none; }
+[data-grid='off'] .review-hero { background-image: radial-gradient(ellipse at 50% 35%, var(--stage-a), var(--stage-b)); background-size: auto; }
+[data-grid='off'] .ed-ring { background-image: radial-gradient(ellipse at 50% 42%, var(--stage-a), var(--stage-b)); background-size: auto; }
+[data-grid='off'] .reg { display: none; }
+
+/* Title block: the sheet number is the slideshow control */
+.tb-sheet dd { display: flex; align-items: center; gap: 6px; }
+.tb-step { width: 22px; height: 20px; padding: 0; border: 1px solid var(--ink); border-radius: 3px; background: var(--surface); font: 600 14px/1 var(--mono); color: var(--ink); display: grid; place-items: center; }
+.tb-step:hover { background: var(--ink); color: var(--bg); }
+@media (max-width: 760px) { .topbar .view-prefs, .lp-head .view-prefs { display: none; } }

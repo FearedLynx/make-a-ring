@@ -1,108 +1,142 @@
 // Guided tours: one element is spotlit and underlined, everything else is shaded.
-// Skippable, but skipping asks once more because the tour teaches the shortcuts.
+// The spotlit element stays usable, so people can try each step. When they do,
+// the step ticks itself off. Their design is snapshotted and can be restored at the end.
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon } from './ui.js';
+import { TourAnim } from './tour-anim.js';
 import { store, endTour, dismissTip } from '../state.js';
 
 const touch = () => document.documentElement.dataset.input === 'touch';
 const K = (k) => html`<kbd>${k}</kbd>`;
+const edTab = (tab) => () => window.dispatchEvent(new CustomEvent('mar:edtab', { detail: tab }));
+const changed = (f) => (prev, next) => JSON.stringify(f(prev)) !== JSON.stringify(f(next));
 
 export const TOURS = {
   studio: [
     {
-      target: '.cross-center',
+      target: '.cross-center', anim: 'rotate', detect: 'drag',
       title: 'This is your ring',
-      body: () => (touch() ? 'Drag to rotate it and pinch to zoom.' : html`Drag to rotate it. Scroll or use ${K('+')} ${K('−')} to zoom, ${K('R')} resets the view.`),
-      more: 'Every change you make anywhere shows up here instantly.',
+      body: () => (touch() ? 'Drag to rotate it and pinch to zoom. Try it now.' : html`Drag to rotate it, scroll to zoom. ${K('R')} resets the view. Try it now.`),
+      done: 'Nice. Every change you make shows up here instantly.',
     },
     {
-      target: '.cross-top',
+      target: '.cross-top', anim: 'vertical', allowKeys: ['ArrowUp', 'ArrowDown'],
+      watch: changed((s) => s.design.patterns.middle),
       title: 'Middle patterns scroll up and down',
-      body: () => (touch() ? 'Swipe the top or bottom card, or tap it.' : html`Click the cards above and below the ring, or press ${K('↑')} ${K('↓')}.`),
-      more: 'The middle runs along the centre of the band, so it scrolls the same way.',
+      body: () => (touch() ? 'Tap or swipe the card above the ring.' : html`Click the card above the ring, or press ${K('↑')} ${K('↓')}.`),
+      done: 'That is the middle zone changing.',
     },
     {
-      target: '.cross-right',
+      target: '.cross-right', anim: 'horizontal', allowKeys: ['ArrowLeft', 'ArrowRight'],
+      watch: changed((s) => [s.design.patterns.sideL, s.design.patterns.sideR]),
       title: 'Side patterns scroll left and right',
-      body: () => (touch() ? 'Swipe the side cards, or tap them.' : html`Click the side cards, or press ${K('←')} ${K('→')}.`),
-      more: 'Both sides change together until you unlink them.',
+      body: () => (touch() ? 'Tap or swipe a side card.' : html`Click a side card, or press ${K('←')} ${K('→')}.`),
+      done: 'Both sides changed together.',
     },
     {
-      target: '.link-group',
+      target: '.link-group', anim: 'link', allowKeys: ['l', 'L', 's', 'S'],
+      watch: changed((s) => s.design.linked),
       title: 'Matched or mixed sides',
-      body: () => (touch() ? 'Tap to unlink, then choose which side you are styling.' : html`${K('L')} links or unlinks the sides. When unlinked, ${K('S')} switches between left and right.`),
+      body: () => (touch() ? 'Tap to unlink, then pick which side you are styling.' : html`${K('L')} links or unlinks the sides. When unlinked, ${K('S')} switches between left and right.`),
+      done: 'Now each side can have its own border.',
     },
     {
-      target: '.band-map-wrap',
+      target: '.band-map-wrap', anim: 'band',
+      watch: changed((s) => [s.design.splits, s.libZone, s.activeSide]),
       title: 'The unrolled band',
-      body: () => 'This is the ring laid flat, exactly as it will be made. Click a zone to filter the library to it. Drag the handles on the zone edges to make the sides or middle bigger.',
+      body: () => 'The ring laid flat, exactly as it will be made. Drag the handles on the zone edges to make the sides or middle bigger, or click a zone to filter the library.',
+      done: 'Proportions are yours to set.',
     },
     {
-      target: '.rail.library',
+      target: '.rail.library', anim: 'search', detect: 'input', allowKeys: '*input',
       title: 'Find anything faster',
-      body: () => (touch() ? 'Search every pattern and template here instead of scrolling.' : html`Search every pattern with ${K('/')}. ${K('[')} hides this panel; drag its edge to resize it.`),
+      body: () => (touch() ? 'Search every pattern and template here instead of scrolling.' : html`Type in the search box (${K('/')} jumps there). ${K('[')} hides this panel; drag its edge to resize it.`),
+      done: 'Search narrows patterns as you type.',
     },
     {
-      target: '.draw-btn',
+      target: '.draw-btn', anim: 'draw', interact: false,
       title: 'Draw your own pattern',
       body: () => (touch() ? 'Sketch one tile and it repeats around the whole ring.' : html`Sketch one tile and it repeats around the whole ring. Shortcut: ${K('D')}.`),
+      more: 'The editor has its own short tour the first time you open it.',
     },
     {
-      target: '#spec-layout',
+      target: '#spec-layout', anim: 'layout',
+      watch: changed((s) => [s.design.layout, s.design.splits]),
       title: 'Layout and proportions',
       body: () => 'Choose which zones the ring has, then set how wide the sides are compared to the middle.',
+      done: 'Layout updated.',
     },
     {
-      target: '#spec-checks',
+      target: '#spec-checks', anim: 'checks',
+      watch: changed((s) => s.design),
       title: 'Printability, checked live',
       body: () => 'Thin walls, fine lines and deep engravings are flagged for the material you pick. Each warning has a one-click fix.',
+      done: 'Fixed, and it can be undone from the toast.',
     },
     {
-      target: '.price-card',
+      target: '.price-card', anim: 'price', interact: false,
       title: 'Price and next step',
       body: () => (touch() ? 'When you like it, try it on a hand.' : html`When you like it, try it on a hand. Press ${K('?')} any time to see every shortcut.`),
     },
   ],
   editor: [
     {
-      target: '.ed-canvas',
+      target: '.ed-canvas', anim: 'draw', detect: 'drawn', allowKeys: '*',
       title: 'Draw one tile',
-      body: () => 'Whatever you draw here repeats around the ring. The faded copies on either side show where the next tiles join.',
+      body: () => 'Whatever you draw here repeats around the ring. The faded copies on either side show where the next tiles join. Try a quick squiggle.',
       more: touch() ? null : 'Keyboard: arrow keys move the cursor, Enter places a point, Esc finishes a line.',
+      done: 'See it repeat in the faded tiles?',
     },
     {
-      target: '.ed-tools',
+      target: '.ed-tools', anim: 'tools', allowKeys: ['p', 'l', 's', 'c', 'd', 't', 'v', 'e', 'P', 'L', 'S', 'C', 'D', 'T', 'V', 'E'],
       title: 'Tools',
-      body: () => (touch() ? 'Pen, line, square, circle, dot, move and eraser.' : html`${K('P')} pen · ${K('L')} line · ${K('S')} square · ${K('C')} circle · ${K('D')} dot · ${K('V')} move · ${K('E')} eraser`),
-      more: 'Mirror copies your strokes across the tile, so symmetric patterns are quick.',
+      body: () => (touch() ? 'Pen, line, square, circle, dot, stamp, move and eraser.' : html`${K('P')} pen · ${K('L')} line · ${K('S')} square · ${K('C')} circle · ${K('D')} dot · ${K('T')} stamp · ${K('V')} move · ${K('E')} eraser`),
+      more: 'Hold Shift with the line tool to lock it straight, or with the square tool for a free rectangle.',
     },
     {
-      target: '.ed-steady',
+      target: '.ed-sym', anim: 'symmetry',
+      title: 'Symmetry does half the work',
+      body: () => 'Mirror, rotate or kaleidoscope: one stroke becomes a balanced ornament. Moving a stroke moves its copies too.',
+    },
+    {
+      target: '.ed-panel', anim: 'stamps', onEnter: edTab('stamps'),
+      title: 'Stamps',
+      body: () => 'Leaves, hearts, stars, curls and more. Pick one, set size and angle, and click to place it.',
+    },
+    {
+      target: '.ed-panel', anim: 'steady', onEnter: edTab('steady'),
       title: 'Steady',
-      body: () => 'Wobbly hand? Steady smooths each pen line after you lift the pen. Set how strongly it corrects.',
+      body: () => 'Smooths each pen line after you lift the pen, so drawing never lags. Shape recognition turns a wobbly circle or line into a clean one.',
     },
     {
-      target: '.ed-view',
-      title: 'Zoom and grid',
-      body: () => (touch() ? 'Zoom in for detail and hide the grid when you want a clean view.' : html`Zoom with ${K('+')} ${K('−')} or Ctrl + scroll; ${K('0')} fits the tile. ${K('G')} shows or hides the grid, ${K('N')} toggles snapping.`),
+      target: '.ed-panel', anim: 'generate', onEnter: edTab('generate'),
+      title: 'Generate a base',
+      body: () => 'Start from a clean wave, zigzag, chain or scallop and decorate on top of it.',
     },
     {
-      target: '.ed-weight',
+      target: '.ed-panel', anim: 'weight', onEnter: edTab('line'),
       title: 'Line weight, with real limits',
-      body: () => 'Set the line thickness in millimetres. If it gets thinner than your material can print, you will see a warning straight away.',
+      body: () => 'Set the thickness in millimetres. Go thinner than your material can print and you will see a warning straight away.',
+      more: 'Lines look thick because the zone is only a few millimetres tall. Make the zone bigger for a finer look.',
     },
     {
-      target: '.ed-preview',
+      target: '.ed-view', anim: 'zoom',
+      title: 'Zoom, grid and guides',
+      body: () => (touch() ? 'Zoom in for detail and hide the grid when you want a clean view.' : html`${K('+')} ${K('−')} or Ctrl + scroll to zoom, ${K('0')} fits. ${K('G')} grid, ${K('N')} snapping.`),
+      more: 'Shaded strips show where a bevel or dome bends the pattern. Gold markers on the tile edges show where a line must continue to join the next tile.',
+    },
+    {
+      target: '.ed-preview', anim: 'preview',
       title: 'Live on your ring',
-      body: () => 'Your tile is wrapped onto the ring as you draw. Save it and it joins your library and the carousels.',
+      body: () => 'Your tile is wrapped onto the ring when you lift the pen. Save it and it joins your library and the carousels.',
     },
   ],
 };
 
 function placeCard(r, card) {
   const m = 14, vw = innerWidth, vh = innerHeight;
-  const cw = card?.offsetWidth || 340, ch = card?.offsetHeight || 200;
+  const cw = card?.offsetWidth || 360, ch = card?.offsetHeight || 260;
   let top, left;
   if (r.bottom + m + ch < vh) top = r.bottom + m;
   else if (r.top - m - ch > 0) top = r.top - m - ch;
@@ -112,34 +146,52 @@ function placeCard(r, card) {
   return { top, left: Math.max(m, Math.min(vw - cw - m, left)) };
 }
 
+const inside = (r, x, y) => r && x >= r.left && x <= r.left + r.width && y >= r.top && y <= r.top + r.height;
+
 export function Tour() {
   const tour = store.use((s) => s.tour);
   const [rect, setRect] = useState(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const [skipAsk, setSkipAsk] = useState(false);
+  const [doneMsg, setDoneMsg] = useState(null);
+  const [final, setFinal] = useState(false);
   const card = useRef();
   const nextBtn = useRef();
+  const spotRef = useRef(null);
 
-  const steps = tour ? (TOURS[tour.id] || []).filter((st) => {
-    const el = document.querySelector(st.target);
-    return el && el.getClientRects().length;
-  }) : [];
-  const i = tour ? Math.min(tour.step, steps.length - 1) : 0;
+  const steps = tour
+    ? (TOURS[tour.id] || []).filter((st) => {
+        const el = document.querySelector(st.target);
+        return el && el.getClientRects().length;
+      })
+    : [];
+  const i = tour ? Math.min(tour.step, Math.max(0, steps.length - 1)) : 0;
   const step = steps[i];
 
+  const finish = () => {
+    const snap = tour?.snapshot;
+    if (snap && JSON.stringify(snap) !== JSON.stringify(store.get().design)) setFinal(true);
+    else endTour();
+  };
   const go = (n) => {
     setSkipAsk(false);
-    if (n >= steps.length) return endTour();
+    setDoneMsg(null);
+    if (n >= steps.length) return finish();
     store.set({ tour: { ...tour, step: Math.max(0, n) } });
   };
 
-  // Follow the target while it moves (scrolling, resizing, layout changes).
+  useEffect(() => {
+    setSkipAsk(false);
+    setFinal(false);
+  }, [tour?.id]);
+
+  // Step entry: run its hook, follow the target while it moves.
   useEffect(() => {
     if (!step) return;
     document.body.classList.add('tour-open');
     dismissTip();
-    const el = document.querySelector(step.target);
-    el?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    step.onEnter?.();
+    document.querySelector(step.target)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     let raf;
     const tick = () => {
       const r = document.querySelector(step.target)?.getBoundingClientRect();
@@ -151,61 +203,139 @@ export function Tour() {
   }, [tour?.id, i]);
 
   useEffect(() => () => document.body.classList.remove('tour-open'), []);
-  useEffect(() => setSkipAsk(false), [tour?.id]);
   useEffect(() => {
     if (!tour) document.body.classList.remove('tour-open');
   }, [tour]);
 
-  useLayoutEffect(() => {
-    if (rect) setPos(placeCard(rect, card.current));
-  }, [rect, skipAsk, i]);
+  // Did the person actually do the thing? Then tick the step off and move on.
+  const complete = () => {
+    if (!step?.done) return;
+    setDoneMsg((m) => m || step.done);
+  };
+  useEffect(() => {
+    if (!doneMsg) return;
+    const t = setTimeout(() => go(i + 1), 1500);
+    return () => clearTimeout(t);
+  }, [doneMsg]);
 
   useEffect(() => {
-    if (step) requestAnimationFrame(() => (card.current?.querySelector('[data-primary]') || nextBtn.current)?.focus());
-  }, [i, skipAsk, !!step]);
+    if (!step || skipAsk || final) return;
+    const offs = [];
+    if (step.watch) {
+      let prev = store.get();
+      offs.push(store.subscribe((s) => {
+        if (step.watch(prev, s)) complete();
+        prev = s;
+      }));
+    }
+    if (step.detect === 'drag') {
+      let start = null;
+      const down = (e) => inside(spotRef.current, e.clientX, e.clientY) && (start = { x: e.clientX, y: e.clientY });
+      const up = (e) => {
+        if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 24) complete();
+        start = null;
+      };
+      const wheel = (e) => inside(spotRef.current, e.clientX, e.clientY) && complete();
+      addEventListener('pointerdown', down, true);
+      addEventListener('pointerup', up, true);
+      addEventListener('wheel', wheel, true);
+      offs.push(() => (removeEventListener('pointerdown', down, true), removeEventListener('pointerup', up, true), removeEventListener('wheel', wheel, true)));
+    }
+    if (step.detect === 'input') {
+      const onInput = (e) => e.target.closest?.(step.target) && e.target.value?.length > 1 && complete();
+      addEventListener('input', onInput, true);
+      offs.push(() => removeEventListener('input', onInput, true));
+    }
+    if (step.detect === 'drawn') {
+      const onUp = (e) => inside(spotRef.current, e.clientX, e.clientY) && setTimeout(complete, 300);
+      addEventListener('pointerup', onUp, true);
+      offs.push(() => removeEventListener('pointerup', onUp, true));
+    }
+    return () => offs.forEach((f) => f());
+  }, [tour?.id, i, skipAsk, final]);
+
+  useLayoutEffect(() => {
+    if (rect) setPos(placeCard(rect, card.current));
+  }, [rect, skipAsk, i, !!doneMsg]);
+
+  useEffect(() => {
+    if (step || final) requestAnimationFrame(() => (card.current?.querySelector('[data-primary]') || nextBtn.current)?.focus({ preventScroll: true }));
+  }, [i, skipAsk, !!step, final]);
 
   useEffect(() => {
     if (!tour) return;
     const onKey = (e) => {
+      const inCard = e.target instanceof Node && !!card.current?.contains(e.target);
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        setSkipAsk((v) => !v);
-      } else if ((e.key === 'ArrowRight' || e.key === 'Enter') && !skipAsk && !e.target.closest?.('button')) {
-        e.preventDefault();
-        e.stopPropagation();
-        go(i + 1);
-      } else if (e.key === 'ArrowRight' && !skipAsk) {
-        e.preventDefault();
-        e.stopPropagation();
-        go(i + 1);
-      } else if (e.key === 'ArrowLeft' && !skipAsk) {
-        e.preventDefault();
-        e.stopPropagation();
-        go(i - 1);
-      } else if (e.key === 'Tab') {
+        if (!final) setSkipAsk((v) => !v);
+        return;
+      }
+      if (e.key === 'Tab' && !e.target.closest?.(step?.target || '#none')) {
         const f = [...(card.current?.querySelectorAll('button') || [])];
         if (!f.length) return;
         e.preventDefault();
         e.stopPropagation();
         const k = f.indexOf(document.activeElement);
         f[(k + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
-      } else if (!e.ctrlKey && !e.metaKey) {
-        // Swallow other keys so the studio shortcuts don't fire underneath.
-        e.stopPropagation();
+        return;
       }
+      if (inCard) return; // buttons in the card behave normally
+      const allow = step?.allowKeys;
+      const typing = e.target.closest?.('input, textarea') && e.target.closest?.(step?.target || '#none');
+      if (allow === '*' || typing || (Array.isArray(allow) && allow.includes(e.key))) return;
+      if (e.key === 'Enter' && !skipAsk && !final) {
+        e.preventDefault();
+        e.stopPropagation();
+        go(i + 1);
+        return;
+      }
+      if (!e.ctrlKey && !e.metaKey) e.stopPropagation(); // keep other shortcuts from firing underneath
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [tour, i, skipAsk, steps.length]);
+  }, [tour, i, skipAsk, final, steps.length]);
 
-  if (!tour || !step || !rect) return null;
+  if (!tour) return null;
+
+  if (final) {
+    return html`<div class="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+      <div class="tour-blocker full"></div>
+      <svg class="tour-shade" aria-hidden="true"><rect x="0" y="0" width="100%" height="100%" class="tour-shade-fill" /></svg>
+      <div class="tour-card center" ref=${card}>
+        <div class="tour-head"><span class="tour-count">Tour complete</span></div>
+        <h2 id="tour-title">Keep what you tried?</h2>
+        <p>You changed the ring while following the tour. Keep those changes, or put your ring back exactly as it was before the tour.</p>
+        <div class="tour-actions">
+          <button class="btn ghost sm" onClick=${() => (store.set({ design: tour.snapshot }), setFinal(false), endTour())}>Restore my ring</button>
+          <span class="spacer"></span>
+          <button class="btn primary sm" data-primary onClick=${() => (setFinal(false), endTour())}>Keep changes</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (!step || !rect) return null;
   const pad = 6;
   const spot = { top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 };
+  spotRef.current = spot;
+  const interact = step.interact !== false && !skipAsk;
   const last = i === steps.length - 1;
+  const vw = innerWidth, vh = innerHeight;
+  // Four blockers around the hole keep the rest of the page inert while the spotlit part stays usable.
+  const blockers = interact
+    ? [
+        { top: 0, left: 0, width: vw, height: Math.max(0, spot.top) },
+        { top: spot.top + spot.height, left: 0, width: vw, height: Math.max(0, vh - spot.top - spot.height) },
+        { top: spot.top, left: 0, width: Math.max(0, spot.left), height: spot.height },
+        { top: spot.top, left: spot.left + spot.width, width: Math.max(0, vw - spot.left - spot.width), height: spot.height },
+      ]
+    : [{ top: 0, left: 0, width: vw, height: vh }];
 
-  return html`<div class="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-body">
-    <svg class="tour-shade" aria-hidden="true" onClick=${(e) => e.stopPropagation()}>
+  return html`<div class="tour" role="dialog" aria-modal="false" aria-labelledby="tour-title" aria-describedby="tour-body">
+    ${blockers.map((b) => html`<div class="tour-blocker" style=${`top:${b.top}px;left:${b.left}px;width:${b.width}px;height:${b.height}px`}></div>`)}
+    <svg class="tour-shade" aria-hidden="true">
       <defs>
         <mask id="tour-mask">
           <rect x="0" y="0" width="100%" height="100%" fill="white" />
@@ -214,9 +344,10 @@ export function Tour() {
       </defs>
       <rect x="0" y="0" width="100%" height="100%" class="tour-shade-fill" mask="url(#tour-mask)" />
     </svg>
-    <div class="tour-spot" style=${`top:${spot.top}px;left:${spot.left}px;width:${spot.width}px;height:${spot.height}px`}>
+    <div class=${'tour-spot' + (interact ? ' live' : '')} style=${`top:${spot.top}px;left:${spot.left}px;width:${spot.width}px;height:${spot.height}px`}>
       <span class="tour-underline" key=${i}></span>
       <span class="tour-tick tl"></span><span class="tour-tick tr"></span><span class="tour-tick bl"></span><span class="tour-tick br"></span>
+      ${interact && step.done && html`<span class="tour-try">Try it</span>`}
     </div>
     <div class="tour-card" ref=${card} style=${`top:${pos.top}px;left:${pos.left}px`}>
       ${skipAsk
@@ -224,7 +355,7 @@ export function Tour() {
             <h2 id="tour-title">Skip the tour?</h2>
             <p id="tour-body">We recommend finishing it. It's ${steps.length} short steps and shows the shortcuts that make this much faster. You can replay it any time from the help menu.</p>
             <div class="tour-actions">
-              <button class="btn ghost sm" onClick=${() => endTour()}>Skip anyway</button>
+              <button class="btn ghost sm" onClick=${() => (setSkipAsk(false), finish())}>Skip anyway</button>
               <span class="spacer"></span>
               <button class="btn primary sm" data-primary onClick=${() => setSkipAsk(false)}>Continue tour</button>
             </div>`
@@ -232,14 +363,16 @@ export function Tour() {
               <span class="tour-count">${String(i + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}</span>
               <div class="tour-progress" aria-hidden="true">${steps.map((_, k) => html`<span class=${k <= i ? 'on' : ''}></span>`)}</div>
             </div>
+            <${TourAnim} kind=${step.anim} key=${tour.id + i} />
             <h2 id="tour-title">${step.title}</h2>
-            <p id="tour-body">${step.body()}</p>
-            ${step.more && html`<p class="tour-more">${step.more}</p>`}
+            ${doneMsg
+              ? html`<p id="tour-body" class="tour-done" role="status"><${Icon} name="check" size=${16} /> ${doneMsg}</p>`
+              : html`<p id="tour-body">${step.body()}</p>${step.more && html`<p class="tour-more">${step.more}</p>`}`}
             <div class="tour-actions">
               <button class="link-btn muted-link" onClick=${() => setSkipAsk(true)}>Skip tour</button>
               <span class="spacer"></span>
               ${i > 0 && html`<button class="btn ghost sm" onClick=${() => go(i - 1)}><${Icon} name="left" size=${14} /> Back</button>`}
-              <button class="btn primary sm" ref=${nextBtn} onClick=${() => go(i + 1)}>${last ? 'Start designing' : 'Next'} ${!last && html`<${Icon} name="right" size=${14} />`}</button>
+              <button class="btn primary sm" ref=${nextBtn} onClick=${() => go(i + 1)}>${last ? 'Finish' : 'Next'} ${!last && html`<${Icon} name="right" size=${14} />`}</button>
             </div>`}
     </div>
   </div>`;

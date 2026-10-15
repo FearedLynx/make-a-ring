@@ -19,8 +19,9 @@ const SHORTCUTS = [
   ['Studio', [['↑ / ↓', 'Previous / next middle pattern'], ['← / →', 'Previous / next side pattern'], ['L', 'Link or unlink the sides'],
     ['S', 'Switch between left and right side (when unlinked)'], ['D', 'Draw your own pattern'], ['+ / −', 'Zoom the ring'], ['R', 'Reset the 3D view'],
     ['/', 'Search patterns'], ['[ / ]', 'Hide or show the side panels']]],
-  ['Pattern editor', [['P L S C D', 'Pen, line, square, circle, dot'], ['V / E', 'Move, eraser'], ['B', 'Steady on / off'],
-    ['M / Shift+M', 'Mirror left–right / top–bottom'], ['G / N', 'Show grid / snap to grid'], ['+ / − / 0', 'Zoom in, out, fit'],
+  ['Pattern editor', [['P L S C D', 'Pen, line, square, circle, dot'], ['T / V / E', 'Stamp, move, eraser'], ['B', 'Steady on / off'],
+    ['M', 'Cycle symmetry: off, mirror, 4-way, rotate, kaleido'], ['Shift', 'Line: lock to 0° / 45° / 90°. Square: free rectangle'],
+    [', / .', 'Rotate the stamp'], ['[ / ]', 'Stamp smaller / bigger'], ['G / N', 'Show grid / snap to grid'], ['+ / − / 0', 'Zoom in, out, fit'],
     ['Delete', 'Remove the selected strokes'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Arrows + Enter', 'Draw with the keyboard on the canvas'], ['Esc', 'Finish a line']]],
 ];
 

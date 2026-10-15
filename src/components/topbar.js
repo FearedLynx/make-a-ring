@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Logo } from './ui.js';
-import { store, go, toast, shareUrl, THEMES, setTheme, startTour } from '../state.js';
+import { store, go, toast, shareUrl, THEMES, setTheme, startTour, setGrid } from '../state.js';
 
 const STEPS = [
   { id: 'studio', label: 'Design' },
@@ -28,6 +28,22 @@ export function ThemeDots({ className = '' }) {
         onClick=${() => setTheme(t.id)}></button>`
     )}
   </div>`;
+}
+
+/** Shows or hides the drafting grid behind the stage, landing and editor. */
+export function GridToggle() {
+  const grid = store.use((s) => s.grid);
+  return html`<button class=${'grid-toggle' + (grid ? '' : ' off')} aria-pressed=${grid} onClick=${() => setGrid(!grid)}
+    aria-label=${grid ? 'Hide background grid' : 'Show background grid'} title=${grid ? 'Hide grid' : 'Show grid'}>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <defs><clipPath id="gt-clip"><circle cx="12" cy="12" r="9.2" /></clipPath></defs>
+      <circle cx="12" cy="12" r="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.4" />
+      <g clip-path="url(#gt-clip)" stroke="currentColor" stroke-width="1" opacity=".75">
+        <path d="M2 7.5h20M2 12h20M2 16.5h20M7.5 2v20M12 2v20M16.5 2v20" />
+      </g>
+      <line class="gt-strike" x1="4.6" y1="19.4" x2="19.4" y2="4.6" />
+    </svg>
+  </button>`;
 }
 
 function HelpMenu() {
@@ -79,7 +95,7 @@ export function TopBar() {
         <input value=${name} onInput=${(e) => store.set({ ringName: e.currentTarget.value })} maxlength="40" />
         <${Icon} name="pen" size=${13} />
       </label>
-      <${ThemeDots} />
+      <div class="view-prefs"><${ThemeDots} /><${GridToggle} /></div>
       <${HelpMenu} />
       <button class="btn ghost sm share-btn" onClick=${copyShareLink}><${Icon} name="share" size=${15} /><span>Share</span></button>
     </div>

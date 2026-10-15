@@ -1,0 +1,148 @@
+/* Tour v2: interactive spotlight and the little looping demos (.ta-*) inside tour cards. */
+.tour-shade { pointer-events: none; }
+.tour-shade-fill { fill: rgba(10, 8, 6, 0.76); }
+.tour-blocker { position: fixed; background: transparent; }
+.tour-blocker.full { inset: 0; }
+.tour-spot.live { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
+.tour-try {
+  position: absolute; top: -26px; left: 50%; transform: translateX(-50%); padding: 3px 10px; border-radius: 99px;
+  background: var(--accent); color: #fff; font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: 0.08em;
+  white-space: nowrap; animation: try-pulse 1.6s ease-in-out infinite;
+}
+@keyframes try-pulse { 50% { transform: translateX(-50%) scale(1.06); } }
+.tour-card.center { top: 50% !important; left: 50% !important; transform: translate(-50%, -50%); }
+.tour-done { display: flex; gap: 8px; align-items: center; color: var(--ok) !important; font-weight: 600; }
+.tour-anim { margin: 2px 0 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.ta { display: block; width: 100%; height: 92px; }
+
+.ta-card { fill: var(--surface); stroke: var(--line-2); stroke-width: 1; }
+.ta-card.on { stroke: var(--accent); stroke-width: 1.5; }
+.ta-motif { fill: none; stroke: var(--ink-2); stroke-width: 1.4; }
+.ta-motif-line { fill: none; stroke: var(--ink-2); stroke-width: 1.4; stroke-linecap: round; }
+.ta-frame { fill: none; stroke: var(--accent); stroke-width: 2; }
+.ta-key { font: 600 14px var(--mono); fill: var(--accent-ink); }
+.ta-cursor { fill: var(--ink); stroke: var(--surface); stroke-width: 1; }
+.ta-board { fill: var(--surface); stroke: var(--line-2); }
+.ta-grid { fill: none; stroke: var(--grid-strong); stroke-width: 1; }
+
+/* rotate */
+.ta-ring { fill: none; stroke: var(--accent); stroke-width: 6; }
+.ta-ring.inner { stroke: var(--ink-3); stroke-width: 1; }
+.ta-spin { transform-origin: 100px 45px; animation: ta-spin 2.4s ease-in-out infinite; }
+@keyframes ta-spin { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.28); } }
+.ta-drag-x { animation: ta-drag-x 2.4s ease-in-out infinite; }
+@keyframes ta-drag-x { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-34px); } }
+
+/* carousels */
+.ta-slide-y { animation: ta-slide-y 2.6s cubic-bezier(0.6, 0, 0.2, 1) infinite; }
+@keyframes ta-slide-y { 0%, 35% { transform: translateY(0); } 50%, 85% { transform: translateY(-28px); } 100% { transform: translateY(0); } }
+.ta-slide-x { animation: ta-slide-x 2.6s cubic-bezier(0.6, 0, 0.2, 1) infinite; }
+@keyframes ta-slide-x { 0%, 35% { transform: translateX(0); } 50%, 85% { transform: translateX(-44px); } 100% { transform: translateX(0); } }
+
+/* link */
+.ta-band { fill: var(--band); stroke: var(--line-2); }
+.ta-side { fill: var(--zone-side); }
+.ta-side.right { animation: ta-side-r 3.2s steps(1) infinite; }
+@keyframes ta-side-r { 0%, 49% { fill: var(--zone-side); } 50%, 100% { fill: var(--accent); } }
+.ta-chain circle { fill: none; stroke: var(--ink); stroke-width: 2; }
+.ta-break { stroke: #d92d20; stroke-width: 2.5; stroke-linecap: round; animation: ta-break 3.2s steps(1) infinite; }
+@keyframes ta-break { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+
+/* band */
+.ta-zone.side { fill: var(--zone-side); opacity: 0.8; }
+.ta-zone.mid { fill: var(--zone-mid); opacity: 0.8; animation: ta-zone-mid 2.8s ease-in-out infinite; }
+.ta-zone.top { animation: ta-zone-top 2.8s ease-in-out infinite; }
+.ta-zone.bottom { animation: ta-zone-bottom 2.8s ease-in-out infinite; }
+@keyframes ta-zone-top { 50% { height: 20px; } }
+@keyframes ta-zone-mid { 50% { y: 40px; height: 10px; } }
+@keyframes ta-zone-bottom { 50% { y: 50px; height: 20px; } }
+.ta-handle line { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.ta-handle rect { fill: var(--accent); }
+.ta-handle, .ta-drag-y { animation: ta-drag-y 2.8s ease-in-out infinite; }
+@keyframes ta-drag-y { 50% { transform: translateY(8px); } }
+
+/* search */
+.ta-input { fill: var(--surface); stroke: var(--line-2); }
+.ta-type { font: 12px var(--mono); fill: var(--ink); animation: ta-type 3s steps(4) infinite; }
+@keyframes ta-type { 0% { clip-path: inset(0 100% 0 0); } 40%, 100% { clip-path: inset(0 0 0 0); } }
+.ta-caret { stroke: var(--accent); stroke-width: 1.5; animation: ta-caret 3s steps(4) infinite; }
+@keyframes ta-caret { 0% { transform: translateX(-26px); } 40%, 100% { transform: translateX(0); } }
+.ta-result { opacity: 0; animation: ta-result 3s ease-out infinite; }
+.ta-result.r1 { animation-delay: 0.12s; }
+.ta-result.r2 { animation-delay: 0.24s; }
+@keyframes ta-result { 0%, 40% { opacity: 0; transform: translateY(6px); } 55%, 100% { opacity: 1; transform: none; } }
+
+/* draw / steady: a messy line draws itself, then the smoothed version replaces it */
+.ta-messy, .ta-smooth { fill: none; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.ta-messy { stroke: var(--ink-3); stroke-width: 2.2; animation: ta-messy 4s ease-in-out infinite; }
+.ta-smooth { stroke: var(--accent); stroke-width: 3; animation: ta-smooth 4s ease-in-out infinite; }
+@keyframes ta-messy { 0% { stroke-dashoffset: 1; opacity: 1; } 40% { stroke-dashoffset: 0; opacity: 1; } 55%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes ta-smooth { 0%, 50% { stroke-dashoffset: 1; opacity: 0; } 52% { opacity: 1; } 75%, 100% { stroke-dashoffset: 0; opacity: 1; } }
+
+/* layout */
+.ta-lay { opacity: 0.35; animation: ta-lay 4s steps(1) infinite; }
+.ta-lay.l1 { animation-delay: -3s; }
+.ta-lay.l2 { animation-delay: -2s; }
+.ta-lay.l3 { animation-delay: -1s; }
+@keyframes ta-lay { 0%, 24% { opacity: 1; } 25%, 100% { opacity: 0.35; } }
+.ta-z.s { fill: var(--zone-side); }
+.ta-z.m { fill: var(--zone-mid); }
+
+/* checks */
+.ta-warn path:first-child { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 2; }
+.ta-mark { stroke: var(--warn); stroke-width: 3; stroke-linecap: round; fill: none; }
+.ta-ok circle { fill: var(--ok-soft); stroke: var(--ok); stroke-width: 2; }
+.ta-ok path { fill: none; stroke: var(--ok); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.ta-warn { animation: ta-warn 3s steps(1) infinite; }
+.ta-ok { animation: ta-ok 3s steps(1) infinite; }
+@keyframes ta-warn { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes ta-ok { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+
+/* price */
+.ta-price { font: 800 22px var(--display); fill: var(--ink); }
+.ta-btn { fill: var(--ink); transform-origin: 134px 45px; animation: ta-press 2s ease-in-out infinite; }
+@keyframes ta-press { 45%, 55% { transform: scale(0.92); } }
+.ta-arrow { fill: none; stroke: var(--bg); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* tools */
+.ta-tool rect { fill: var(--surface); stroke: var(--line-2); }
+.ta-tool text { font: 600 11px var(--mono); fill: var(--ink-2); text-anchor: middle; }
+.ta-tool { animation: ta-tool 4s steps(1) infinite; }
+.ta-tool.t1 { animation-delay: 0.5s; }
+.ta-tool.t2 { animation-delay: 1s; }
+.ta-tool.t3 { animation-delay: 1.5s; }
+.ta-tool.t4 { animation-delay: 2s; }
+.ta-tool.t5 { animation-delay: 2.5s; }
+.ta-tool.t6 { animation-delay: 3s; }
+.ta-tool.t7 { animation-delay: 3.5s; }
+@keyframes ta-tool { 0%, 12% { transform: translateY(-4px); } 13%, 100% { transform: none; } }
+
+/* symmetry */
+.ta-axis { stroke: var(--accent); stroke-dasharray: 3 3; fill: none; }
+.ta-sym { fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: ta-sym 3.6s ease-in-out infinite; }
+.ta-sym.s1, .ta-sym.s2, .ta-sym.s3 { stroke: var(--accent); animation-name: ta-sym-copy; }
+@keyframes ta-sym { 0% { stroke-dashoffset: 1; } 40%, 100% { stroke-dashoffset: 0; } }
+@keyframes ta-sym-copy { 0%, 40% { stroke-dashoffset: 1; opacity: 0; } 41% { stroke-dashoffset: 0; opacity: 0; } 55%, 100% { stroke-dashoffset: 0; opacity: 1; } }
+
+/* stamps */
+.ta-stamp { fill: var(--accent); opacity: 0; animation: ta-stamp 3.6s ease-out infinite; }
+.ta-stamp.p1 { animation-delay: 0.6s; }
+.ta-stamp.p2 { animation-delay: 1.2s; }
+@keyframes ta-stamp { 0% { opacity: 0; } 8% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+
+/* zoom, weight, generate */
+.ta-zoom { transform-origin: 100px 45px; animation: ta-zoomk 3s ease-in-out infinite; }
+@keyframes ta-zoomk { 50% { transform: scale(1.5); } }
+.ta-weight { stroke: var(--ink); stroke-linecap: round; animation: ta-weight 3s ease-in-out infinite; }
+@keyframes ta-weight { 0%, 100% { stroke-width: 8; } 50% { stroke-width: 2; stroke: var(--warn); } }
+.ta-limit { stroke: var(--accent); stroke-width: 3; stroke-dasharray: 5 4; }
+.ta-label { font: 10px var(--mono); fill: var(--ink-3); }
+.ta-gen { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-dasharray: 1; stroke-dashoffset: 1; animation: ta-sym 3.4s ease-in-out infinite; }
+.ta-gen.g2 { stroke: var(--ink-2); animation-delay: 0.6s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ta, .ta * { animation: none !important; }
+  .ta-messy { display: none; }
+  .ta-smooth, .ta-sym, .ta-gen { stroke-dashoffset: 0; opacity: 1; }
+  .ta-result, .ta-stamp { opacity: 1; }
+}

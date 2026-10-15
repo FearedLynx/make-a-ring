@@ -55,7 +55,7 @@ export function Studio() {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (document.body.classList.contains('modal-open') || document.body.classList.contains('tour-open')) return;
+      if (document.body.classList.contains('modal-open')) return;
       if (e.target.closest?.('input, textarea, select')) return;
       if (e.key === '/') {
         e.preventDefault();

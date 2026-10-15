@@ -1,0 +1,69 @@
+/* Pattern editor v3: cursors, symmetry, tabs, stamps, bends, seam guides. */
+
+/* Custom cursors (some built-in cursors render as a question mark on Windows) */
+.ed-canvas.tool-pen {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M3 21l1.5-5L16 4.5a2.1 2.1 0 0 1 3 3L7.5 19z' fill='white' stroke='black' stroke-width='1.5' stroke-linejoin='round'/><path d='M3 21l1.5-5 3 3z' fill='black'/></svg>") 3 21, crosshair;
+}
+.ed-canvas.tool-eraser {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 24 24'><g transform='rotate(-45 12 12)'><rect x='3' y='8' width='18' height='8' rx='1.8' fill='white' stroke='black' stroke-width='1.5'/><path d='M4.8 8h5.7v8H4.8A1.8 1.8 0 0 1 3 14.2V9.8A1.8 1.8 0 0 1 4.8 8Z' fill='%23f08aa6' stroke='black' stroke-width='1.5'/></g></svg>") 6 18, pointer;
+}
+.ed-canvas.tool-line, .ed-canvas.tool-square, .ed-canvas.tool-circle, .ed-canvas.tool-dot, .ed-canvas.tool-stamp { cursor: crosshair; }
+.ed-canvas.tool-move { cursor: move; }
+
+/* Tool column with symmetry modes */
+.ed-body { grid-template-columns: 112px minmax(0, 1fr) 320px; }
+.ed-tools { gap: 3px; }
+.ed-sym { display: grid; gap: 2px; }
+.ed-sym .field-label { margin: 2px 0 4px; font-size: 10px; display: flex; gap: 6px; align-items: center; }
+.ed-sym .field-label kbd { font-size: 9px; padding: 1px 3px; }
+.sym-btn { display: flex; align-items: center; gap: 7px; border: 1px solid transparent; background: none; border-radius: 8px; padding: 4px 6px; font-size: 11.5px; color: var(--ink-2); text-align: left; }
+.sym-btn:hover { background: var(--surface-2); }
+.sym-btn.on { background: var(--accent-soft); color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 40%, transparent); font-weight: 600; }
+.sym-ico { flex: none; }
+
+/* Option panel with tabs */
+.ed-panel { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.ed-tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 8px; }
+.ed-tabs button { border: 0; background: none; padding: 10px 12px 8px; font: 600 11.5px var(--mono); text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-3); border-bottom: 2px solid transparent; }
+.ed-tabs button.on { color: var(--ink); border-color: var(--accent); }
+.ed-tab-body { padding: 4px 16px 14px; display: grid; gap: 6px; }
+.ed-tab-body.two { grid-template-columns: 1.3fr 1fr; gap: 0 22px; align-items: start; }
+.ed-tab-body.tight { padding: 0; }
+.ed-tab-body .check-row { margin-top: 10px; font-size: 13px; }
+.ed-grow { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); display: grid; gap: 8px; justify-items: start; }
+.ed-grow p { font-size: 12.5px; color: var(--ink-2); }
+.ed-gen-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ed-gen-actions .check-row { margin: 0; }
+
+/* Stamps palette */
+.stamp-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }
+.stamp-btn { display: grid; justify-items: center; gap: 3px; padding: 7px 4px 5px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink-2); font-size: 11px; }
+.stamp-btn svg { width: 32px; height: 32px; }
+.stamp-btn path { stroke: currentColor; stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; }
+.stamp-btn:hover { border-color: var(--line-2); color: var(--ink); }
+.stamp-btn.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.ed-stroke.ghost-stamp { opacity: 0.4; stroke: var(--accent); color: var(--accent); pointer-events: none; }
+
+/* Bends, rim and seam guides */
+.ed-bend { fill: var(--accent); }
+.ed-hatch-line { stroke: var(--ink-3); stroke-width: 0.6; opacity: 0.45; }
+.ed-bend-label { font: 600 3.6px var(--mono); fill: var(--accent-ink); text-anchor: middle; text-transform: uppercase; letter-spacing: 0.08em; paint-order: stroke; stroke: var(--surface); stroke-width: 1.2px; }
+.ed-bend-label.rim { fill: var(--ink-2); }
+.ed-seam circle { fill: var(--surface); stroke: var(--accent); stroke-width: 1; animation: seam-pulse 1.4s ease-in-out infinite; }
+.ed-seam.ok circle { fill: var(--ok); stroke: var(--ok); animation: none; }
+.ed-seam text { font: 600 3.4px var(--mono); fill: var(--accent-ink); }
+.ed-seam text.r { text-anchor: end; }
+@keyframes seam-pulse { 50% { stroke-width: 2; } }
+.ed-axis-dot { fill: var(--accent); }
+.ed-flash { color: var(--ok); font-weight: 600; display: inline-flex; gap: 4px; align-items: center; }
+
+@media (max-width: 1180px) {
+  .ed-body { grid-template-columns: 96px minmax(0, 1fr); }
+  .ed-tab-body.two { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .ed-body { grid-template-columns: 1fr; }
+  .ed-sym { grid-template-columns: repeat(3, 1fr); width: 100%; }
+  .stamp-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .ed-seam circle { animation: none; } }

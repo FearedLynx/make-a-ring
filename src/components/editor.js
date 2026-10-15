@@ -1,14 +1,18 @@
-// Pattern editor: draw one tile, mirror it, watch it wrap around the ring live.
+// Pattern editor: draw one tile, let symmetry and stamps do the heavy lifting,
+// and see it wrap around the ring when you lift the pen.
+import { Component } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Modal, Segmented, Slider } from './ui.js';
 import { RingView } from './ring-view.js';
 import { BandMap } from './pattern-art.js';
-import { smoothStroke, thinStroke, circlePoints } from '../lib/patterns.js';
-import { hasMiddle, hasSides } from '../lib/templates.js';
+import { thinStroke, circlePoints } from '../lib/patterns.js';
+import { hasMiddle, hasSides, layoutZones, getSplit, splitPatch } from '../lib/templates.js';
 import { resolveZones, lineWidthMM, MIN_LINE_MM } from '../lib/band.js';
 import { getMaterial } from '../lib/materials.js';
-import { store, patternById, saveCustomPattern, setPattern, toast, showTip, startTour, tourDone } from '../state.js';
+import { bendAt, rimFade } from '../lib/ringGeometry.js';
+import { STAMPS, stampStroke, GENERATORS, generate, SYMMETRY, symMats, applyM, applyV, inv, steady, recognise, constrain } from '../lib/shapes.js';
+import { store, patternById, saveCustomPattern, setPattern, setDesign, toast, showTip, startTour, tourDone } from '../state.js';
 
 const DRAFT = '__draft';
 const GRID = 12;
@@ -20,38 +24,45 @@ const TOOLS = [
   { id: 'square', icon: 'square', label: 'Square', key: 'S' },
   { id: 'circle', icon: 'circle', label: 'Circle', key: 'C' },
   { id: 'dot', icon: 'dot', label: 'Dot', key: 'D' },
+  { id: 'stamp', icon: 'sparkle', label: 'Stamp', key: 'T' },
   { id: 'move', icon: 'move', label: 'Move', key: 'V' },
   { id: 'eraser', icon: 'eraser', label: 'Eraser', key: 'E' },
+];
+const TABS = [
+  { id: 'line', label: 'Line' },
+  { id: 'steady', label: 'Steady' },
+  { id: 'stamps', label: 'Stamps' },
+  { id: 'generate', label: 'Generate' },
 ];
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const copyStrokes = (list) => list.map((s) => ({ ...s, pts: s.pts.map((p) => [...p]) }));
+const I = [1, 0, 0, 1];
 let groupSeq = 1;
 
-// Mirror copies remember their group and how they were flipped, so moving one moves its twins.
-function mirrored(stroke, mx, my) {
-  const g = groupSeq++;
-  const out = [{ ...stroke, g, t: 'i' }];
-  const map = (f, t) => ({ ...stroke, g, t, pts: stroke.pts.map(f) });
-  if (mx) out.push(map(([x, y]) => [1 - x, y], 'x'));
-  if (my) out.push(map(([x, y]) => [x, 1 - y], 'y'));
-  if (mx && my) out.push(map(([x, y]) => [1 - x, 1 - y], 'xy'));
-  return out;
+/** Skips re-rendering heavy children (3D preview, band map) unless their inputs change. */
+class Pure extends Component {
+  shouldComponentUpdate(next) {
+    for (const k in next) if (k !== 'render' && next[k] !== this.props[k]) return true;
+    return false;
+  }
+  render({ render }) {
+    return render();
+  }
 }
-const flip = ([dx, dy], t = 'i') => [t.includes('x') ? -dx : dx, t.includes('y') ? -dy : dy];
 
 function moveStrokes(strokes, sel, delta) {
   const out = strokes.slice();
-  const doneGroups = new Set();
+  const done = new Set();
   const shift = (s, [dx, dy]) => ({ ...s, pts: s.pts.map(([x, y]) => [x + dx, y + dy]) });
   for (const i of sel) {
     const s = strokes[i];
     if (!s) continue;
     if (s.g) {
-      if (doneGroups.has(s.g)) continue;
-      doneGroups.add(s.g);
-      const base = flip(delta, s.t);
-      strokes.forEach((o, j) => o.g === s.g && (out[j] = shift(o, flip(base, o.t))));
+      if (done.has(s.g)) continue;
+      done.add(s.g);
+      const base = applyV(inv(s.t || I), delta);
+      strokes.forEach((o, j) => o.g === s.g && (out[j] = shift(o, applyV(o.t || I, base))));
     } else out[i] = shift(s, delta);
   }
   return out;
@@ -67,7 +78,6 @@ function distToStroke(p, s) {
     best = Math.min(best, Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy)));
   }
   if (s.fill && s.closed) {
-    // Inside a filled shape counts as a hit.
     let inside = false;
     for (let i = 0, j = n - 1; i < n; j = i++) {
       const [xi, yi] = s.pts[i], [xj, yj] = s.pts[j];
@@ -78,61 +88,36 @@ function distToStroke(p, s) {
   return best;
 }
 
-// Steady: resample evenly, then relax each point toward its neighbours. Runs after the stroke ends.
-function resample(pts, step = 0.008) {
-  if (pts.length < 2) return pts;
-  const out = [pts[0]];
-  let carry = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
-    const len = Math.hypot(x1 - x0, y1 - y0);
-    let d = step - carry;
-    while (d <= len) {
-      const t = d / len;
-      out.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]);
-      d += step;
-    }
-    carry = len - (d - step);
-  }
-  out.push(pts[pts.length - 1]);
-  return out;
-}
-export function steadyStroke(pts, amount, closed = false) {
-  if (pts.length < 3 || amount <= 0) return pts;
-  let p = resample(pts);
-  const iters = Math.round((amount / 100) * 24);
-  for (let k = 0; k < iters; k++) {
-    const n = p.length;
-    p = p.map((pt, i) => {
-      if (!closed && (i === 0 || i === n - 1)) return pt;
-      const a = p[(i - 1 + n) % n], b = p[(i + 1) % n];
-      return [pt[0] * 0.5 + (a[0] + b[0]) * 0.25, pt[1] * 0.5 + (a[1] + b[1]) * 0.25];
-    });
-  }
-  return thinStroke(p, 0.01);
-}
+const pathD = (pts, TW, TH, closed) => pts.map(([x, y], i) => `${i ? 'L' : 'M'}${(x * TW).toFixed(2)} ${(y * TH).toFixed(2)}`).join('') + (closed ? 'Z' : '');
 
 export function PatternEditor() {
   const editor = store.use((s) => s.editor);
   const design = store.use((s) => s.design);
   const open = !!editor;
+  const mat = getMaterial(design.materialId);
+  const minLw = Math.max(MIN_LINE_MM, Math.ceil(mat.minDetail * 20) / 20);
 
   const [zone, setZone] = useState('middle');
   const [name, setName] = useState('');
   const [aspect, setAspect] = useState(1);
-  const [lw, setLw] = useState(0.45);
+  const [lw, setLw] = useState(minLw);
   const [tool, setTool] = useState('pen');
-  const [mx, setMx] = useState(true);
-  const [my, setMy] = useState(false);
+  const [sym, setSym] = useState('mx');
   const [snap, setSnap] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
-  const [steady, setSteady] = useState({ on: true, amt: 45 });
+  const [showBends, setShowBends] = useState(true);
+  const [stead, setStead] = useState({ on: true, amt: 60, shapes: true });
+  const [stamp, setStamp] = useState({ id: 'leaf', size: 0.45, angle: 0, fill: false });
+  const [gen, setGen] = useState({ kind: 'wave', cycles: 1, amp: 0.3, double: false });
+  const [tab, setTab] = useState('line');
   const [hist, setHist] = useState({ past: [], present: [], future: [] });
-  const [live, setLive] = useState(null);
+  const [live, setLive] = useState(null); // line / square / circle previews
   const [cursor, setCursor] = useState(null);
   const [sel, setSel] = useState(new Set());
   const [view, setView] = useState({ z: 1, cx: null, cy: null });
+  const [flash, setFlash] = useState('');
   const svg = useRef();
+  const liveG = useRef(); // pen strokes are drawn straight into the DOM while dragging (no re-render)
   const drag = useRef(null);
   const toolClicks = useRef(0);
   const spaceDown = useRef(false);
@@ -141,28 +126,45 @@ export function PatternEditor() {
   useEffect(() => {
     if (!editor) return;
     const base = editor.base;
-    const z = base ? (base.zone === 'side' ? 'side' : 'middle') : editor.zone || 'middle';
-    setZone(z);
+    setZone(base ? (base.zone === 'side' ? 'side' : 'middle') : editor.zone || 'middle');
     setName(base?.custom ? base.name : base ? `${base.name} remix` : `My pattern ${store.get().customPatterns.length + 1}`);
     setAspect(base?.aspect ?? 1);
-    setLw(base?.lw ?? 0.45);
+    setLw(base?.lw ?? minLw);
     setHist({ past: [], present: base ? copyStrokes(base.strokes) : [], future: [] });
     setLive(null);
     setSel(new Set());
     setTool('pen');
+    setTab('line');
     setView({ z: 1, cx: null, cy: null });
     toolClicks.current = 0;
     if (!tourDone('editor')) setTimeout(() => startTour('editor'), 500);
   }, [editor]);
 
+  // The tour can switch the side panel tab.
+  useEffect(() => {
+    const onTab = (e) => setTab(e.detail);
+    addEventListener('mar:edtab', onTab);
+    return () => removeEventListener('mar:edtab', onTab);
+  }, []);
+
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(''), 1800);
+    return () => clearTimeout(t);
+  }, [flash]);
+
   const strokes = hist.present;
   const commit = (next) => setHist((h) => ({ past: [...h.past.slice(-80), h.present], present: next, future: [] }));
   const undo = () => setHist((h) => (h.past.length ? { past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] } : h));
   const redo = () => setHist((h) => (h.future.length ? { past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) } : h));
-  const addStroke = (s) => commit([...strokes, ...mirrored(s, mx, my)]);
+  const mats = symMats(sym, aspect);
+  const withSymmetry = (s) => {
+    const g = groupSeq++;
+    return mats.map((m) => ({ ...s, g, t: m, pts: s.pts.map((p) => applyM(m, p)) }));
+  };
+  const addStroke = (s) => commit([...strokes, ...withSymmetry(s)]);
 
-  // Draft pattern & preview design.
-  const zhFor = (pv) => resolveZones(pv, (id) => (id === DRAFT ? { aspect, sw: 0.1, strokes: [] } : patternById(id))).find((z) => design.patterns && (z.id === 'middle' ? zone === 'middle' : zone === 'side'))?.heightMM;
+  // ── Preview design (only committed strokes, so drawing never rebuilds the 3D ring) ──
   const preview = useMemo(() => {
     let layout = design.layout;
     if (zone === 'middle' && !hasMiddle(layout)) layout = 'trio';
@@ -172,15 +174,16 @@ export function PatternEditor() {
     else patterns.sideL = patterns.sideR = DRAFT;
     return { ...design, layout, patterns, repeats: { middle: 0, side: 0 } };
   }, [design, zone]);
-  const zh = zhFor(preview) || design.width;
+  const zoneBox = layoutZones(preview).zones.find((z) => z.id === (zone === 'middle' ? 'middle' : 'sideL'));
+  const zh = (zoneBox.to - zoneBox.from) * preview.width;
   const draft = useMemo(
-    () => ({ id: DRAFT, name: name || 'Draft', zone: zone === 'middle' ? 'middle' : 'side', tags: ['custom'], aspect, lw, sw: lw / zh, strokes: live ? [...strokes, ...mirrored(live, mx, my)] : strokes, custom: true }),
-    [strokes, aspect, lw, zh, zone, name, live, mx, my]
+    () => ({ id: DRAFT, name: name || 'Draft', zone: zone === 'middle' ? 'middle' : 'side', tags: ['custom'], aspect, lw, sw: lw / zh, strokes, custom: true }),
+    [strokes, aspect, lw, zh, zone, name]
   );
   const getP = (id) => (id === DRAFT ? draft : patternById(id));
   const lineMM = lineWidthMM(draft, zh);
-  const swTile = lineMM / zh; // stroke width in tile units
-  const mat = getMaterial(design.materialId);
+  const swTile = lineMM / zh;
+  const tileW = aspect * zh;
 
   // ── View: zoom & pan ──
   const TW = aspect * 100, TH = 100, pad = 14;
@@ -208,6 +211,30 @@ export function PatternEditor() {
   };
   const snapPt = ([x, y]) => (snap ? [Math.round(x * GRID * aspect) / (GRID * aspect), Math.round(y * GRID) / GRID] : [x, y]);
   const snapDelta = ([dx, dy]) => (snap ? [Math.round(dx * GRID * aspect) / (GRID * aspect), Math.round(dy * GRID) / GRID] : [dx, dy]);
+
+  // ── Seam guides: where a line leaves one tile edge it must re-enter on the other ──
+  const seam = useMemo(() => {
+    const ends = [];
+    strokes.forEach((s) => {
+      if (s.closed || s.pts.length < 2) return;
+      [s.pts[0], s.pts[s.pts.length - 1]].forEach((p) => {
+        if (p[0] < 0.03) ends.push({ side: 0, y: p[1] });
+        else if (p[0] > 0.97) ends.push({ side: 1, y: p[1] });
+      });
+    });
+    return ends.map((e) => ({ x: e.side ? 0 : 1, y: e.y, matched: ends.some((o) => o.side !== e.side && Math.abs(o.y - e.y) < 0.025) }));
+  }, [strokes]);
+  const seamSnap = (p) => {
+    if (!snap) return p;
+    let [x, y] = p;
+    if (x < 0.04 || x > 0.96) {
+      x = x < 0.5 ? 0 : 1;
+      const g = seam.find((s) => s.x === x && !s.matched && Math.abs(s.y - y) < 0.06);
+      if (g) y = g.y;
+    }
+    return [x, y];
+  };
+
   const hitIndex = (p) => {
     let best = -1, bd = Infinity;
     strokes.forEach((s, i) => {
@@ -218,16 +245,26 @@ export function PatternEditor() {
   };
 
   const finishLine = () => {
-    if (live && live.pts.length > 1 && tool === 'line') addStroke({ pts: live.pts });
+    if (live && live.pts.length > 1 && tool === 'line') addStroke({ pts: live.pts.map(seamSnap) });
     setLive(null);
   };
   const pickTool = (id, fromClick) => {
     finishLine();
     setTool(id);
     if (id !== 'move') setSel(new Set());
+    if (id === 'stamp') setTab('stamps');
+    if (id === 'pen' && tab === 'stamps') setTab('steady');
     if (fromClick && ++toolClicks.current === 3)
-      showTip('editor-keys', 'Tip: every tool has a one-key shortcut. P pen, L line, S square, C circle, D dot, V move, E eraser. Press ? for the full list.');
+      showTip('editor-keys', 'Tip: every tool has a one-key shortcut. P pen, L line, S square, C circle, D dot, T stamp, V move, E eraser. Press ? for the full list.');
   };
+
+  const drawLivePen = (pts) => {
+    if (!liveG.current) return;
+    liveG.current.innerHTML = mats
+      .map((m) => `<path d="${pathD(pts.map((p) => applyM(m, p)), TW, TH)}" class="ed-stroke live" stroke-width="${swTile * TH}" fill="none"/>`)
+      .join('');
+  };
+  const currentStamp = (at) => stampStroke(STAMPS.find((s) => s.id === stamp.id), at[0], at[1], stamp.size, stamp.angle, aspect, stamp.fill);
 
   const onDown = (e) => {
     if (e.button === 1 || (e.button === 0 && spaceDown.current)) {
@@ -239,10 +276,13 @@ export function PatternEditor() {
     if (e.button !== 0) return;
     svg.current.setPointerCapture(e.pointerId);
     const p = toTile(e);
-    if (tool === 'pen') drag.current = { pts: [p] };
-    else if (tool === 'circle') drag.current = { c: snapPt(p), r: 0 };
+    if (tool === 'pen') {
+      drag.current = { pts: [seamSnap(p)] };
+      drawLivePen(drag.current.pts);
+    } else if (tool === 'circle') drag.current = { c: snapPt(p), r: 0 };
     else if (tool === 'square') drag.current = { s: snapPt(p) };
     else if (tool === 'dot') addStroke({ pts: circlePoints(aspect, ...snapPt(p), Math.max(0.04, swTile * 0.9), 18), closed: true, fill: true });
+    else if (tool === 'stamp') addStroke(currentStamp(snapPt(p)));
     else if (tool === 'eraser') erase(p);
     else if (tool === 'move') {
       const i = hitIndex(p);
@@ -253,7 +293,8 @@ export function PatternEditor() {
       setSel(next);
       if (i >= 0 && next.size) drag.current = { move: true, start: p, orig: strokes, sel: next, moved: false };
     } else if (tool === 'line') {
-      const q = snapPt(p);
+      let q = seamSnap(snapPt(p));
+      if (e.shiftKey && live?.pts.length) q = constrain(live.pts[live.pts.length - 1], q, aspect);
       if (live?.pts.length > 2 && Math.hypot(q[0] - live.pts[0][0], q[1] - live.pts[0][1]) < 0.04) {
         addStroke({ pts: live.pts, closed: true });
         setLive(null);
@@ -277,18 +318,22 @@ export function PatternEditor() {
       return;
     }
     const p = toTile(e);
-    setCursor(snapPt(p));
+    if (tool === 'pen' && d) {
+      const last = d.pts[d.pts.length - 1];
+      if (Math.hypot(p[0] - last[0], p[1] - last[1]) > 0.004) {
+        d.pts.push(p);
+        drawLivePen(d.pts);
+      }
+      return; // no React state while drawing: this is what keeps the pen smooth
+    }
+    let c = snapPt(p);
+    if (tool === 'line' && e.shiftKey && live?.pts.length) c = constrain(live.pts[live.pts.length - 1], c, aspect);
+    setCursor(c);
     if (!d) {
       if (tool === 'eraser' && e.buttons === 1) erase(p);
       return;
     }
-    if (tool === 'pen') {
-      const last = d.pts[d.pts.length - 1];
-      if (Math.hypot(p[0] - last[0], p[1] - last[1]) > 0.004) {
-        d.pts.push(p);
-        setLive({ pts: [...d.pts] });
-      }
-    } else if (tool === 'circle') {
+    if (tool === 'circle') {
       const [ccx, ccy] = d.c;
       d.r = Math.hypot((p[0] - ccx) * aspect, p[1] - ccy);
       setLive({ pts: circlePoints(aspect, ccx, ccy, d.r, 40), closed: true });
@@ -306,12 +351,18 @@ export function PatternEditor() {
     drag.current = null;
     if (!d || d.pan) return;
     if (tool === 'pen') {
-      let pts = thinStroke(d.pts, 0.006);
-      if (pts.length > 1) {
-        pts = steady.on ? smoothStroke(steadyStroke(pts, steady.amt), 1) : smoothStroke(pts, 1);
-        addStroke({ pts });
+      if (liveG.current) liveG.current.innerHTML = '';
+      const raw = thinStroke(d.pts, 0.004);
+      if (raw.length < 2) return;
+      const shape = stead.on && stead.shapes ? recognise(raw, aspect) : null;
+      if (shape) {
+        setFlash(shape.kind === 'line' ? 'Straightened into a line' : `Cleaned up into a ${shape.kind}`);
+        addStroke({ ...shape.stroke, pts: shape.stroke.closed ? shape.stroke.pts : shape.stroke.pts.map(seamSnap) });
+        return;
       }
-      setLive(null);
+      let pts = stead.on ? steady(raw, stead.amt, aspect) : raw;
+      pts = [seamSnap(pts[0]), ...pts.slice(1, -1), seamSnap(pts[pts.length - 1])];
+      addStroke({ pts });
     } else if (tool === 'circle') {
       const r = snap ? Math.max(1 / GRID, Math.round(d.r * GRID) / GRID) : d.r;
       if (d.r > 0.02) addStroke({ pts: circlePoints(aspect, d.c[0], d.c[1], r, 40), closed: true });
@@ -330,6 +381,7 @@ export function PatternEditor() {
   };
   const onWheel = (e) => {
     e.preventDefault();
+    if (tool === 'stamp' && e.altKey) return setStamp((s) => ({ ...s, angle: (s.angle + (e.deltaY > 0 ? 15 : -15) + 360) % 360 }));
     if (e.ctrlKey || e.metaKey) {
       const p = svgPoint(e);
       setZoom(view.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), [p.x, p.y]);
@@ -346,10 +398,16 @@ export function PatternEditor() {
   };
   const smoothSel = () => {
     if (!sel.size) return;
-    commit(strokes.map((s, i) => (sel.has(i) && !s.fill ? { ...s, pts: steadyStroke(s.pts, Math.max(30, steady.amt), s.closed) } : s)));
+    commit(strokes.map((s, i) => (sel.has(i) && !s.fill && !s.closed ? { ...s, pts: steady(s.pts, Math.max(50, stead.amt), aspect) } : s)));
+    setFlash('Smoothed');
+  };
+  const addGenerated = () => {
+    const g = groupSeq++;
+    commit([...strokes, ...generate(gen.kind, gen, aspect).map((s) => ({ ...s, g, t: I }))]);
+    setFlash(`${GENERATORS.find((x) => x.id === gen.kind).name} added. Move it as one piece with the move tool`);
   };
 
-  // Keyboard: tools, undo, view, and a grid cursor for drawing without a mouse.
+  // Keyboard: tools, undo, view, stamps, and a grid cursor for drawing without a mouse.
   const onKey = (e) => {
     if (e.target.closest('input, select, textarea')) return;
     const k = e.key.toLowerCase();
@@ -359,10 +417,15 @@ export function PatternEditor() {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const t = TOOLS.find((x) => x.key.toLowerCase() === k);
     if (t) return pickTool(t.id);
-    if (k === 'm') return e.shiftKey ? setMy(!my) : setMx(!mx);
+    if (k === 'm') {
+      const i = SYMMETRY.findIndex((s) => s.id === sym);
+      return setSym(SYMMETRY[(i + 1) % SYMMETRY.length].id);
+    }
     if (k === 'g') return setShowGrid(!showGrid);
     if (k === 'n') return setSnap(!snap);
-    if (k === 'b') return setSteady({ ...steady, on: !steady.on });
+    if (k === 'b') return setStead({ ...stead, on: !stead.on });
+    if (k === ',' || k === '.') return setStamp((s) => ({ ...s, angle: (s.angle + (k === '.' ? 15 : -15) + 360) % 360 }));
+    if (k === '[' || k === ']') return setStamp((s) => ({ ...s, size: clamp(+(s.size + (k === ']' ? 0.05 : -0.05)).toFixed(2), 0.1, 0.9) }));
     if (k === '+' || k === '=') return setZoom(view.z * 1.25);
     if (k === '-' || k === '_') return setZoom(view.z / 1.25);
     if (k === '0') return setZoom(1);
@@ -383,6 +446,7 @@ export function PatternEditor() {
       const c = cursor || [0.5, 0.5];
       if (tool === 'dot' || tool === 'circle') addStroke({ pts: circlePoints(aspect, c[0], c[1], tool === 'dot' ? Math.max(0.04, swTile * 0.9) : 0.2, 32), closed: true, fill: tool === 'dot' });
       else if (tool === 'square') addStroke({ pts: squarePts(c, [c[0] + 0.2 / aspect, c[1] + 0.2], false), closed: true });
+      else if (tool === 'stamp') addStroke(currentStamp(c));
       else {
         if (tool !== 'line') setTool('line');
         setLive({ pts: [...(live?.pts || []), c] });
@@ -411,28 +475,60 @@ export function PatternEditor() {
     const src = patternById(zone === 'middle' ? design.patterns.middle : design.patterns[design.linked ? 'sideL' : store.get().activeSide]);
     if (!src) return toast('That zone is plain. Pick a pattern first');
     setAspect(src.aspect);
-    setLw(+lineWidthMM(src, zh).toFixed(2));
+    setLw(Math.max(minLw, +lineWidthMM(src, zh).toFixed(2)));
     commit(copyStrokes(src.strokes));
     if (!name || name.startsWith('My pattern')) setName(`${src.name} remix`);
   };
 
+  // Making the zone bigger is the only real way to get finer-looking lines.
+  const grow = (() => {
+    const L = design.layout, s = getSplit(design);
+    if (zone === 'middle' && (L === 'trio' || L === 'center') && s > 0.06) return { label: 'Widen the middle', run: () => setDesign(splitPatch(design, s - 0.04)) };
+    if (zone === 'side' && (L === 'trio' || L === 'rails') && s < 0.42) return { label: 'Widen the sides', run: () => setDesign(splitPatch(design, s + 0.04)) };
+    if (design.width < 12) return { label: 'Widen the band by 1 mm', run: () => setDesign({ width: Math.min(12, design.width + 1) }) };
+    return null;
+  })();
+
+  // ── Bend shading: where the profile curves away and where the pattern fades at the rim ──
+  const bends = useMemo(() => {
+    const rows = [];
+    const rim = rimFade(preview.width);
+    const N = 32;
+    let peak = { b: 0, y: 0 };
+    for (let k = 0; k < N; k++) {
+      const y = (k + 0.5) / N;
+      const v = zoneBox.from + y * (zoneBox.to - zoneBox.from);
+      const b = bendAt(preview.profile, 2 * v - 1);
+      const r = v < rim || v > 1 - rim;
+      rows.push({ y0: k / N, y1: (k + 1) / N, b, r });
+      if (b > peak.b) peak = { b, y };
+    }
+    return { rows, peak };
+  }, [preview.profile, preview.width, zoneBox.from, zoneBox.to]);
+
   // ── Rendering ──
-  const strokePath = (s) => s.pts.map(([x, y], i) => `${i ? 'L' : 'M'}${(x * TW).toFixed(2)} ${(y * TH).toFixed(2)}`).join('') + (s.closed ? 'Z' : '');
   const selGroups = new Set([...sel].map((i) => strokes[i]?.g).filter(Boolean));
   const drawn = (list, extra = '', withSel = false) =>
-    list.map((s, i) => html`<path d=${strokePath(s)} stroke-width=${swTile * TH} fill=${s.fill ? 'currentColor' : 'none'}
+    list.map((s, i) => html`<path d=${pathD(s.pts, TW, TH, s.closed)} stroke-width=${swTile * TH} fill=${s.fill ? 'currentColor' : 'none'}
       class=${'ed-stroke ' + extra + (withSel && sel.has(i) ? ' sel' : withSel && s.g && selGroups.has(s.g) ? ' twin' : '')} />`);
-  const liveStrokes = live ? mirrored(live, mx, my) : [];
+  const liveStrokes = live ? mats.map((m) => ({ ...live, pts: live.pts.map((p) => applyM(m, p)) })) : [];
+  const ghostStamp = tool === 'stamp' && cursor ? mats.map((m) => { const s = currentStamp(cursor); return { ...s, pts: s.pts.map((p) => applyM(m, p)) }; }) : [];
   const cols = Math.round(GRID * aspect);
-  const tileW = aspect * zh;
+  const ratio = lineMM / zh;
   const lineNote =
     lw <= MIN_LINE_MM + 1e-6
-      ? { level: 'warn', text: `${MIN_LINE_MM.toFixed(2)} mm is the thinnest line any process can make. ${lw < mat.minDetail ? `${mat.name} needs ${mat.minDetail} mm, so it may not print.` : ''}` }
+      ? { level: 'warn', text: `${MIN_LINE_MM.toFixed(2)} mm is the thinnest line any process can make.${lw < mat.minDetail ? ` ${mat.name} needs ${mat.minDetail} mm, so it may not print.` : ''}` }
       : lw >= MAX_LINE_MM - 1e-6
-        ? { level: 'info', text: `${MAX_LINE_MM} mm is the heaviest line. For bolder shapes, draw a filled dot or a closed shape.` }
+        ? { level: 'info', text: `${MAX_LINE_MM} mm is the heaviest line. For bolder shapes, use a filled stamp or dot.` }
         : lineMM < mat.minDetail
           ? { level: 'warn', text: `${lineMM.toFixed(2)} mm is below the ${mat.minDetail} mm ${mat.name} can resolve. Fine details may not come out.` }
           : { level: 'ok', text: `${lineMM.toFixed(2)} mm lines print cleanly in ${mat.name} (limit ${mat.minDetail} mm).` };
+  const symAxes = {
+    mx: [[TW / 2, -6, TW / 2, TH + 6]],
+    my: [[-6, TH / 2, TW + 6, TH / 2]],
+    mxy: [[TW / 2, -6, TW / 2, TH + 6], [-6, TH / 2, TW + 6, TH / 2]],
+    kal: [[TW / 2, -6, TW / 2, TH + 6], [-6, TH / 2, TW + 6, TH / 2], [0, 0, TW, TH], [TW, 0, 0, TH]],
+  }[sym] || [];
 
   return html`<${Modal} open=${open} onClose=${close} title="Pattern editor" className="editor-modal" wide>
     <div class="editor" onKeyDown=${onKey} onKeyUp=${onKeyUp}>
@@ -458,8 +554,14 @@ export function PatternEditor() {
             </button>`
           )}
           <hr />
-          <button class=${'tool' + (mx ? ' on' : '')} aria-pressed=${mx} onClick=${() => setMx(!mx)} title="Mirror left–right (M)"><${Icon} name="mirrorH" /><span>Mirror ↔</span></button>
-          <button class=${'tool' + (my ? ' on' : '')} aria-pressed=${my} onClick=${() => setMy(!my)} title="Mirror top–bottom (Shift+M)"><${Icon} name="mirrorV" /><span>Mirror ↕</span></button>
+          <div class="ed-sym" role="radiogroup" aria-label="Symmetry">
+            <span class="field-label">Symmetry <kbd>M</kbd></span>
+            ${SYMMETRY.map(
+              (s) => html`<button role="radio" aria-checked=${sym === s.id} class=${'sym-btn' + (sym === s.id ? ' on' : '')} title=${s.hint} onClick=${() => setSym(s.id)}>
+                <${SymIcon} id=${s.id} /><span>${s.name}</span>
+              </button>`
+            )}
+          </div>
           <hr />
           <button class="tool" onClick=${undo} disabled=${!hist.past.length} title="Undo (Ctrl+Z)"><${Icon} name="undo" /><span>Undo</span></button>
           <button class="tool" onClick=${redo} disabled=${!hist.future.length} title="Redo (Ctrl+Shift+Z)"><${Icon} name="redo" /><span>Redo</span></button>
@@ -474,14 +576,15 @@ export function PatternEditor() {
             <button class="icon-btn sm" onClick=${() => setZoom(1)} aria-label="Fit tile" title="Fit (0)"><${Icon} name="fit" size=${16} /></button>
             <span class="ed-sep"></span>
             <button class=${'chip sm' + (showGrid ? ' on' : '')} aria-pressed=${showGrid} onClick=${() => setShowGrid(!showGrid)} title="Show grid (G)"><${Icon} name="grid" size=${14} /> Grid</button>
-            <button class=${'chip sm' + (snap ? ' on' : '')} aria-pressed=${snap} onClick=${() => setSnap(!snap)} title="Snap to grid (N)">Snap</button>
+            <button class=${'chip sm' + (snap ? ' on' : '')} aria-pressed=${snap} onClick=${() => setSnap(!snap)} title="Snap to grid and seams (N)">Snap</button>
+            <button class=${'chip sm' + (showBends ? ' on' : '')} aria-pressed=${showBends} onClick=${() => setShowBends(!showBends)} title="Show where the band bends">Bends</button>
             ${tool === 'move' && sel.size > 0 &&
             html`<span class="ed-sep"></span>
               <span class="ed-sel-count">${sel.size} selected</span>
               <button class="chip sm" onClick=${smoothSel}><${Icon} name="steady" size=${14} /> Smooth</button>
               <button class="chip sm" onClick=${deleteSel}><${Icon} name="trash" size=${14} /> Delete</button>`}
             <span class="spacer"></span>
-            <span class="ed-hint">${view.z > 1 ? 'Scroll or Space + drag to pan' : 'Ctrl + scroll to zoom'}</span>
+            <span class="ed-hint">${tool === 'line' ? 'Shift locks 0° / 45° / 90°' : tool === 'square' ? 'Shift for a free rectangle' : tool === 'stamp' ? ', . rotate · [ ] size' : view.z > 1 ? 'Scroll or Space + drag to pan' : 'Ctrl + scroll to zoom'}</span>
           </div>
           <svg ref=${svg} class=${'ed-canvas tool-' + tool + (view.z > 1 ? ' zoomed' : '')} viewBox=${`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
             tabindex="0" role="application" aria-label=${`Drawing canvas, one tile. ${strokes.length} strokes. Arrow keys move the cursor, Enter places a point, Escape finishes a line.`}
@@ -492,22 +595,37 @@ export function PatternEditor() {
               <pattern id="ed-minor" width=${TH / GRID} height=${TH / GRID} patternUnits="userSpaceOnUse">
                 <path d=${`M ${TH / GRID} 0 L 0 0 0 ${TH / GRID}`} class="ed-bg-grid" />
               </pattern>
+              <pattern id="ed-hatch" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <line x1="0" y1="0" x2="0" y2="3" class="ed-hatch-line" />
+              </pattern>
             </defs>
             ${showGrid && html`<rect x=${base.x - 400} y=${base.y - 400} width=${base.w + 800} height=${base.h + 800} fill="url(#ed-minor)" />`}
             <g class="ed-ghost" transform=${`translate(${-TW} 0)`}>${drawn(strokes)}</g>
             <g class="ed-ghost" transform=${`translate(${TW} 0)`}>${drawn(strokes)}</g>
             <rect class="ed-tile" x="0" y="0" width=${TW} height=${TH} />
+            ${showBends &&
+            html`<g class="ed-bends" aria-hidden="true">
+              ${bends.rows.map((r) => r.b > 0.01 && html`<rect x=${-TW} width=${TW * 3} y=${r.y0 * TH} height=${(r.y1 - r.y0) * TH + 0.2} class="ed-bend" style=${`opacity:${Math.min(0.55, r.b * 1.6)}`} />`)}
+              ${bends.rows.map((r) => r.r && html`<rect x=${-TW} width=${TW * 3} y=${r.y0 * TH} height=${(r.y1 - r.y0) * TH + 0.2} fill="url(#ed-hatch)" />`)}
+              ${bends.peak.b > 0.04 && html`<text class="ed-bend-label" x=${TW / 2} y=${clamp(bends.peak.y * TH, 6, TH - 3)}>${preview.profile === 'bevel' ? 'bevel: the pattern bends here' : 'curves away from view'}</text>`}
+              ${bends.rows.some((r) => r.r) && html`<text class="ed-bend-label rim" x=${TW / 2} y=${bends.rows[0].r ? 5 : TH - 2}>rim: pattern fades out</text>`}
+            </g>`}
             ${showGrid &&
             html`<g class="ed-grid">
               ${Array.from({ length: GRID - 1 }, (_, i) => html`<line x1="0" x2=${TW} y1=${((i + 1) * TH) / GRID} y2=${((i + 1) * TH) / GRID} class=${(i + 1) % 3 ? '' : 'major'} />`)}
               ${Array.from({ length: cols - 1 }, (_, i) => html`<line y1="0" y2=${TH} x1=${((i + 1) * TW) / cols} x2=${((i + 1) * TW) / cols} class=${(i + 1) % 3 ? '' : 'major'} />`)}
             </g>`}
-            ${mx && html`<line class="ed-axis" x1=${TW / 2} x2=${TW / 2} y1="-6" y2=${TH + 6} />`}
-            ${my && html`<line class="ed-axis" y1=${TH / 2} y2=${TH / 2} x1="-6" x2=${TW + 6} />`}
-            <g class="ed-main">${drawn(strokes, '', true)}${drawn(liveStrokes, 'live')}</g>
+            ${symAxes.map(([x1, y1, x2, y2]) => html`<line class="ed-axis" x1=${x1} y1=${y1} x2=${x2} y2=${y2} />`)}
+            ${sym === 'rot' && html`<circle class="ed-axis-dot" cx=${TW / 2} cy=${TH / 2} r="1.6" />`}
+            <g class="ed-main">${drawn(strokes, '', true)}${drawn(liveStrokes, 'live')}${drawn(ghostStamp, 'ghost-stamp')}</g>
+            <g ref=${liveG}></g>
+            ${seam.map((g) => html`<g class=${'ed-seam' + (g.matched ? ' ok' : '')}>
+              <circle cx=${g.x * TW} cy=${g.y * TH} r="2.6" />
+              ${!g.matched && html`<text x=${g.x * TW + (g.x ? -4 : 4)} y=${g.y * TH - 4} class=${g.x ? 'r' : ''}>continue here</text>`}
+            </g>`)}
             ${live && tool === 'line' && cursor &&
             html`<line class="ed-rubber" x1=${live.pts[live.pts.length - 1][0] * TW} y1=${live.pts[live.pts.length - 1][1] * TH} x2=${cursor[0] * TW} y2=${cursor[1] * TH} />`}
-            ${cursor && html`<circle class="ed-cursor" cx=${cursor[0] * TW} cy=${cursor[1] * TH} r=${2.2 / view.z} />`}
+            ${cursor && tool !== 'stamp' && html`<circle class="ed-cursor" cx=${cursor[0] * TW} cy=${cursor[1] * TH} r=${2.2 / view.z} />`}
             ${zone === 'side' && html`<text class="ed-edge" x=${TW / 2} y="-5">ring edge</text>`}
             <text class="ed-tile-label" x=${-TW / 2} y=${TH + pad + 6}>repeats</text>
             <text class="ed-tile-label" x=${TW * 1.5} y=${TH + pad + 6}>repeats</text>
@@ -515,49 +633,118 @@ export function PatternEditor() {
               <line x1="0" x2=${TW} y1=${TH + 8} y2=${TH + 8} /><line x1="0" x2="0" y1=${TH + 5} y2=${TH + 11} /><line x1=${TW} x2=${TW} y1=${TH + 5} y2=${TH + 11} />
               <text x=${TW / 2} y=${TH + 15}>${tileW.toFixed(2)} mm</text>
               <line x1=${TW + 8} x2=${TW + 8} y1="0" y2=${TH} /><line x1=${TW + 5} x2=${TW + 11} y1="0" y2="0" /><line x1=${TW + 5} x2=${TW + 11} y1=${TH} y2=${TH} />
-              <text x=${TW + 12} y=${TH / 2} class="vert" transform=${`rotate(90 ${TW + 12} ${TH / 2})`}>${zh.toFixed(2)} mm</text>
+              <text x=${TW + 12} y=${TH / 2} transform=${`rotate(90 ${TW + 12} ${TH / 2})`}>${zh.toFixed(2)} mm</text>
             </g>
           </svg>
-          ${!strokes.length && !live && html`<p class="ed-empty">Draw <strong>one tile</strong>. It repeats around the whole ring. The faded copies show the neighbouring tiles.</p>`}
-          <div class="ed-status" aria-hidden="true">
+          ${!strokes.length && !live && html`<p class="ed-empty">Draw <strong>one tile</strong>, or start from a stamp or the Generate tab. It repeats around the whole ring.</p>`}
+          <div class="ed-status" aria-live="polite">
             <span>X ${cursor ? (cursor[0] * tileW).toFixed(2) : '—'} mm</span>
             <span>Y ${cursor ? (cursor[1] * zh).toFixed(2) : '—'} mm</span>
             <span>Tile ${tileW.toFixed(2)} × ${zh.toFixed(2)} mm</span>
             <span>${strokes.length} stroke${strokes.length === 1 ? '' : 's'}</span>
+            ${flash && html`<span class="ed-flash"><${Icon} name="check" size=${12} /> ${flash}</span>`}
           </div>
-          <div class="ed-props">
-            <div class="ed-weight">
-              <${Slider} label="Line weight" value=${lw} min=${MIN_LINE_MM} max=${MAX_LINE_MM} step=${0.05} unit="mm" format=${(v) => `${v.toFixed(2)} mm`}
-                onInput=${(v) => setLw(+v.toFixed(2))} />
-              <p class=${'detail-note ' + lineNote.level} role="status">
-                <${Icon} name=${lineNote.level === 'ok' ? 'check' : lineNote.level === 'info' ? 'info' : 'alert'} size=${14} /> ${lineNote.text}
-              </p>
+
+          <div class="ed-panel">
+            <div class="ed-tabs" role="tablist" aria-label="Editor options">
+              ${TABS.map((t) => html`<button role="tab" aria-selected=${tab === t.id} class=${tab === t.id ? 'on' : ''} onClick=${() => setTab(t.id)}>${t.label}</button>`)}
             </div>
-            <div class="ed-steady">
-              <div class="ed-steady-head">
-                <span class="field-label">Steady</span>
-                <button class=${'chip sm' + (steady.on ? ' on' : '')} aria-pressed=${steady.on} onClick=${() => setSteady({ ...steady, on: !steady.on })} title="Steady (B)">
-                  <${Icon} name="steady" size=${14} /> ${steady.on ? 'On' : 'Off'}
-                </button>
+            ${tab === 'line' &&
+            html`<div class="ed-tab-body two">
+              <div class="ed-weight">
+                <${Slider} label="Line weight" value=${lw} min=${MIN_LINE_MM} max=${MAX_LINE_MM} step=${0.05} unit="mm" format=${(v) => `${v.toFixed(2)} mm`}
+                  onInput=${(v) => setLw(+v.toFixed(2))} />
+                <p class=${'detail-note ' + lineNote.level} role="status">
+                  <${Icon} name=${lineNote.level === 'ok' ? 'check' : lineNote.level === 'info' ? 'info' : 'alert'} size=${14} /> ${lineNote.text}
+                </p>
+                ${ratio > 0.08 && grow &&
+                html`<div class="ed-grow">
+                  <p>Lines are ${Math.round(ratio * 100)}% of this ${zh.toFixed(1)} mm zone, so they look bold. Printing sets the minimum, so a bigger zone is the way to a finer look.</p>
+                  <button class="btn ghost sm" onClick=${grow.run}><${Icon} name="plus" size=${14} /> ${grow.label}</button>
+                </div>`}
               </div>
-              <${Slider} label="Correction" value=${steady.amt} min=${0} max=${100} step=${5} unit="%" format=${(v) => `${v}%`}
-                onInput=${(v) => setSteady({ on: true, amt: v })} />
-              <p class="hint">Applied when you lift the pen, so drawing never lags. Higher values give rounder, calmer lines.</p>
-            </div>
-            <div>
-              <${Slider} label="Tile proportion" value=${aspect} min=${0.4} max=${2} step=${0.05} unit="" format=${(v) => `${v.toFixed(2)} : 1`}
-                onInput=${setAspect} />
-            </div>
+              <div>
+                <${Slider} label="Tile proportion" value=${aspect} min=${0.4} max=${2} step=${0.05} unit="" format=${(v) => `${v.toFixed(2)} : 1`} onInput=${setAspect} />
+                <p class="hint">Wider tiles mean fewer repeats around the ring.</p>
+              </div>
+            </div>`}
+            ${tab === 'steady' &&
+            html`<div class="ed-tab-body two ed-steady">
+              <div>
+                <div class="ed-steady-head">
+                  <span class="field-label">Steady</span>
+                  <button class=${'chip sm' + (stead.on ? ' on' : '')} aria-pressed=${stead.on} onClick=${() => setStead({ ...stead, on: !stead.on })} title="Steady (B)">
+                    <${Icon} name="steady" size=${14} /> ${stead.on ? 'On' : 'Off'}
+                  </button>
+                </div>
+                <${Slider} label="Smoothing" value=${stead.amt} min=${0} max=${100} step=${5} unit="%" format=${(v) => `${v}%`}
+                  onInput=${(v) => setStead({ ...stead, on: true, amt: v })} />
+                <p class="hint">Applied when you lift the pen, so drawing never lags. 30% keeps character, 80% gives calm, flowing curves.</p>
+              </div>
+              <div>
+                <label class="check-row"><input type="checkbox" checked=${stead.shapes} onChange=${() => setStead({ ...stead, shapes: !stead.shapes })} />
+                  <span><strong>Recognise shapes</strong><br />A wobbly straight line becomes a clean line; a rough loop becomes a circle or ellipse.</span></label>
+              </div>
+            </div>`}
+            ${tab === 'stamps' &&
+            html`<div class="ed-tab-body">
+              <div class="stamp-grid" role="radiogroup" aria-label="Stamp shape">
+                ${STAMPS.map((s) => {
+                  const pr = stampStroke(s, 0.5, 0.5, 0.8, 0, 1, stamp.fill);
+                  return html`<button role="radio" aria-checked=${stamp.id === s.id} class=${'stamp-btn' + (stamp.id === s.id ? ' on' : '')}
+                    onClick=${() => (setStamp({ ...stamp, id: s.id }), tool !== 'stamp' && pickTool('stamp'))} title=${s.name}>
+                    <svg viewBox="0 0 100 100" aria-hidden="true"><path d=${pathD(pr.pts, 100, 100, pr.closed)} fill=${pr.fill ? 'currentColor' : 'none'} /></svg>
+                    <span>${s.name}</span>
+                  </button>`;
+                })}
+              </div>
+              <div class="ed-tab-body two tight">
+                <${Slider} label="Size" value=${stamp.size} min=${0.1} max=${0.9} step=${0.05} unit="" format=${(v) => `${(v * zh).toFixed(2)} mm`} onInput=${(v) => setStamp({ ...stamp, size: v })} />
+                <${Slider} label="Angle" value=${stamp.angle} min=${0} max=${345} step=${15} unit="°" onInput=${(v) => setStamp({ ...stamp, angle: v })} />
+              </div>
+              <label class="check-row"><input type="checkbox" checked=${stamp.fill} onChange=${() => setStamp({ ...stamp, fill: !stamp.fill })} /> Filled (solid relief instead of an outline)</label>
+            </div>`}
+            ${tab === 'generate' &&
+            html`<div class="ed-tab-body">
+              <${Segmented} label="Base pattern" size="full" value=${gen.kind} onChange=${(v) => setGen({ ...gen, kind: v })}
+                options=${GENERATORS.map((g) => ({ value: g.id, label: g.name }))} />
+              <div class="ed-tab-body two tight">
+                <${Slider} label="Repeats per tile" value=${gen.cycles} min=${1} max=${4} step=${1} unit="" onInput=${(v) => setGen({ ...gen, cycles: v })} />
+                <${Slider} label="Height" value=${gen.amp} min=${0.05} max=${0.45} step=${0.01} unit="" format=${(v) => `${Math.round(v * 200)}%`} onInput=${(v) => setGen({ ...gen, amp: v })} />
+              </div>
+              <div class="ed-gen-actions">
+                <label class="check-row"><input type="checkbox" checked=${gen.double} onChange=${() => setGen({ ...gen, double: !gen.double })} /> Add an offset copy (makes lattices and chains)</label>
+                <span class="spacer"></span>
+                <button class="btn primary sm" onClick=${addGenerated}><${Icon} name="plus" size=${14} /> Add to tile</button>
+              </div>
+              <p class="hint">Generated shapes always join seamlessly with the next tile. Decorate them with stamps or the pen.</p>
+            </div>`}
           </div>
         </div>
 
         <div class="ed-preview">
           <span class="field-label">Live on your ring</span>
-          <${RingView} design=${preview} getPattern=${getP} mode="studio" className="ed-ring" />
-          <${BandMap} design=${preview} getPattern=${getP} activeZones=${zone === 'middle' ? ['middle'] : ['sideL', 'sideR']} />
-          <p class="hint">Press <kbd>?</kbd> for every shortcut.</p>
+          <${Pure} a=${preview} b=${draft} render=${() => html`<${RingView} design=${preview} getPattern=${getP} mode="studio" className="ed-ring" />`} />
+          <${Pure} a=${preview} b=${draft} z=${zone} render=${() => html`<${BandMap} design=${preview} getPattern=${getP} activeZones=${zone === 'middle' ? ['middle'] : ['sideL', 'sideR']} />`} />
+          <p class="hint">The ring updates when you lift the pen. Press <kbd>?</kbd> for every shortcut.</p>
         </div>
       </div>
     </div>
   <//>`;
+}
+
+function SymIcon({ id }) {
+  const leaf = 'M6 7c2-4 6-4 7-1';
+  const copies = {
+    none: [''],
+    mx: ['', 'matrix(-1 0 0 1 24 0)'],
+    my: ['', 'matrix(1 0 0 -1 0 24)'],
+    mxy: ['', 'matrix(-1 0 0 1 24 0)', 'matrix(1 0 0 -1 0 24)', 'matrix(-1 0 0 -1 24 24)'],
+    rot: ['', 'matrix(-1 0 0 -1 24 24)'],
+    kal: ['', 'matrix(-1 0 0 1 24 0)', 'matrix(1 0 0 -1 0 24)', 'matrix(-1 0 0 -1 24 24)', 'matrix(0 1 1 0 0 0)', 'matrix(0 -1 1 0 0 24)', 'matrix(0 1 -1 0 24 0)', 'matrix(0 -1 -1 0 24 24)'],
+  }[id];
+  return html`<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" class="sym-ico">
+    <rect x="2" y="2" width="20" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="1" opacity=".35" />
+    ${copies.map((t, k) => html`<path d=${leaf} transform=${t} fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=${k ? 0.55 : 1} />`)}
+  </svg>`;
 }

@@ -94,3 +94,18 @@ export function buildRingGeometry(design, hm) {
   g.computeBoundingSphere();
   return g;
 }
+
+/**
+ * How far the outer surface falls away from its highest point at s (-1..1 across the band),
+ * as a fraction of the thickness. The editor uses this to shade where a pattern will bend.
+ */
+export function bendAt(profile, s) {
+  const dome = 1 - Math.sqrt(Math.max(0, 1 - s * s));
+  if (profile === 'domed') return 0.45 * dome;
+  if (profile === 'comfort') return 0.2 * dome;
+  if (profile === 'bevel') return 0.35 * Math.max(0, (Math.abs(s) - 0.8) / 0.2);
+  return 0;
+}
+
+/** Width (as a fraction of the band) of the rim strip where the pattern fades out. */
+export const rimFade = (width) => Math.min(0.2, 0.3 / width);

@@ -5,7 +5,7 @@ import { html } from '../lib/html.js';
 import { Icon, Logo } from '../components/ui.js';
 import { RingView } from '../components/ring-view.js';
 import { PatternArt, BandMap } from '../components/pattern-art.js';
-import { ThemeDots } from '../components/topbar.js';
+import { ThemeDots, GridToggle } from '../components/topbar.js';
 import { TEMPLATES, LAYOUTS, designFromTemplate } from '../lib/templates.js';
 import { MATERIALS, getMaterial } from '../lib/materials.js';
 import { PATTERNS } from '../lib/patterns.js';
@@ -75,7 +75,7 @@ export function Landing() {
         <a href="#materials" onClick=${scrollTo('materials')}><span>03</span>Materials</a>
         <a href="#cost" onClick=${scrollTo('cost')}><span>04</span>Cost</a>
       </nav>
-      <${ThemeDots} />
+      <div class="view-prefs"><${ThemeDots} /><${GridToggle} /></div>
       <button class="btn primary sm" onClick=${() => go('start')}>Open the studio <${Icon} name="right" size=${14} /></button>
     </header>
 
@@ -98,9 +98,6 @@ export function Landing() {
           <span class="lp-dim-label h">Ø ${(size.diameter + 2 * design.thickness).toFixed(1)} mm</span>
           <span class="lp-dim-label v">${design.width.toFixed(1)} mm</span>
 
-          <button class="lp-arrow prev" onClick=${() => step(-1)} aria-label="Previous ring"><${Icon} name="chevL" size=${22} /></button>
-          <button class="lp-arrow next" onClick=${() => step(1)} aria-label="Next ring"><${Icon} name="chevR" size=${22} /></button>
-
           <dl class="title-block" aria-live="polite">
             <div class="tb-wide"><dt>Part</dt><dd class="tb-name">${tpl.name}</dd></div>
             <div><dt>Layout</dt><dd>${LAYOUTS[tpl.layout].name}</dd></div>
@@ -108,7 +105,11 @@ export function Landing() {
             <div><dt>Size</dt><dd>US ${size.us} · Ø ${size.diameter.toFixed(1)}</dd></div>
             <div><dt>Finish</dt><dd>${design.finish}</dd></div>
             <div><dt>Est.</dt><dd>${money(price)}</dd></div>
-            <div><dt>Sheet</dt><dd>${String(i + 1).padStart(2, '0')} / ${String(SHOWCASE.length).padStart(2, '0')}</dd></div>
+            <div class="tb-sheet"><dt>Sheet</dt><dd>
+              <button class="tb-step" onClick=${() => step(-1)} aria-label="Previous ring">‹</button>
+              <span>${String(i + 1).padStart(2, '0')} / ${String(SHOWCASE.length).padStart(2, '0')}</span>
+              <button class="tb-step" onClick=${() => step(1)} aria-label="Next ring">›</button>
+            </dd></div>
           </dl>
         </div>
 

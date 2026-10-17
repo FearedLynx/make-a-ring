@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Make-a-Ring · Brand rules</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  /* Printed to brand-guide.pdf (A4). Every value here is the one the site uses (styles.css / technical.css). */
+  @page { size: A4; margin: 0; }
+  :root {
+    --bg: #f3efe7; --surface: #fffdf9; --surface-2: #efe9df; --ink: #1c1a17; --ink-2: #4f4942; --ink-3: #6a6158;
+    --line: #e0d8ca; --line-2: #cfc3b1; --accent: #a8792a; --accent-ink: #7c5815; --accent-soft: #f3e7cf; --on-ink: #fbf8f2;
+    --grid: rgba(60, 45, 20, 0.07);
+    --font: 'Inter', system-ui, sans-serif; --display: 'Archivo', 'Inter', sans-serif; --mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font: 10.5pt/1.5 var(--font); color: var(--ink); background: var(--bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { width: 210mm; height: 297mm; padding: 18mm 18mm 16mm; position: relative; overflow: hidden; page-break-after: always; break-after: page;
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 6mm 6mm; }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+  .foot { position: absolute; left: 18mm; right: 18mm; bottom: 10mm; display: flex; justify-content: space-between; font: 7.5pt var(--mono); color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase; border-top: 1px solid var(--ink); padding-top: 2.5mm; }
+  .kicker { font: 600 8pt var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-ink); margin: 0 0 3mm; }
+  h1 { font: 850 40pt/0.92 var(--display); font-stretch: 122%; letter-spacing: -0.03em; text-transform: uppercase; margin: 0 0 6mm; }
+  h2 { font: 800 15pt/1.1 var(--display); font-stretch: 112%; text-transform: uppercase; letter-spacing: -0.01em; margin: 6mm 0 3mm; }
+  h3 { font: 600 10.5pt var(--font); margin: 0 0 1.5mm; }
+  p { margin: 0 0 3mm; color: var(--ink-2); max-width: 150mm; }
+  .rule { border-top: 1px solid var(--ink); margin: 0 0 6mm; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 5mm; }
+  .do, .dont { font: 600 7.5pt var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .do { color: #2e7a4d; } .dont { color: #b3261e; }
+  ul { margin: 0; padding-left: 4.5mm; color: var(--ink-2); } li { margin: 0 0 1.4mm; }
+  code, .mono { font-family: var(--mono); font-size: 8.5pt; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  th { font: 600 7.5pt var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); text-align: left; border-bottom: 1px solid var(--ink); padding: 0 0 2mm; }
+  .tight td { padding: 1.4mm 0; } .tight h2 { margin-top: 5mm; }
+  td { padding: 2.2mm 0; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+
+  /* cover */
+  .cover { display: flex; flex-direction: column; justify-content: space-between; }
+  .cover .word { font: 900 82pt/0.86 var(--display); font-stretch: 125%; letter-spacing: -0.04em; text-transform: uppercase; margin-top: 30mm; }
+  .cover .word .o { -webkit-text-stroke: 2px var(--ink); color: transparent; }
+  .cover .sub { font: 500 13pt var(--font); color: var(--ink-2); max-width: 120mm; margin-top: 10mm; }
+  .tb { display: grid; grid-template-columns: repeat(3, 1fr); border: solid var(--ink); border-width: 1px 0 0 1px; background: var(--surface); font: 9pt var(--mono); margin-bottom: 12mm; }
+  .tb > div { padding: 2.5mm 3.5mm; border: solid var(--ink); border-width: 0 1px 1px 0; }
+  .tb dt { font-size: 7pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); } .tb dd { margin: 0; font-weight: 600; }
+  .tb .wide { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; }
+  .tb .name { font: 800 16pt var(--display); font-stretch: 118%; text-transform: uppercase; }
+
+  /* logo */
+  .logo { display: inline-flex; align-items: center; gap: 3mm; font: 800 17pt var(--display); font-stretch: 118%; text-transform: uppercase; letter-spacing: 0.01em; }
+  .logo .dash { color: var(--accent); }
+  .logo-box { display: grid; place-items: center; height: 42mm; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
+  .logo-box.dark { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+  .clear { outline: 1px dashed var(--accent); outline-offset: 6mm; }
+
+  /* colour */
+  .theme { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+  .theme .sw { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; height: 16mm; }
+  .theme .meta { padding: 3mm; font: 8pt var(--mono); color: var(--ink-2); }
+  .theme .meta b { font: 600 10pt var(--font); color: var(--ink); display: block; margin-bottom: 1mm; }
+  .chip-sw { display: flex; gap: 2.5mm; align-items: center; font: 8pt var(--mono); }
+  .chip-sw i { width: 7mm; height: 7mm; border-radius: 50%; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+
+  /* type */
+  .spec { display: grid; grid-template-columns: 40mm 1fr; gap: 6mm; padding: 5mm 0; border-bottom: 1px solid var(--line-2); align-items: baseline; }
+  .spec .label { font: 600 7.5pt var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+  .sample-display { font: 850 34pt/0.95 var(--display); font-stretch: 122%; letter-spacing: -0.035em; text-transform: uppercase; }
+  .sample-ui { font: 500 15pt var(--font); }
+  .sample-mono { font: 600 11pt var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-ink); }
+  .scale { display: flex; align-items: baseline; gap: 4mm; flex-wrap: wrap; font-family: var(--font); color: var(--ink); }
+
+  /* controls (exact copies of the site's components) */
+  .row { display: flex; flex-wrap: wrap; gap: 3mm; align-items: center; margin: 2mm 0 4mm; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; border-radius: 999px; padding: 9px 18px; font: 600 14px var(--font); white-space: nowrap; }
+  .btn.primary { background: var(--ink); color: var(--on-ink); } .btn.accent { background: var(--accent); color: #fff; }
+  .btn.ghost { background: var(--surface); border-color: var(--line-2); color: var(--ink); }
+  .btn.sm { padding: 6px 13px; font-size: 13px; } .btn.lg { padding: 13px 24px; font-size: 16px; }
+  .icon-btn { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); }
+  .icon-btn.sm { width: 30px; height: 30px; border-radius: 8px; }
+  .chip { display: inline-flex; border: 1px solid var(--line-2); background: var(--surface); border-radius: 999px; padding: 6px 12px; font: 500 13px var(--font); }
+  .chip.on { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+  .seg { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 2px; }
+  .seg span { padding: 6px 14px; border-radius: 8px; font: 600 13px var(--font); color: var(--ink-2); } .seg .on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(40,30,15,.12); }
+  .switch { width: 36px; height: 20px; border-radius: 99px; background: var(--accent); position: relative; display: inline-block; } .switch i { position: absolute; top: 2px; left: 18px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+  .lbl { font: 600 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+  svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* motion */
+  .curve { height: 34mm; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); display: grid; place-items: center; }
+  .flow { display: flex; align-items: center; gap: 3mm; font: 600 9pt var(--mono); margin: 2mm 0 4mm; }
+  .flow span { padding: 2mm 3mm; border: 1px solid var(--ink); background: var(--surface); }
+  .flow em { font-style: normal; color: var(--accent-ink); }
+</style>
+</head>
+<body>
+
+<!-- 1 · Cover -->
+<section class="page cover">
+  <div>
+    <span class="logo">
+      <svg width="34" height="34" viewBox="0 0 32 32"><ellipse cx="16" cy="17" rx="11" ry="11" fill="none" stroke="#1c1a17" stroke-width="3.2"/><path d="M16 2.5l3.2 3.6-3.2 3.6-3.2-3.6Z" fill="#a8792a"/></svg><span>Make<span class="dash">-a-</span>Ring</span>
+    </span>
+    <div class="word">Brand<br /><span class="o">rules.</span></div>
+    <p class="sub">How Make-a-Ring looks, moves, sounds and speaks. The site follows these rules exactly; anything new is built from them.</p>
+  </div>
+  <dl class="tb">
+    <div class="wide"><dt style="display:none">Part</dt><dd class="name">Brand rules</dd><span class="mono">v1.0</span></div>
+    <div><dt>Project</dt><dd>Make-a-Ring</dd></div>
+    <div><dt>Date</dt><dd>October 2026</dd></div>
+    <div><dt>Sheet</dt><dd>1 / 8</dd></div>
+  </dl>
+</section>
+
+<!-- 2 · Idea & voice -->
+<section class="page">
+  <p class="kicker">01 · Idea</p>
+  <h1>A drafting<br />table for rings.</h1>
+  <div class="rule"></div>
+  <p>Make-a-Ring is a design studio you can use without being a designer. The visual language comes from the jeweller's bench and the engineer's drawing: a grid, registration marks, dimension lines, title blocks, honest numbers. The ring is always the hero; the interface steps back.</p>
+  <div class="grid3" style="margin-top:8mm">
+    <div class="card"><h3>Calm</h3><p>One main action per view. Muted surfaces, one accent. Nothing blinks, bounces or shouts.</p></div>
+    <div class="card"><h3>Precise</h3><p>Real millimetres, real prices, real printability limits. Measurements are set in mono, like a drawing.</p></div>
+    <div class="card"><h3>Hands-on</h3><p>You touch the ring: drag it, scroll it, stretch its diameter. Every action answers at once.</p></div>
+  </div>
+  <h2>Voice</h2>
+  <div class="grid2">
+    <div>
+      <p class="do">Do</p>
+      <ul>
+        <li>Talk to the person: "your ring", "pick a size".</li>
+        <li>Short sentences. Plain words. Verbs first on buttons: "Open the studio", "Try it on".</li>
+        <li>Numbers with units: "Ø 17.3 mm", "$78".</li>
+        <li>Say what happens next, and offer Undo after anything destructive.</li>
+      </ul>
+    </div>
+    <div>
+      <p class="dont">Don't</p>
+      <ul>
+        <li>Exclamation marks, hype, "amazing", emoji.</li>
+        <li>Jargon without help ("MSLA" always comes with "resin printer").</li>
+        <li>Section numbers or symbols as decoration (no §1).</li>
+        <li>Real brands, real people or invented testimonials.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Make-a-Ring · Brand rules</span><span>2 / 8</span></div>
+</section>
+
+<!-- 3 · Logo -->
+<section class="page">
+  <p class="kicker">02 · Logo</p>
+  <h1>The mark</h1>
+  <div class="rule"></div>
+  <p>A ring seen from the front, with the diamond on top in the accent colour. The wordmark is Archivo ExtraBold, wide (118%), uppercase; the "-a-" takes the accent.</p>
+  <div class="grid2" style="margin-top:6mm">
+    <div class="logo-box"><span class="logo clear"><svg width="30" height="30" viewBox="0 0 32 32"><ellipse cx="16" cy="17" rx="11" ry="11" fill="none" stroke="#1c1a17" stroke-width="3.2"/><path d="M16 2.5l3.2 3.6-3.2 3.6-3.2-3.6Z" fill="#a8792a"/></svg><span>Make<span class="dash">-a-</span>Ring</span></span></div>
+    <div class="logo-box dark"><span class="logo"><svg width="30" height="30" viewBox="0 0 32 32"><ellipse cx="16" cy="17" rx="11" ry="11" fill="none" stroke="#fbf8f2" stroke-width="3.2"/><path d="M16 2.5l3.2 3.6-3.2 3.6-3.2-3.6Z" fill="#c9a35a"/></svg><span>Make<span class="dash" style="color:#c9a35a">-a-</span>Ring</span></span></div>
+  </div>
+  <div class="grid2" style="margin-top:8mm">
+    <div>
+      <h3>Rules</h3>
+      <ul>
+        <li>Clear space on every side: the height of the mark (dashed line above).</li>
+        <li>Smallest size: 20 px mark, 14 px wordmark.</li>
+        <li>The diamond always uses the theme accent; the ring and letters use ink.</li>
+        <li>In the app the logo is also the link home, with a "Home" button beside it.</li>
+      </ul>
+    </div>
+    <div>
+      <p class="dont">Don't</p>
+      <ul>
+        <li>Stretch, outline, rotate or add effects.</li>
+        <li>Recolour the diamond in anything but the accent.</li>
+        <li>Set the wordmark in another font or in lowercase.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Make-a-Ring · Brand rules</span><span>3 / 8</span></div>
+</section>
+
+<!-- 4 · Colour -->
+<section class="page">
+  <p class="kicker">03 · Colour</p>
+  <h1>Four themes,<br />one system</h1>
+  <div class="rule"></div>
+  <p>Every theme sets the same tokens. Components only ever use tokens, never raw hex values, so a button looks right in all four.</p>
+  <div class="grid2" style="margin-top:5mm">
+    <div class="theme"><div class="sw"><i style="background:#f3efe7"></i><i style="background:#fffdf9"></i><i style="background:#1c1a17"></i><i style="background:#a8792a"></i></div><div class="meta"><b>Beige (default)</b>bg #f3efe7 · surface #fffdf9 · ink #1c1a17 · accent #a8792a</div></div>
+    <div class="theme"><div class="sw"><i style="background:#eaf0f7"></i><i style="background:#fbfcfe"></i><i style="background:#0e1a2b"></i><i style="background:#1f5fd1"></i></div><div class="meta"><b>Blue</b>bg #eaf0f7 · surface #fbfcfe · ink #0e1a2b · accent #1f5fd1</div></div>
+    <div class="theme"><div class="sw"><i style="background:#ececea"></i><i style="background:#fafaf9"></i><i style="background:#151515"></i><i style="background:#e0531b"></i></div><div class="meta"><b>Gray</b>bg #ececea · surface #fafaf9 · ink #151515 · accent #e0531b</div></div>
+    <div class="theme"><div class="sw"><i style="background:#f5ede9"></i><i style="background:#fffbfa"></i><i style="background:#1e1311"></i><i style="background:#c0261c"></i></div><div class="meta"><b>Red</b>bg #f5ede9 · surface #fffbfa · ink #1e1311 · accent #c0261c</div></div>
+  </div>
+  <h2>Roles</h2>
+  <table>
+    <tr><th>Token</th><th>Used for</th><th>Never for</th></tr>
+    <tr><td class="mono">--ink</td><td>Text, the primary button, selected chips and tabs</td><td>Large backgrounds</td></tr>
+    <tr><td class="mono">--accent</td><td>The creative action (Draw your own), the logo diamond, dimension lines, focus, progress</td><td>Body text, more than one filled button per area</td></tr>
+    <tr><td class="mono">--surface / -2 / -3</td><td>Cards, panels, hover and pressed states</td><td>Text</td></tr>
+    <tr><td class="mono">--line / --line-2</td><td>Hairlines and borders, 1 px</td><td>Anything thicker than 1 px</td></tr>
+    <tr><td class="mono">--on-ink / --on-accent</td><td>Text and icons sitting on ink or accent fills</td><td>Text on light surfaces</td></tr>
+  </table>
+  <div class="row" style="margin-top:5mm">
+    <span class="chip-sw"><i style="background:#2e7a4d"></i>ok #2e7a4d</span>
+    <span class="chip-sw"><i style="background:#8a5b00"></i>warn #8a5b00</span>
+    <span class="chip-sw"><i style="background:#b3261e"></i>error #b3261e</span>
+    <span class="chip-sw"><i style="background:#335a88"></i>info #335a88</span>
+  </div>
+  <p>Status colours are shared by all themes and always come with an icon and words, never colour alone. Text meets WCAG AA (4.5 : 1) on its surface.</p>
+  <div class="foot"><span>Make-a-Ring · Brand rules</span><span>4 / 8</span></div>
+</section>
+
+<!-- 5 · Type -->
+<section class="page">
+  <p class="kicker">04 · Typography</p>
+  <h1>Three voices</h1>
+  <div class="rule"></div>
+  <div class="spec"><span class="label">Display · Archivo</span><div><div class="sample-display">Make a ring.</div><p style="margin-top:2mm">800–900 weight, width 118–125 %, uppercase, tracking −0.03 em. Page and section titles only. Never for buttons or paragraphs.</p></div></div>
+  <div class="spec"><span class="label">Interface · Inter</span><div><div class="sample-ui">Pick a size, then open the studio.</div><p style="margin-top:2mm">400 body, 500 chips, 600 buttons, tabs and card titles. Every control on the site is Inter. Body 15 px / 1.5.</p></div></div>
+  <div class="spec"><span class="label">Data · IBM Plex Mono</span><div><div class="sample-mono">Ø 17.3 mm · US 7 · $78</div><p style="margin-top:2mm">Measurements, prices, small uppercase labels (11 px, 600, tracking 0.08 em), keyboard keys. Never for buttons or tabs.</p></div></div>
+  <h2>Scale</h2>
+  <div class="scale">
+    <span style="font-size:11px">11</span><span style="font-size:12px">12</span><span style="font-size:13px">13</span><span style="font-size:14px">14</span><span style="font-size:15px">15</span><span style="font-size:16px">16</span><span style="font-size:20px">20</span><span style="font-size:28px">28</span><span style="font-size:44px;font-family:var(--display);font-weight:800">44</span><span style="font-size:70px;font-family:var(--display);font-weight:850;font-stretch:122%">70</span>
+  </div>
+  <p style="margin-top:4mm">Only these sizes (px). Small UI text is 12 or 13, never 11.5. Display sizes are fluid (<span class="mono">clamp()</span>) between 28 and 200.</p>
+  <h2>Engraving fonts</h2>
+  <p>Lora and Dancing Script (and the other engraving faces) are product content: they appear only in engraving previews and on the ring itself, never in the interface.</p>
+  <div class="foot"><span>Make-a-Ring · Brand rules</span><span>5 / 8</span></div>
+</section>
+
+<!-- 6 · Controls -->
+<section class="page">
+  <p class="kicker">05 · Controls</p>
+  <h1>Same job,<br />same look</h1>
+  <div class="rule"></div>
+  <p class="lbl">Buttons: Inter 600, pill</p>
+  <div class="row"><span class="btn primary">Open the studio <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span><span class="btn accent"><svg class="i" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Draw your own</span><span class="btn ghost">Back</span></div>
+  <div class="row"><span class="btn primary sm">Small 13</span><span class="btn primary">Medium 14</span><span class="btn primary lg">Large 16</span></div>
+  <ul>
+    <li><b>Primary</b> (ink): the one next step of the view. One per view.</li>
+    <li><b>Accent</b>: the creative action only (Draw your own).</li>
+    <li><b>Ghost</b>: secondary and navigation (Back, Home, Share, Save).</li>
+    <li><b>Hero keys</b>: the two landing calls to action are drawn as keyboard keys (radius 10, a 4 px "key" shadow), because the studio is driven with the arrow keys. Hover lifts the key and lights it in the accent; pressing pushes it down. Used nowhere else.</li>
+  </ul>
+  <p class="lbl" style="margin-top:6mm">Icon buttons: square, 1.8 px line icons on a 24 grid</p>
+  <div class="row"><span class="icon-btn"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="icon-btn"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></span><span class="icon-btn sm"><svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span><span class="mono" style="color:var(--ink-3)">36 px · radius 10 &nbsp;|&nbsp; 30 px · radius 8 · always with a label for assistive tech and a tooltip</span></div>
+  <p class="lbl" style="margin-top:6mm">Choices</p>
+  <div class="row"><span class="chip">6½</span><span class="chip on">7</span><span class="chip">7½</span><span class="seg"><span class="on">Left</span><span>Right</span></span><span class="switch"><i></i></span></div>
+  <ul>
+    <li><b>Chips</b> (Inter 500, 13 px, pill): picking one value from many. Selected = ink fill.</li>
+    <li><b>Segmented</b> (Inter 600, 13 px, radius 10/8): two to four exclusive options.</li>
+    <li><b>Switch</b>: on/off settings, accent when on.</li>
+  </ul>
+  <h2>Shape &amp; space</h2>
+  <table>
+    <tr><th>Token</th><th>Value</th><th>Where</th></tr>
+    <tr><td class="mono">--radius-sm</td><td>8 px</td><td>Small icon buttons, menu rows, inner segments</td></tr>
+    <tr><td class="mono">--radius-md</td><td>10 px</td><td>Icon buttons, tabs, stamps, segmented controls</td></tr>
+    <tr><td class="mono">--radius</td><td>12 px</td><td>Cards, panels, menus, the band map</td></tr>
+    <tr><td class="mono">pill</td><td>999 px</td><td>Every text button and chip</td></tr>
+    <tr><td class="mono">spacing</td><td>4 px grid</td><td>4 · 6 · 8 · 12 · 16 · 24 · 32 · 48</td></tr>
+  </table>
+  <div class="foot"><span>Make-a-Ring · Brand rules</span><span>6 / 8</span></div>
+</section>
+
+<!-- 7 · Motion & sound -->
+<section class="page tight">
+  <p class="kicker">06 · Motion &amp; sound</p>
+  <h1>Smooth, never<br />springy</h1>
+  <div class="rule"></div>
+  <table>
+    <tr><th>Kind</th><th>Duration</th><th>Easing</th></tr>
+    <tr><td>Hover, press, toggles</td><td>150–200 ms</td><td>ease</td></tr>
+    <tr><td>Carousel step, cards entering</td><td>280 ms</td><td class="mono">cubic-bezier(0.2, 0.8, 0.2, 1)</td></tr>
+    <tr><td>Page to page (curtain)</td><td>460 ms, one sweep</td><td class="mono">(0.5, 0, 0.75, 0) then (0.25, 1, 0.5, 1)</td></tr>
+    <tr><td>Values that follow a target (size drawing, tray)</td><td>≈ 0.5 s</td><td>critically damped spring: no overshoot</td></tr>
+  </table>
+  <h2>The curtain</h2>
+  <p>Screens sit in a row. Between them a curtain (the page colour, the drafting grid and a thin accent edge) sweeps across in one continuous move: from the right when you go deeper, from the left when you go back. It speeds up as it covers the screen, the page swaps at the instant it is fully covered, and it carries straight on out the other side. The content itself never moves or fades, so text and images never flicker.</p>
+  <div class="flow"><span>Home</span><em>→</em><span>Start</span><em>→</em><span>Size</span><em>→</em><span>Studio</span><em>→</em><span>Try on</span><em>→</em><span>Review</span></div>
+  <ul>
+    <li>Nothing wobbles, bounces or loops for attention. The only idle motion is the ring turning.</li>
+    <li>With "reduce motion" switched on in the system, every transition is instant.</li>
+  </ul>
+  <h2>Sound</h2>
+  <p>Quiet, synthesised, and always paired with something you can see. Muted from Settings; the choice is remembered.</p>
+  <table>
+    <tr><th>Moment</th><th>Sound</th></tr>
+    <tr><td>Picking or dragging a size</td><td>Measuring-tape ratchet clicks</td></tr>
+    <tr><td>Confirming a size in the size finder</td><td>A soft snap (a click, no thump)</td></tr>
+    <tr><td>Saving to My designs</td><td>A bright rising arpeggio, about a second</td></tr>
+    <tr><td>Files ready</td><td>A small three-note chime</td></tr>
+    <tr><td>Side panel opens / closes</td><td>One soft click</td></tr>
+    <tr><td>Typing an engraving</td><td>Fine engraver taps</td></tr>
+  </table>
+  <p style="margin-top:3mm">No sound on hover, on page load, or when changing material. No low thumps or drum sounds.</p>
+  <div class="foot"><span>Make-a-Ring · Brand rules</span><span>7 / 8</span></div>
+</section>
+
+<!-- 8 · Layout & checklist -->
+<section class="page">
+  <p class="kicker">07 · Layout</p>
+  <h1>The ring first</h1>
+  <div class="rule"></div>
+  <div class="grid3">
+    <div class="card"><h3>Left: library</h3><p>Patterns, your own patterns and templates. Click the active icon again to hide the panel.</p></div>
+    <div class="card"><h3>Centre: the ring</h3><p>The cross carousel around the 3D ring, the selectors, and the unrolled band.</p></div>
+    <div class="card"><h3>Right: specs</h3><p>Size, layout, band, material, engraving, printability, and the price with the next step.</p></div>
+  </div>
+  <ul style="margin-top:3mm">
+    <li>The 3D ring is the bottom layer of the stage and is never cut off by a box.</li>
+    <li>On small or zoomed screens the interface scales down (to 70 %) so the ring keeps its room.</li>
+    <li>Colour theme, grid and sound toggles sit together in the top bar.</li>
+    <li>Every screen has a way home: the logo and the Home button.</li>
+  </ul>
+  <h2>Checklist for anything new</h2>
+  <table>
+    <tr><th></th><th>Rule</th></tr>
+    <tr><td>☐</td><td>Uses tokens for colour, radius and font; no raw hex in components.</td></tr>
+    <tr><td>☐</td><td>Buttons are Inter 600 pills; tabs and chips Inter; mono only for data and labels.</td></tr>
+    <tr><td>☐</td><td>One primary button in the view; accent only for the creative action.</td></tr>
+    <tr><td>☐</td><td>Text sizes come from the scale; small text is 12 or 13 px.</td></tr>
+    <tr><td>☐</td><td>Works by keyboard, has a visible focus ring and a label for screen readers.</td></tr>
+    <tr><td>☐</td><td>Motion uses the durations above and stops with reduce-motion.</td></tr>
+    <tr><td>☐</td><td>Copy is short, plain, second person, with units on numbers.</td></tr>
+    <tr><td>☐</td><td>Fits 375 px phones and 1440 px desktops without sideways scrolling.</td></tr>
+  </table>
+  <div class="foot"><span>Make-a-Ring · Brand rules</span><span>8 / 8</span></div>
+</section>
+</body>
+</html>

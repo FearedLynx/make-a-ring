@@ -161,9 +161,86 @@ export function setRails(patch) {
   store.set((s) => ({ rails: { ...s.rails, ...patch } }));
 }
 
+// ── Page transitions ──────────────────────────────────────────
+// Screens sit in a row, landing → start → studio → try on → review. A curtain (page colour, drafting grid, an
+// accent leading edge) sweeps across in one continuous move in the direction you are going: it speeds up as it
+// covers the screen, the page swaps at the instant it is fully covered, and it carries straight on out the other
+// side. The content itself never animates, so text and images cannot flicker. Clicking again mid-sweep closes it
+// at once and swaps once more.
+const ORDER = ['landing', 'start', 'studio', 'tryon', 'review'];
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+// The two halves use mirrored easings, so the speed at the swap is the same on both sides: no stop, no jolt.
+const HALF = 230, EASE_IN = 'cubic-bezier(0.5, 0, 0.75, 0)', EASE_OUT = 'cubic-bezier(0.25, 1, 0.5, 1)';
+let curtain = null, phase = 'idle', pending = null, timer = 0, cycle = 0;
+
+function getCurtain() {
+  if (curtain) return curtain;
+  curtain = document.createElement('div');
+  curtain.className = 'curtain';
+  curtain.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(curtain);
+  return curtain;
+}
+/** Slide the curtain, then call `done` once: when the animation finishes, or after a fallback delay if the
+ *  browser holds frames back (a background tab), so a page change can never get stuck behind it. */
+function slide(from, to, duration, easing, done) {
+  const c = curtain, mine = ++cycle;
+  c.getAnimations().forEach((a) => a.cancel());
+  c.style.transform = `translateX(${to})`;
+  const a = c.animate([{ transform: `translateX(${from})` }, { transform: `translateX(${to})` }], { duration, easing });
+  let called = false;
+  const once = () => !called && mine === cycle && ((called = true), clearTimeout(timer), done());
+  a.finished.then(once, () => {});
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    try {
+      a.finish(); // jump to the end first, so the page never swaps behind a half-closed curtain
+    } catch {}
+    once();
+  }, duration + 250);
+}
+
+/** Change what is on screen behind a curtain that wipes in from the right ('forward') or the left ('back'). */
+export function transition(dir, update) {
+  if (calm()) return void update();
+  const c = getCurtain();
+  pending = update;
+  if (phase === 'covering') return; // the swap at full cover runs the latest request
+  c.dataset.dir = dir;
+  if (phase === 'idle') {
+    phase = 'covering';
+    c.classList.add('on');
+    slide(dir === 'forward' ? '100%' : '-100%', '0%', HALF, EASE_IN, () => swap(dir));
+  } else {
+    // covered or already wiping away: close it again at once and swap
+    ++cycle;
+    clearTimeout(timer);
+    c.getAnimations().forEach((a) => a.cancel());
+    c.style.transform = 'translateX(0%)';
+    swap(dir);
+  }
+}
+
+function swap(dir) {
+  phase = 'covered';
+  const run = pending;
+  pending = null;
+  run?.();
+  // carry straight on out the far side (the new page renders before the next frame, so it is there to reveal)
+  phase = 'revealing';
+  slide('0%', dir === 'forward' ? '-100%' : '100%', HALF, EASE_OUT, () => {
+    phase = 'idle';
+    curtain.classList.remove('on');
+  });
+}
+
 window.addEventListener('hashchange', () => {
-  store.set({ screen: screenFromHash() });
-  window.scrollTo(0, 0);
+  const next = screenFromHash(), prev = store.get().screen;
+  if (next === prev) return;
+  transition(ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'forward' : 'back', () => {
+    store.set({ screen: next });
+    window.scrollTo(0, 0);
+  });
 });
 
 // ── Navigation ────────────────────────────────────────────────

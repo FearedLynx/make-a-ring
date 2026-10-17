@@ -2,11 +2,12 @@ import { useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Logo } from '../components/ui.js';
 import { TemplateCard, SavedCard } from '../components/template-card.js';
+import { HomeButton } from '../components/topbar.js';
 import { SizeDrawing } from '../components/size-drawing.js';
 import { tape } from '../lib/sound.js';
 import { TEMPLATES } from '../lib/templates.js';
 import { sizeSummary, fmtUs } from '../lib/sizes.js';
-import { store, go, applyTemplate, setDesign, openSavedDesign, deleteSavedDesign, duplicateSavedDesign } from '../state.js';
+import { store, go, transition, applyTemplate, setDesign, openSavedDesign, deleteSavedDesign, duplicateSavedDesign } from '../state.js';
 
 export function Start() {
   const design = store.use((s) => s.design);
@@ -18,16 +19,24 @@ export function Start() {
   const size = sizeSummary(design.sizeUS);
   const [preview, setPreview] = useState(null); // size pill under the pointer or focus: shown as a ghost ring
 
+  // One of your saved rings already has its size, so it opens straight in the studio; a template asks for it.
   const next = () => {
-    if (picked.startsWith('mine:')) openSavedDesign(picked.slice(5), { silent: true });
-    else applyTemplate(picked, { silent: true });
-    setStep(2);
-    window.scrollTo(0, 0);
+    if (picked.startsWith('mine:')) {
+      openSavedDesign(picked.slice(5), { silent: true });
+      return go('studio');
+    }
+    applyTemplate(picked, { silent: true });
+    toStep(2);
   };
+  const toStep = (n) =>
+    transition(n > step ? 'forward' : 'back', () => {
+      setStep(n);
+      window.scrollTo(0, 0);
+    });
 
   return html`<div class="start">
     <header class="landing-nav">
-      <${Logo} />
+      <div class="topbar-left"><${Logo} /><${HomeButton} /></div>
       <ol class="start-steps" aria-label="Setup progress">
         <li class=${step === 1 ? 'on' : 'done'} aria-current=${step === 1 ? 'step' : undefined}>1 · Starting point</li>
         <li class=${step === 2 ? 'on' : ''} aria-current=${step === 2 ? 'step' : undefined}>2 · Your size</li>
@@ -57,7 +66,7 @@ export function Start() {
         </div>
         <div class="step-nav sticky">
           <div class="spacer"></div>
-          <button class="btn primary lg" onClick=${next}>Continue <${Icon} name="right" size=${18} /></button>
+          <button class="btn primary lg" onClick=${next}>${picked.startsWith('mine:') ? 'Open in the studio' : 'Continue'} <${Icon} name="right" size=${18} /></button>
         </div>
       </section>`}
 
@@ -69,7 +78,7 @@ export function Start() {
           <span class="size-big">US ${size.us}</span>
           <span class="size-alt">EU ${size.eu} · UK ${size.uk} · Ø ${size.diameter.toFixed(1)} mm</span>
         </div>
-        <${SizeDrawing} sizeUS=${design.sizeUS} previewUS=${preview} />
+        <${SizeDrawing} sizeUS=${design.sizeUS} previewUS=${preview} onChange=${(v) => setDesign({ sizeUS: v })} />
         <div class="size-chips" role="radiogroup" aria-label="Common sizes">
           ${[4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 13].map(
             (v) => html`<button role="radio" aria-checked=${design.sizeUS === v} class=${'chip' + (design.sizeUS === v ? ' on' : '')}
@@ -80,7 +89,7 @@ export function Start() {
         </div>
         <button class="btn ghost" onClick=${() => store.set({ sizeFinderOpen: true })}><${Icon} name="ruler" size=${16} /> Help me find my size</button>
         <div class="step-nav">
-          <button class="btn ghost" onClick=${() => setStep(1)}><${Icon} name="left" size=${16} /> Back</button>
+          <button class="btn ghost" onClick=${() => toStep(1)}><${Icon} name="left" size=${16} /> Back</button>
           <div class="spacer"></div>
           <button class="btn primary lg" onClick=${() => go('studio')}>Open the studio <${Icon} name="right" size=${18} /></button>
         </div>

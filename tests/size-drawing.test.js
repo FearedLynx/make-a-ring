@@ -1,7 +1,7 @@
 // Run with: node --test tests/size-drawing.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DRAW, innerRadius, outerRadius, annulus, circle, diaLabel } from '../src/lib/size-drawing.js';
+import { DRAW, innerRadius, outerRadius, annulus, circle, diaLabel, sizeAtRadius } from '../src/lib/size-drawing.js';
 import { usToDiameter } from '../src/lib/sizes.js';
 
 test('the inner contour is the real diameter, enlarged by the drawing scale', () => {
@@ -30,4 +30,11 @@ test('paths and labels', () => {
   assert.equal((annulus(10, 20).match(/M/g) || []).length, 2, 'outer circle plus the hole');
   assert.ok(circle(10).startsWith(`M${DRAW.cx - 10} ${DRAW.cy}`));
   assert.equal(diaLabel(8), 'Ø 18.1');
+});
+
+test('dragging a handle to a radius gives that size, in quarter steps, inside the range', () => {
+  for (const us of [5, 7.25, 10.5]) assert.equal(sizeAtRadius(innerRadius(us)), us);
+  assert.equal(sizeAtRadius(-innerRadius(8)), 8, 'the left handle works the same');
+  assert.equal(sizeAtRadius(5), DRAW.min);
+  assert.equal(sizeAtRadius(500), DRAW.max);
 });

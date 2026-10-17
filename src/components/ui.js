@@ -3,6 +3,7 @@ import { html } from '../lib/html.js';
 import { store } from '../state.js';
 
 const P = {
+  home: 'M3.5 11 12 4l8.5 7M6 9.5V20h12V9.5M10 20v-5.5h4V20',
   up: 'M12 19V5M5 12l7-7 7 7',
   down: 'M12 5v14M5 12l7 7 7-7',
   left: 'M19 12H5M12 5l-7 7 7 7',

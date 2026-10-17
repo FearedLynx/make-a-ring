@@ -1,7 +1,7 @@
 // Geometry of the size drawing on the "Your size" step (pure functions, tested in tests/size-drawing.test.js).
 // The ring is drawn in front view like an engineering drawing, enlarged a fixed 8 units per millimetre so the inner
 // contour really grows and shrinks in proportion with the size.
-import { usToDiameter } from './sizes.js';
+import { usToDiameter, diameterToUs } from './sizes.js';
 
 export const DRAW = { w: 340, h: 300, cx: 170, cy: 156, scale: 8, wallMm: 2, min: 4, max: 13 };
 
@@ -21,6 +21,9 @@ export function annulus(rIn, rOut, cx = DRAW.cx, cy = DRAW.cy) {
 
 /** Circle as a path, so it can be drawn on with a pen stroke (pathLength 1). Starts at 9 o'clock. */
 export const circle = (r, cx = DRAW.cx, cy = DRAW.cy) => `M${cx - r} ${cy}a${r} ${r} 0 1 1 ${2 * r} 0a${r} ${r} 0 1 1 ${-2 * r} 0`;
+
+/** Size for a drag handle `dx` drawing units from the centre, snapped to a quarter size inside the range. */
+export const sizeAtRadius = (dx) => clamp(Math.round(diameterToUs((Math.abs(dx) * 2) / DRAW.scale) * 4) / 4);
 
 /** Diameter label as the drawing writes it. */
 export const diaLabel = (us) => `Ø ${usToDiameter(clamp(us)).toFixed(1)}`;

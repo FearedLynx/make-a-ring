@@ -89,9 +89,8 @@ export function tick() {
 
 function snapAt(c, t) {
   noise(c, t, { freq: 1800, q: 1.4, gain: 0.32, decay: 0.035 });
-  partial(c, t, 220, 0.16, 0.06);
 }
-/** A size picked for good: a soft snap. */
+/** A size picked for good (size finder): a soft snap, a click with no low thump. */
 export function snap() {
   const c = audio();
   if (c) snapAt(c, c.currentTime + 0.005);

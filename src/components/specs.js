@@ -9,7 +9,7 @@ import { resolveZones } from '../lib/band.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
 import { store, setDesign, setRails, patternById, go, toast } from '../state.js';
 import { RailStrip } from './rail-strip.js';
-import { tick, snap, engrave } from '../lib/sound.js';
+import { tick, engrave } from '../lib/sound.js';
 import { ENGRAVE_KINDS, ENGRAVE_FONTS, ENGRAVE_MARGIN, LETTER_MIN, LETTER_MAX, DEPTH_MIN, DEPTH_MAX, MAX_CUSTOM, getFont, getEngraving, engravingLayout, cleanInitials, cleanCustom } from '../lib/engraving.js';
 
 const profileIcon = {
@@ -227,7 +227,7 @@ export function Specs({ onHide }) {
           <span class="size-alt">EU ${size.eu} · UK ${size.uk} · Ø ${size.diameter.toFixed(1)} mm</span>
         </div>
         <${Slider} label="Ring size (US)" value=${design.sizeUS} min=${US_MIN} max=${US_MAX} step=${0.25} unit=""
-          format=${fmtUs} onInput=${(v) => (tick(), setDesign({ sizeUS: v }))} onCommit=${snap} />
+          format=${fmtUs} onInput=${(v) => (tick(), setDesign({ sizeUS: v }))} />
         <button class="btn ghost sm size-find" onClick=${() => store.set({ sizeFinderOpen: true })}><${Icon} name="ruler" size=${14} /> Find my size</button>
       </section>`}
 

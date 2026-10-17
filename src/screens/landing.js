@@ -29,9 +29,8 @@ function CrossDiagram() {
   </div>`;
 }
 
-function SectionBar({ n, title, meta }) {
+function SectionBar({ title, meta }) {
   return html`<div class="lp-bar">
-    <span class="lp-bar-n">§${n}</span>
     <h2>${title}</h2>
     <span class="lp-bar-meta">${meta}</span>
   </div>`;
@@ -97,10 +96,10 @@ export function Landing() {
     <header class="lp-head">
       <${Logo} />
       <nav class="lp-nav" aria-label="Page sections">
-        <a href="#process" onClick=${scrollTo('process')}><span>01</span>Process</a>
-        <a href="#studio" onClick=${scrollTo('studio')}><span>02</span>Studio</a>
-        <a href="#materials" onClick=${scrollTo('materials')}><span>03</span>Materials</a>
-        <a href="#cost" onClick=${scrollTo('cost')}><span>04</span>Cost</a>
+        <a href="#process" onClick=${scrollTo('process')}>Process</a>
+        <a href="#studio" onClick=${scrollTo('studio')}>Studio</a>
+        <a href="#materials" onClick=${scrollTo('materials')}>Materials</a>
+        <a href="#cost" onClick=${scrollTo('cost')}>Cost</a>
       </nav>
       <div class="view-prefs"><${ThemeDots} /><${GridToggle} /><${SoundToggle} /></div>
       <button class="btn primary sm" onClick=${() => go('start')}>Open the studio <${Icon} name="right" size=${14} /></button>
@@ -162,7 +161,7 @@ export function Landing() {
       </div>
 
       <section class="lp-sec" id="process">
-        <${SectionBar} n="1" title="Process" meta="4 stations · about 3 minutes" />
+        <${SectionBar} title="Process" meta="4 stations · about 3 minutes" />
         <ol class="lp-process">
           <li><span class="lp-n">01</span><h3>Start somewhere</h3><p>Pick a template or a blank band. A size finder helps if you don't know your size.</p></li>
           <li><span class="lp-n">02</span><h3>Scroll to style</h3><p>Up and down changes the middle, left and right the sides. The ring updates live.</p></li>
@@ -172,7 +171,7 @@ export function Landing() {
       </section>
 
       <section class="lp-sec" id="studio">
-        <${SectionBar} n="2" title="The studio" meta="keyboard, mouse or touch" />
+        <${SectionBar} title="The studio" meta="keyboard, mouse or touch" />
         <div class="lp-studio">
           <div class="lp-studio-fig">
             <${CrossDiagram} />
@@ -189,7 +188,7 @@ export function Landing() {
       </section>
 
       <section class="lp-sec" id="materials">
-        <${SectionBar} n="3" title="Materials" meta=${`${MATERIALS.length} options · limits used by the checker`} />
+        <${SectionBar} title="Materials" meta=${`${MATERIALS.length} options · limits used by the checker`} />
         <div class="lp-table-wrap">
           <table class="lp-table">
             <thead><tr><th scope="col">Material</th><th scope="col">Process</th><th scope="col">Min wall</th><th scope="col">Min line</th><th scope="col">From</th></tr></thead>
@@ -207,7 +206,7 @@ export function Landing() {
       </section>
 
       <section class="lp-sec" id="cost">
-        <${SectionBar} n="4" title="Cost" meta="estimate for the Heritage band, 7 mm, US 7" />
+        <${SectionBar} title="Cost" meta="estimate for the Heritage band, 7 mm, US 7" />
         <${DisplayTray} routes=${costRows} bandMm=${designFromTemplate('heritage').width} />
       </section>
 

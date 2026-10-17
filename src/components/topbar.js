@@ -87,6 +87,13 @@ export function GridToggle() {
   </button>`;
 }
 
+/** Back to the landing page. */
+export function HomeButton() {
+  return html`<a class="btn ghost sm home-btn" href="#/landing" onClick=${(e) => (e.preventDefault(), go('landing'))} title="Back to the home page">
+    <${Icon} name="home" size=${15} /><span>Home</span>
+  </a>`;
+}
+
 function HelpMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef();
@@ -118,7 +125,7 @@ export function TopBar() {
   const name = store.use((s) => s.ringName);
   const idx = STEPS.findIndex((s) => s.id === screen);
   return html`<header class="topbar">
-    <${Logo} />
+    <div class="topbar-left"><${Logo} /><${HomeButton} /></div>
     <nav class="steps" aria-label="Design steps">
       <ol>
         ${STEPS.map(

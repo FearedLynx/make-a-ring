@@ -732,3 +732,21 @@ h1[tabindex='-1']:focus { outline: none; }
   .lp-stage { grid-row: 3; margin-top: 8px; }
   .lp-inline-steps { display: none; }
 }
+
+/* ── First-visit coach: how the stage works, in the free top-left corner, until the first change ── */
+.stage-hint.hidden { visibility: hidden; }
+.stage-coach {
+  position: absolute; top: 14px; left: 18px; z-index: 4; display: grid; gap: 7px; margin: 0; padding: 12px 40px 12px 14px;
+  max-width: 250px; background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md); box-shadow: var(--shadow); font-size: 13px; color: var(--ink); zoom: var(--ui);
+  animation: coach-in 0.4s ease-out both 0.6s;
+}
+.stage-coach span { display: flex; gap: 4px; align-items: center; }
+.stage-coach-x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--ink-3); }
+.stage-coach-x:hover { background: var(--surface-2); color: var(--ink); }
+@keyframes coach-in { from { opacity: 0; transform: translateY(-6px); } }
+@media (max-width: 760px) { .stage-coach { position: static; max-width: none; margin: 6px 0 2px; order: 2; } .stage-coach ~ .band-map-wrap { order: 3; } }
+
+/* The live ring in the editor pulses once on the first stroke: that is where the tile wraps. */
+.ed-preview.pulse { animation: preview-pulse 1.3s ease-out 0.15s; border-radius: var(--radius-md); }
+@keyframes preview-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 16px transparent; } }

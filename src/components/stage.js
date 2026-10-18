@@ -12,6 +12,11 @@ import {
 
 const isTouch = () => document.documentElement.dataset.input === 'touch';
 
+// First visit: one line under the ring says how the stage works. It goes after the first change and never comes back.
+const COACH_KEY = 'mar.coach.studio';
+const coachSeen = () => { try { return localStorage.getItem(COACH_KEY) === '1'; } catch { return true; } };
+const markCoach = () => { try { localStorage.setItem(COACH_KEY, '1'); } catch {} };
+
 function useSwipe(onStep) {
   const start = useRef(null);
   return {
@@ -58,6 +63,8 @@ export function Stage({ onDraw }) {
   const centre = useRef(); // the ring is framed on the centre of the cross, but drawn across the whole stage
   const [anim, setAnim] = useState({ axis: '', dir: 0, n: 0 });
   const [spin, setSpin] = useState(false);
+  const [coach, setCoach] = useState(() => !coachSeen());
+  const endCoach = () => coach && (markCoach(), setCoach(false));
 
   const mid = hasMiddle(design.layout);
   const sides = hasSides(design.layout);
@@ -70,9 +77,12 @@ export function Stage({ onDraw }) {
   }, [design, activeSide]);
 
   const clicks = useRef(0);
+  const steps = useRef(0);
   const step = (axis, dir, source = 'key') => {
     cyclePattern(axis, dir);
     setAnim((a) => ({ axis, dir, n: a.n + 1 }));
+    endCoach();
+    if (++steps.current === 8) showTip('draw-own', isTouch() ? 'Want a motif of your own? Draw your own sketches one tile and wraps it round the band.' : 'Want a motif of your own? Draw your own (D) sketches one tile and wraps it round the band.');
     if (source === 'click' && ++clicks.current === 3) {
       showTip(
         'carousel-keys',
@@ -133,12 +143,19 @@ export function Stage({ onDraw }) {
   </div>`;
 
   return html`<section class="stage" aria-label="Ring designer stage">
-    <p class="stage-hint" id="stage-help">
+    ${coach &&
+    html`<p class="stage-coach" role="note">
+      ${isTouch()
+        ? html`<span>Drag the ring to turn it</span><span>Tap or swipe the cards to change patterns</span>`
+        : html`<span>Drag the ring to turn it</span><span><kbd>↑</kbd><kbd>↓</kbd> change the middle</span><span><kbd>←</kbd><kbd>→</kbd> change the sides</span>`}
+      <button class="stage-coach-x" onClick=${endCoach} aria-label="Hide this hint"><${Icon} name="x" size=${14} /></button>
+    </p>`}
+    <p class=${'stage-hint' + (coach ? ' hidden' : '')} id="stage-help">
       ${isTouch()
         ? html`<span>tap cards to change patterns</span><span>drag ring to rotate</span>`
         : html`<span><kbd>↑</kbd><kbd>↓</kbd> middle</span><span><kbd>←</kbd><kbd>→</kbd> sides</span><span>drag to rotate</span>`}
     </p>
-    <div class="stage-ring">
+    <div class="stage-ring" onPointerDown=${endCoach}>
       <${RingView} design=${design} mode="studio" autoRotate=${spin} focus=${() => centre.current} onViewer=${(v) => (viewer.current = v)} />
     </div>
     <span class="reg tl" aria-hidden="true"></span><span class="reg tr" aria-hidden="true"></span>

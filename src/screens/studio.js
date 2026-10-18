@@ -4,7 +4,7 @@ import { TopBar } from '../components/topbar.js';
 import { Stage } from '../components/stage.js';
 import { Library, LibStrip } from '../components/library.js';
 import { Specs, SpecStrip } from '../components/specs.js';
-import { store, setRails, startTour, tourDone, RAIL_DEFAULTS } from '../state.js';
+import { store, setRails, RAIL_DEFAULTS } from '../state.js';
 
 const MIN = 240, MAX = 520;
 const uiScaleNow = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
@@ -64,12 +64,7 @@ export function Studio() {
       }
     };
     window.addEventListener('keydown', onKey);
-    // First visit: walk through the studio.
-    const t = !tourDone('studio') && setTimeout(() => startTour('studio'), 700);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      clearTimeout(t);
-    };
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   // Panel widths scale with the fit-to-screen UI scale (--ui), like everything drawn inside them.

@@ -12,7 +12,7 @@ import { resolveZones, lineWidthMM, MIN_LINE_MM } from '../lib/band.js';
 import { getMaterial } from '../lib/materials.js';
 import { bendAt, rimFade } from '../lib/ringGeometry.js';
 import { STAMPS, stampStroke, GENERATORS, generate, SYMMETRY, symMats, applyM, applyV, inv, steady, recognise, constrain } from '../lib/shapes.js';
-import { store, patternById, saveCustomPattern, setPattern, setDesign, toast, showTip, startTour, tourDone } from '../state.js';
+import { store, patternById, saveCustomPattern, setPattern, setDesign, toast, showTip, startTour } from '../state.js';
 
 const DRAFT = '__draft';
 const GRID = 12;
@@ -176,7 +176,6 @@ export function PatternEditor() {
     setTab('line');
     setView({ z: 1, cx: null, cy: null });
     toolClicks.current = 0;
-    if (!tourDone('editor')) setTimeout(() => startTour('editor'), 500);
   }, [editor]);
 
   // The tour can switch the side panel tab.
@@ -203,7 +202,12 @@ export function PatternEditor() {
     const placedOnSymmetry = mats.length > 1;
     return mats.map((m) => ({ ...s, g, t: m, sym: placedOnSymmetry, pts: s.pts.map((p) => applyM(m, p)) }));
   };
-  const addStroke = (s) => commit([...strokes, ...withSymmetry(s)]);
+  // The first stroke on an empty tile makes the live ring beside it pulse once: that is where the tile wraps.
+  const [pulse, setPulse] = useState(0);
+  const addStroke = (s) => {
+    if (!strokes.length) setPulse((n) => n + 1);
+    commit([...strokes, ...withSymmetry(s)]);
+  };
 
   // ── Preview design (only committed strokes, so drawing never rebuilds the 3D ring) ──
   const preview = useMemo(() => {
@@ -819,7 +823,7 @@ export function PatternEditor() {
           </div>
         </div>
 
-        <div class="ed-preview">
+        <div class=${'ed-preview' + (pulse ? ' pulse' : '')} key=${'preview-' + pulse}>
           <span class="field-label">Live on your ring</span>
           <${Pure} a=${preview} b=${draft} render=${() => html`<${RingView} design=${preview} getPattern=${getP} mode="studio" className="ed-ring" />`} />
           <${Pure} a=${preview} b=${draft} z=${zone} render=${() => html`<${BandMap} design=${preview} getPattern=${getP} activeZones=${zone === 'middle' ? ['middle'] : ['sideL', 'sideR']} />`} />

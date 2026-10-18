@@ -1,12 +1,62 @@
 # Make-a-Ring
 
-Design a custom, print-ready ring: scroll through patterns like a game character creator,
-draw your own, try it on, and download files for printing or casting.
+**Draw one tile. It wraps your ring. You download the file.**
 
-Built for **HyperBloom October 2026 (UI/UX & Web Design)**. Frontend-only prototype:
-prices are estimates. The STL and OBJ downloads are real, generated in the browser.
+A ring studio for people who aren't jewellers. Scroll patterns like a game character creator, draw your own,
+see it on a hand, and leave with a print-ready STL or OBJ, made in your browser.
 
-## Run it
+Built for **HyperBloom October 2026 (UI/UX & Web Design)**.
+
+> **Live demo:** _link added at deploy_ · **Video:** _2-minute walkthrough, link added at submission_
+
+![The landing page: a drafting-table hero with a live 3D ring and a title block of its specs](docs/screens/landing.png)
+
+## The problem
+
+Custom rings are designed in CAD tools made for professionals, or picked from a short list of presets. Someone with
+an idea for a ring has no way to try it, see it at their real size, or hand a maker a file they can use.
+
+## What we made
+
+| | |
+|---|---|
+| ![Studio](docs/screens/studio.png) | **The studio.** A cross carousel around a live 3D ring: up and down change the middle pattern, left and right the sides. The unrolled band underneath shows the whole design flat, with handles to resize each zone. |
+| ![Templates](docs/screens/templates.png) | **Start anywhere.** Eight templates with real 3D thumbnails, or one of your saved designs. A size step with a dimensioned drawing you can drag, and a size finder that uses a card you already own. |
+| ![Try on](docs/screens/try-on.png) | **Try it on.** An illustrated hand in five skin tones, two builds and four fingers, or a photo of your own hand. The ring is drawn at true scale. |
+| ![Review](docs/screens/review.png) | **Check and download.** Printability checks with real limits per material (wall thickness, detail size, seamless wrap) and one-click fixes, an itemised estimate, and STL/OBJ files with a maker brief. |
+
+## Design decisions
+
+- **A drafting table, not a shop.** Grid, registration marks, dimension lines and a title block: the ring is presented
+  like a part being made, which is what it is. The rules are written down in [`brand/brand-guide.pdf`](brand/brand-guide.pdf).
+- **The ring is always the hero.** It is the bottom layer of the stage and is never boxed in; the interface scales down
+  on small or zoomed screens so the ring keeps its room.
+- **One gesture to explore.** Scrolling patterns needs no menus, and the arrow keys do the same. Drawing your own tile
+  repeats it seamlessly around the band, with mirror and kaleidoscope symmetry.
+- **Honest numbers.** Sizes in US, EU and UK with the real inner diameter; wall and detail limits from each material;
+  prices marked as estimates.
+- **Calm motion and sound.** Pages change behind a single curtain sweep, so content never flickers. Quiet sounds
+  (a measuring-tape ratchet for sizes, a chime when files are ready) are paired with something you can see and can be
+  muted.
+
+## Accessibility
+
+- Everything works by keyboard: arrows drive the carousel, `?` lists every shortcut, the size drawing is a slider, and
+  the pattern editor draws with arrows and Enter.
+- Pattern changes and modes are announced to screen readers; controls have labels and roles (radiogroups, tablists,
+  sliders).
+- `prefers-reduced-motion` turns off transitions, the turntable and animated tours.
+- Status is never colour alone: checks carry an icon and words.
+- Four colour themes built on the same tokens, so every control looks right in each.
+
+## Try it in 60 seconds
+
+1. **Start from a template** → pick one → set your size.
+2. In the studio press **↑ ↓ ← →** and watch the ring change.
+3. Click **Draw your own**, draw a few strokes with mirror symmetry on, and press Use.
+4. **Try it on**, then **Review & files** → **Download print files**.
+
+## Run it locally
 
 No build step and no npm. Any static server works; this one fixes `.js` MIME types on Windows:
 
@@ -15,32 +65,9 @@ python serve.py
 ```
 
 Then open http://localhost:5173. Libraries (Preact, htm, three.js) load from jsDelivr via the import map in `index.html`.
+To deploy, upload the folder as a static site; there is nothing to build.
 
-## Deploy
-
-Upload the folder as a static site (Deployxa, GitHub Pages, Netlify, Vercel). There is nothing to build.
-
-## User flow
-
-1. **Landing** (`#/landing`): pitch, rotating 3D showcase.
-2. **Start** (`#/start`): pick a template (3D thumbnails), then your size.
-3. **Studio** (`#/studio`): the cross carousel. ↑/↓ changes the middle, ←/→ changes the sides, the ring updates live. Both side panels work like Blender's properties editor: a strip of category icons on the outer edge, one category shown at a time (left: patterns, my patterns, templates; right: size, layout, band & relief, material & finish, inside engraving, printability). The Middle / Sides selectors sit in a column on the right edge of the stage, so the carousel keeps its full height. Hiding a panel leaves its strip, and any icon opens it again. Price, check status and **Try it on** stay pinned at the bottom. Use **Draw your own** to open the pattern editor.
-4. **Try on** (`#/tryon`): illustrated hand (5 skin tones, 2 shapes, 4 fingers, close-up) or your own photo.
-5. **Review** (`#/review`): spec sheet, checks, price breakdown, real STL/OBJ export (built in the browser) with a maker brief, share link.
-
-## Look & feel
-
-Four themes (Beige, Blue, Gray, Red) switchable from the header; the choice is remembered. Type is
-Archivo (expanded, for display) + IBM Plex Mono (for anything measured) + Inter (body). The page sets
-`data-device` (`phone` / `tablet` / `desktop`) and `data-input` (`touch` / `mouse`) on `<html>`, so
-hints and layout adapt to the device.
-
-## Guidance
-
-- A guided studio tour runs on the first visit only (once started it counts as seen, whether finished, skipped or left), and the pattern editor has its own. Both can be skipped
-  (with a confirmation) and replayed from the help menu (?).
-- One-off tips appear when someone clicks the same control repeatedly, pointing to the keyboard shortcut.
-  Each has "Don't show again".
+Frontend-only prototype: no backend, no accounts, no real brands. Prices are estimates; the STL and OBJ files are real.
 
 ## Code map
 
@@ -67,8 +94,3 @@ hints and layout adapt to the device.
 
 Add a `def(...)` entry in `src/lib/patterns.js`. Zone is `'middle'`, `'side'` or `'any'`.
 For side patterns, `y = 0` is the outer edge of the ring.
-
-## Accessibility notes
-
-Everything works by keyboard (press `?` for shortcuts), pattern changes are announced to screen readers,
-the editor can be used with arrow keys + Enter, and motion respects `prefers-reduced-motion`.

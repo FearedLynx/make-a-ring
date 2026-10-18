@@ -715,3 +715,45 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .sd-grip:hover .sd-grip-dot, .sd-grip:active .sd-grip-dot { r: 7.5; fill: var(--accent); }
 .sd-hint { margin: 0; font: 12px var(--mono); color: var(--ink-3); }
 @media (hover: none) { .sd-hint { display: none; } }
+
+/* 3D views while the first ring is still being built: a quiet label with a breathing dot, centred */
+:where(.ring-view) { position: relative; } /* zero specificity: every placed view keeps its own position */
+.ring-view.loading::after {
+  content: attr(data-loading); position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  padding: 7px 14px 7px 30px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line);
+  box-shadow: var(--shadow); font: 500 13px var(--font); color: var(--ink-2); white-space: nowrap; pointer-events: none;
+  background-image: radial-gradient(circle at 15px 50%, var(--accent) 0 4px, transparent 4.5px);
+  animation: ring-wait 1.4s ease-in-out infinite;
+}
+@keyframes ring-wait { 50% { background-image: radial-gradient(circle at 15px 50%, color-mix(in srgb, var(--accent) 35%, transparent) 0 4px, transparent 4.5px); } }
+@media (prefers-reduced-motion: reduce) { .ring-view.loading::after { animation: none; } }
+
+/* Review: the download comes first; the specification is a drawing title block like the landing's */
+.review-tb { grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--surface); }
+.review-tb dd { white-space: normal; overflow: visible; font-variant-numeric: tabular-nums; }
+.review-tb .tb-name { font-size: 18px; }
+.tb-sheet-n { font: 600 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.review-sheet h2 { margin-bottom: 12px; }
+@media (max-width: 760px) { .review-tb { grid-template-columns: 1fr; } .review-tb > div { grid-column: auto !important; } }
+
+/* Landing: the promise line, and no orphaned last words in running text */
+.lp-promise { text-wrap: balance; margin: 0 0 10px; font: 800 clamp(20px, 1.9vw, 28px)/1.15 var(--display); font-stretch: 112%; letter-spacing: -0.015em; color: var(--ink); max-width: 30ch; }
+p, .lp-lede, h1, h2, h3 { text-wrap: pretty; }
+/* On wide screens the stage overlaps the wordmark, so its corner marks would sit on the letters or float in space;
+   the grid and the dimension lines already carry the drawing there */
+@media (min-width: 1101px) { .lp-stage .reg { display: none; } }
+
+/* Studio polish */
+.price-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.price-card > div { flex: 1 1 auto; }
+.pattern-art.plain { position: relative; }
+.pattern-art.plain svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pattern-art.plain rect { stroke: var(--line-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pattern-art.plain line { stroke: color-mix(in oklab, var(--ink) 16%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pattern-art.plain span { position: relative; }
+.stage-card .pattern-art.plain { background: var(--surface); box-shadow: none; }
+.link-group .chip.on { background: var(--surface); color: var(--ink); border-color: var(--ink); }
+.link-group .chip.on .icon { color: var(--accent-ink); }
+.spec-drawing { margin-top: 14px; }
+.spec-drawing .sd-svg { width: 100%; }
+.spec-drawing .sd-block { width: 100%; }

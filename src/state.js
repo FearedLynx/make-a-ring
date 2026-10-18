@@ -144,9 +144,10 @@ export const tourDone = (id) => load('mar.tours.done', []).includes(id);
 const markTourSeen = (id) => save('mar.tours.done', [...new Set([...load('mar.tours.done', []), id])]);
 // A tour counts as seen as soon as it starts: finished, skipped, or left by reloading, it never
 // starts on its own again. The help menu still replays it.
-export function startTour(id) {
+/** full: include the optional deep-dive steps (the first-run studio tour is the 5 core ones). */
+export function startTour(id, { full = false } = {}) {
   markTourSeen(id);
-  store.set({ tour: { id, step: 0, snapshot: id === 'studio' ? store.get().design : null }, tip: null });
+  store.set({ tour: { id, full, step: 0, snapshot: id === 'studio' ? store.get().design : null }, tip: null });
 }
 export function endTour() {
   const t = store.get().tour;

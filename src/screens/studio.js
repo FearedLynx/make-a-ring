@@ -64,7 +64,8 @@ export function Studio() {
     };
     window.addEventListener('keydown', onKey);
     // First visit: walk through the studio.
-    const t = !tourDone('studio') && setTimeout(() => startTour('studio'), 700);
+    // (not while the pattern editor is open, e.g. arriving from "Draw your own": the editor has its own tour)
+    const t = !tourDone('studio') && setTimeout(() => !store.get().editor && startTour('studio'), 700);
     return () => {
       window.removeEventListener('keydown', onKey);
       clearTimeout(t);

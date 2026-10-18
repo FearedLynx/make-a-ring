@@ -146,8 +146,8 @@ export function Stage({ onDraw }) {
     <div class="stage-tools">
       <button class="icon-btn" onClick=${() => viewer.current?.zoomBy(0.85)} title="Zoom in (+)" aria-label="Zoom in"><${Icon} name="plus" /></button>
       <button class="icon-btn" onClick=${() => viewer.current?.zoomBy(1.18)} title="Zoom out (−)" aria-label="Zoom out"><${Icon} name="minus" /></button>
-      <button class="icon-btn" onClick=${() => viewer.current?.resetView()} title="Reset view (R)" aria-label="Reset view"><${Icon} name="reset" /></button>
-      <button class=${'icon-btn' + (spin ? ' on' : '')} aria-pressed=${spin} onClick=${() => setSpin(!spin)} title="Turntable" aria-label="Turntable rotation"><${Icon} name="spin" /></button>
+      <button class="icon-btn" onClick=${() => viewer.current?.resetView()} title="Reset view (R)" aria-label="Reset view"><${Icon} name="recenter" /></button>
+      <button class=${'icon-btn' + (spin ? ' on' : '')} aria-pressed=${spin} onClick=${() => setSpin(!spin)} title="Turntable" aria-label="Turntable rotation"><${Icon} name="turntable" /></button>
     </div>
 
     <div class="stage-main">

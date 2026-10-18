@@ -11,7 +11,7 @@ import { MATERIALS, getMaterial } from '../lib/materials.js';
 import { PATTERNS } from '../lib/patterns.js';
 import { sizeSummary } from '../lib/sizes.js';
 import { estimate, money } from '../lib/checks.js';
-import { go, patternById } from '../state.js';
+import { go, patternById, store, applyTemplate } from '../state.js';
 import { DisplayTray } from '../components/display-tray.js';
 
 const SHOWCASE = ['heritage', 'botanica', 'nordic', 'everwrap', 'twin-rails', 'solitaire'];
@@ -35,6 +35,13 @@ function SectionBar({ title, meta }) {
     <span class="lp-bar-meta">${meta}</span>
   </div>`;
 }
+
+// The quickest way to the best moment: a blank band in the studio with the pattern editor already open.
+const drawOnBlank = () => {
+  applyTemplate('blank', { silent: true });
+  go('studio');
+  store.set({ editor: { zone: 'middle' } });
+};
 
 const scrollTo = (id) => (e) => {
   e.preventDefault();
@@ -102,7 +109,7 @@ export function Landing() {
         <a href="#cost" onClick=${scrollTo('cost')}>Cost</a>
       </nav>
       <div class="view-prefs"><${ThemeDots} /><${GridToggle} /><${SoundToggle} /></div>
-      <button class="btn primary sm" onClick=${() => go('start')}>Open the studio <${Icon} name="right" size=${14} /></button>
+      <button class="btn primary sm" onClick=${() => go('start')}>Design a ring <${Icon} name="right" size=${14} /></button>
     </header>
 
     <main id="main">
@@ -140,6 +147,7 @@ export function Landing() {
         </div>
 
         <div class="lp-hero-foot">
+          <p class="lp-promise">Draw one tile. It wraps your ring. You download the file.</p>
           <p class="lp-lede">A ring studio for people who aren't jewellers. Mix patterns, draw your own, and leave with files a printer or caster can use.</p>
           <ol class="lp-inline-steps">
             <li><span>01</span>Scroll patterns like a character creator</li>
@@ -147,8 +155,8 @@ export function Landing() {
             <li><span>03</span>Download print-ready files</li>
           </ol>
           <div class="lp-ctas">
-            <button class="key-btn" onClick=${() => go('start')}>Start from a template <${Icon} name="right" size=${18} /></button>
-            <button class="key-btn ghost" onClick=${() => go('studio')}>Blank studio</button>
+            <button class="key-btn" onClick=${() => go('start')}>Design a ring <${Icon} name="right" size=${18} /></button>
+            <button class="key-btn ghost" onClick=${drawOnBlank}><${Icon} name="pen" size=${17} /> Draw your own</button>
           </div>
         </div>
       </section>
@@ -211,7 +219,7 @@ export function Landing() {
       </section>
 
       <a class="lp-mega" href="#/start" onClick=${(e) => (e.preventDefault(), go('start'))}>
-        <span>Open the studio</span><${Icon} name="right" size=${64} />
+        <span>Design a ring</span><${Icon} name="right" size=${64} />
       </a>
     </main>
 

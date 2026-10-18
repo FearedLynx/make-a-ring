@@ -191,6 +191,24 @@ function save(f) {
   a.click();
 }
 
+/** Lay the spec out like a drawing's title block, 3 columns: long values take a whole row, and the last short
+ *  cell before a full row (or at the end) stretches to the edge, so the block never has holes. */
+function sheetCells(rows, cols = 3) {
+  const cells = rows.map(([k, v]) => ({ k, v, span: String(v).length > 26 ? cols : 1 }));
+  let col = 0;
+  cells.forEach((c, n) => {
+    if (c.span === cols) return void (col = 0);
+    col += 1;
+    const next = cells[n + 1];
+    if (col === cols) col = 0;
+    else if (!next || next.span === cols) {
+      c.span = cols - col + 1;
+      col = 0;
+    }
+  });
+  return cells;
+}
+
 export function Review() {
   const viewer = useRef();
   const design = store.use((s) => s.design);
@@ -225,13 +243,15 @@ export function Review() {
     <${TopBar} />
     <main class="review" id="main">
       <section class="review-hero">
+        <span class="reg tl" aria-hidden="true"></span><span class="reg tr" aria-hidden="true"></span>
+        <span class="reg bl" aria-hidden="true"></span><span class="reg br" aria-hidden="true"></span>
         <div class="review-ring">
           <${RingView} design=${design} mode="hero" zoom autoRotate onViewer=${(v) => (viewer.current = v)}
             label="3D ring. Drag to rotate, scroll or use the buttons to zoom." />
           <div class="review-zoom" role="group" aria-label="Zoom">
             <button class="icon-btn" onClick=${() => viewer.current?.zoomBy(0.8)} aria-label="Zoom in" title="Zoom in"><${Icon} name="plus" /></button>
             <button class="icon-btn" onClick=${() => viewer.current?.zoomBy(1.25)} aria-label="Zoom out" title="Zoom out"><${Icon} name="minus" /></button>
-            <button class="icon-btn" onClick=${() => viewer.current?.resetView()} aria-label="Reset view" title="Reset view"><${Icon} name="reset" /></button>
+            <button class="icon-btn" onClick=${() => viewer.current?.resetView()} aria-label="Reset view" title="Reset view"><${Icon} name="recenter" /></button>
           </div>
         </div>
         <div class="review-title">
@@ -247,9 +267,25 @@ export function Review() {
       </section>
 
       <section class="review-side">
-        <div class="card">
+        <div class="card export-card">
+          <h2>Print-ready files</h2>
+          <p class="muted">STL or OBJ in millimetres, already checked against ${m.name} limits.</p>
+          <button class="btn primary full" disabled=${errors > 0} onClick=${() => store.set({ exportOpen: true })}>
+            <${Icon} name="download" size=${16} /> Download print files
+          </button>
+          ${errors > 0 && html`<p class="error-note" role="status"><${Icon} name="alert" size=${14} /> Fix ${errors} printability issue${errors > 1 ? 's' : ''} below first. One click each.</p>`}
+          <ol class="next-steps">
+            <li><strong>Download</strong> the files.</li>
+            <li><strong>Print</strong> at home (PLA or resin), or send them to a casting house.</li>
+            <li><strong>Finish</strong> by polishing or plating, then wear it.</li>
+          </ol>
+        </div>
+        <div class="card review-sheet">
           <h2>Specification</h2>
-          <dl class="spec-sheet">${rows.map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl>
+          <dl class="title-block review-tb">
+            <div class="tb-wide"><dt class="sr-only">Part</dt><dd class="tb-name">${name || 'Untitled ring'}</dd><span class="tb-sheet-n">Sheet 3 / 3</span></div>
+            ${sheetCells(rows).map(({ k, v, span }) => html`<div style=${`grid-column: span ${span}`}><dt>${k}</dt><dd>${v}</dd></div>`)}
+          </dl>
         </div>
 
         <div class="card">
@@ -266,19 +302,6 @@ export function Review() {
           <p class="muted small">${price.leadDays ? `A casting house or print service typically takes about ${price.leadDays} days.` : 'Print it yourself today. Plate it later if you like.'} An estimate, not a quote: shipping and tax are not included.</p>
         </div>
 
-        <div class="card export-card">
-          <h2>Print-ready files</h2>
-          <p class="muted">STL or OBJ in millimetres, already checked against ${m.name} limits.</p>
-          <button class="btn primary full" disabled=${errors > 0} onClick=${() => store.set({ exportOpen: true })}>
-            <${Icon} name="download" size=${16} /> Download print files
-          </button>
-          ${errors > 0 && html`<p class="error-note" role="status"><${Icon} name="alert" size=${14} /> Fix ${errors} printability issue${errors > 1 ? 's' : ''} above first. One click each.</p>`}
-          <ol class="next-steps">
-            <li><strong>Download</strong> the files.</li>
-            <li><strong>Print</strong> at home (PLA or resin), or send them to a casting house.</li>
-            <li><strong>Finish</strong> by polishing or plating, then wear it.</li>
-          </ol>
-        </div>
         <${StepNav} back=${{ to: 'tryon', label: 'Try on' }} />
       </section>
     </main>

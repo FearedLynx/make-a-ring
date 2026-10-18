@@ -109,7 +109,8 @@ function HelpMenu() {
     <button class="icon-btn" aria-haspopup="menu" aria-expanded=${open} aria-label="Help" title="Help" onClick=${() => setOpen(!open)}><${Icon} name="help" /></button>
     ${open &&
     html`<div class="menu" role="menu" onKeyDown=${(e) => e.key === 'Escape' && setOpen(false)}>
-      ${screen === 'studio' && item('Replay studio tour', 'sparkle', () => startTour('studio'))}
+      ${screen === 'studio' && item('Studio tour (5 steps)', 'sparkle', () => startTour('studio'))}
+      ${screen === 'studio' && item('Full studio tour (10 steps)', 'sparkle', () => startTour('studio', { full: true }))}
       ${item('Keyboard shortcuts', 'keyboard', () => store.set({ shortcutsOpen: true }))}
       ${item('Pattern editor tour', 'pen', () => {
         if (store.get().screen !== 'studio') go('studio');

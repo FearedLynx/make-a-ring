@@ -1,7 +1,7 @@
 // Fit-to-screen UI scale for the desktop app screens (pure function tested in tests/ui-scale.test.js).
 // The studio chrome is drawn at --ui times its normal size, so a small or heavily scaled screen (a 1366×768 laptop,
 // Windows at 125–150 %) keeps a big stage for the ring instead of a squeezed one. Phones and tablets keep 1.
-export const UI_REF = { w: 1600, h: 860, min: 0.7, desktop: 1024 };
+export const UI_REF = { w: 1600, h: 860, min: 0.8, desktop: 1024 }; // below 0.8 small labels drop under 10 px
 
 /** Scale for a window of w × h CSS pixels: 1 on big screens, down to UI_REF.min on small ones. */
 export function uiScale(w, h) {

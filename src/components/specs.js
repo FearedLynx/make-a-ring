@@ -219,6 +219,26 @@ export function SpecStrip() {
     onPick=${(id) => setRails({ specCat: id, specOpen: true })} onClose=${() => setRails({ specOpen: false })} />`;
 }
 
+/** Price, printability and the next step. In the specs panel on wide screens; docked to the bottom of the studio on phones. */
+export function PriceCard({ className = '', onChecks }) {
+  const design = store.use((s) => s.design);
+  store.use((s) => s.customPatterns);
+  const status = checkStatus(design);
+  const price = estimate(design);
+  return html`<div class=${'price-card ' + className}>
+      <button class=${'check-chip ' + status.level} onClick=${() => (onChecks ? onChecks() : setRails({ specCat: 'checks', specOpen: true }))}
+        aria-label=${`Printability: ${status.text}. Show checks`} title="Show printability checks">
+        <${Icon} name=${status.level === 'ok' ? 'check' : 'alert'} size=${12} /> ${status.level === 'ok' ? 'Printable' : status.text}
+      </button>
+      <div>
+        <span class="price-meta"><span class="muted">Estimated</span></span>
+        <strong class="price">${money(price.total)}</strong>
+        <span class="muted small">Estimate, not a quote</span>
+      </div>
+      <button class="btn primary" onClick=${() => go('tryon')}>Try it on <${Icon} name="right" size=${16} /></button>
+    </div>`;
+}
+
 export function Specs({ onHide }) {
   const design = store.use((s) => s.design);
   store.use((s) => s.customPatterns);
@@ -328,17 +348,6 @@ export function Specs({ onHide }) {
       )}
     </div>
 
-    <div class="price-card">
-      <button class=${'check-chip ' + status.level} onClick=${() => setRails({ specCat: 'checks', specOpen: true })}
-        aria-label=${`Printability: ${status.text}. Show checks`} title="Show printability checks">
-        <${Icon} name=${status.level === 'ok' ? 'check' : 'alert'} size=${12} /> ${status.level === 'ok' ? 'Printable' : status.text}
-      </button>
-      <div>
-        <span class="price-meta"><span class="muted">Estimated</span></span>
-        <strong class="price">${money(price.total)}</strong>
-        <span class="muted small">Estimate, not a quote</span>
-      </div>
-      <button class="btn primary" onClick=${() => go('tryon')}>Try it on <${Icon} name="right" size=${16} /></button>
-    </div>
+    <${PriceCard} />
   </aside>`;
 }

@@ -856,3 +856,35 @@ h1[tabindex='-1']:focus { outline: none; }
 .stage-card-dir.down { bottom: -11px; left: 50%; transform: translateX(-50%); }
 .stage-card-dir.left { left: -11px; top: 50%; transform: translateY(-50%); }
 .stage-card-dir.right { right: -11px; top: 50%; transform: translateY(-50%); }
+
+/* ── Studio on phones and small tablets ──
+   The stage fills the first screen (ring first, Smashing's 65–75 % rule), the two panel tabs sit at its foot and stick
+   under the app bar, and price, printability and Try it on are docked to the bottom so the next step is always there. */
+.studio-dock { display: none; }
+@media (max-width: 1023px) {
+  .studio .rail .price-card { display: none; }
+  .studio-dock { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; padding-bottom: env(safe-area-inset-bottom); background: var(--surface); box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.07); }
+  .studio-dock .price-card { border-top: 1px solid var(--line); }
+  .studio { padding-bottom: 92px; }
+  .mobile-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+}
+@media (max-width: 760px) {
+  .studio-dock .price-card { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 12px; padding: 10px 14px; }
+  .studio-dock .price-card .check-chip { grid-column: auto; grid-row: 1; }
+  .studio-dock .price-card .small, .studio-dock .price-meta { display: none; }
+  .studio-dock .price { font-size: 22px; }
+  .studio { padding-bottom: 68px; }
+  /* first screen: app bar + stage + the tabs, with the dock below */
+  .studio .stage { height: calc(100dvh - var(--topbar) - 68px - 58px); min-height: 440px; padding: 8px 10px 10px; display: flex; flex-direction: column; }
+  .studio .band-map-wrap { display: none; }
+  .studio .cross { flex: 1; min-height: 0; grid-template-rows: auto minmax(150px, 1fr) auto; padding-top: 30px; }
+  .studio .selection-bar { margin-top: 14px; gap: 8px; }
+  .studio .sel-now { order: -1; flex: 1 0 100%; gap: 20px; }
+  .studio .link-group { flex: 1; }
+  .studio .link-group .chip { padding: 8px 12px; }
+  .studio .draw-btn { width: auto; flex: 1; justify-content: center; }
+  .studio .stage-coach { position: absolute; left: 10px; right: 10px; top: auto; bottom: 8px; max-width: none; margin: 0; order: 0; }
+  /* pinch zooms on a phone, so only reset and turntable stay, clear of the top card */
+  [data-input="touch"] .studio .stage-tools .icon-btn:nth-child(-n + 2) { display: none; }
+  .studio .mobile-tabs { padding: 8px 12px; }
+}

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
+import { Icon } from '../components/ui.js';
 import { TopBar } from '../components/topbar.js';
 import { Stage } from '../components/stage.js';
 import { Library, LibStrip } from '../components/library.js';
-import { Specs, SpecStrip } from '../components/specs.js';
+import { Specs, SpecStrip, PriceCard } from '../components/specs.js';
 import { store, setRails, RAIL_DEFAULTS } from '../state.js';
 
 const MIN = 240, MAX = 520;
@@ -46,6 +47,16 @@ export function Studio() {
   const [panel, setPanel] = useState('specs');
   const rails = store.use((s) => s.rails);
   const ringName = store.use((s) => s.ringName);
+  // Phones: the panels sit under the stage. Picking one scrolls it up under the app bar, so it is in view at once.
+  const showPanel = (p, rails) => {
+    setPanel(p);
+    setRails(rails);
+    requestAnimationFrame(() => {
+      const tabs = document.querySelector('.mobile-tabs');
+      const bar = document.querySelector('.topbar')?.offsetHeight || 0;
+      if (tabs) window.scrollTo({ top: tabs.getBoundingClientRect().top + scrollY - bar, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    });
+  };
   const openEditor = (base) => store.set({ editor: { base, zone: store.get().libZone === 'side' ? 'side' : 'middle' } });
 
   useEffect(() => {
@@ -84,9 +95,14 @@ export function Studio() {
         <${SpecStrip} />
       </div>
       <nav class="mobile-tabs" aria-label="Studio panels">
-        <button class=${panel === 'library' ? 'on' : ''} aria-pressed=${panel === 'library'} onClick=${() => (setPanel('library'), setRails({ libOpen: true }))}>Patterns & templates</button>
-        <button class=${panel === 'specs' ? 'on' : ''} aria-pressed=${panel === 'specs'} onClick=${() => (setPanel('specs'), setRails({ specOpen: true }))}>Size, material & checks</button>
+        <button class=${panel === 'library' ? 'on' : ''} aria-pressed=${panel === 'library'} onClick=${() => showPanel('library', { libOpen: true })}>
+          <${Icon} name="pattern" size=${16} /> Patterns
+        </button>
+        <button class=${panel === 'specs' ? 'on' : ''} aria-pressed=${panel === 'specs'} onClick=${() => showPanel('specs', { specOpen: true })}>
+          <${Icon} name="band" size=${16} /> Your ring
+        </button>
       </nav>
+      <div class="studio-dock"><${PriceCard} onChecks=${() => showPanel('specs', { specOpen: true, specCat: 'checks' })} /></div>
     </main>
   </div>`;
 }

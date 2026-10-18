@@ -23,11 +23,32 @@ function SaveControl() {
   </div>`;
 }
 
+// One path, named the same on every screen: the landing's Process section, Start and the app bar.
 const STEPS = [
+  { id: 'start', label: 'Start' },
   { id: 'studio', label: 'Design' },
   { id: 'tryon', label: 'Try on' },
-  { id: 'review', label: 'Review & files' },
+  { id: 'review', label: 'Files' },
 ];
+const START_PARTS = ['Template', 'Size'];
+
+/** The four steps. `part` marks where you are inside Start (1 template, 2 size). */
+export function StepsNav({ part }) {
+  const screen = store.use((s) => s.screen);
+  const idx = STEPS.findIndex((s) => s.id === screen);
+  return html`<nav class="steps" aria-label="Design steps">
+    <ol>
+      ${STEPS.map(
+        (s, i) => html`<li>
+          <a href=${`#/${s.id}`} class=${(s.id === screen ? 'on' : '') + (i < idx ? ' done' : '')} aria-current=${s.id === screen ? 'step' : undefined}
+            aria-label=${`Step ${i + 1} of ${STEPS.length}: ${s.label}${s.id === 'start' && part ? `, ${START_PARTS[part - 1].toLowerCase()}` : ''}${i < idx ? ', done' : ''}`}>
+            <span class="step-n">${i < idx ? html`<${Icon} name="check" size=${12} />` : String(i + 1).padStart(2, '0')}</span><span class="step-label">${s.label}${s.id === 'start' && part ? html`<span class="step-part"> · ${START_PARTS[part - 1]}</span>` : ''}</span>
+          </a>
+        </li>`
+      )}
+    </ol>
+  </nav>`;
+}
 
 export async function copyShareLink() {
   const url = shareUrl();
@@ -123,20 +144,9 @@ function HelpMenu() {
 export function TopBar() {
   const screen = store.use((s) => s.screen);
   const name = store.use((s) => s.ringName);
-  const idx = STEPS.findIndex((s) => s.id === screen);
   return html`<header class="topbar">
     <div class="topbar-left"><${BackButton} /><${Logo} /></div>
-    <nav class="steps" aria-label="Design steps">
-      <ol>
-        ${STEPS.map(
-          (s, i) => html`<li>
-            <a href=${`#/${s.id}`} class=${(s.id === screen ? 'on' : '') + (i < idx ? ' done' : '')} aria-current=${s.id === screen ? 'step' : undefined}>
-              <span class="step-n">${i < idx ? html`<${Icon} name="check" size=${12} />` : String(i + 1).padStart(2, '0')}</span><span class="step-label">${s.label}</span>
-            </a>
-          </li>`
-        )}
-      </ol>
-    </nav>
+    <${StepsNav} />
     <div class="topbar-right">
       <label class="ring-name">
         <span class="sr-only">Ring name</span>

@@ -45,6 +45,7 @@ const STRIP = 44;
 export function Studio() {
   const [panel, setPanel] = useState('specs');
   const rails = store.use((s) => s.rails);
+  const ringName = store.use((s) => s.ringName);
   const openEditor = (base) => store.set({ editor: { base, zone: store.get().libZone === 'side' ? 'side' : 'middle' } });
 
   useEffect(() => {
@@ -77,6 +78,7 @@ export function Studio() {
   return html`<div class="app-shell">
     <${TopBar} />
     <main class=${'studio panel-' + panel} id="main" style=${`--studio-cols:${cols}`}>
+      <h1 class="sr-only">Design studio: ${ringName || 'Untitled ring'}</h1>
       <div class=${'rail-wrap lib' + (rails.libOpen ? '' : ' collapsed')}>
         <${LibStrip} />
         ${rails.libOpen && html`<${Library} onDraw=${openEditor} onHide=${() => setRails({ libOpen: false })} /><${Resizer} side="lib" />`}

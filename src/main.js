@@ -14,7 +14,7 @@ import { Review } from './screens/review.js';
 import { watchUiScale } from './lib/ui-scale.js';
 
 const SCREENS = { landing: Landing, start: Start, studio: Studio, tryon: TryOn, review: Review };
-const TITLES = { landing: 'Make-a-Ring', start: 'Start · Make-a-Ring', studio: 'Studio · Make-a-Ring', tryon: 'Try on · Make-a-Ring', review: 'Review · Make-a-Ring' };
+const TITLES = { landing: 'Make-a-Ring', start: 'Start · Make-a-Ring', studio: 'Studio · Make-a-Ring', tryon: 'Try on · Make-a-Ring', review: 'Files · Make-a-Ring' };
 
 const SHORTCUTS = [
   ['Studio', [['↑ / ↓', 'Previous / next middle pattern'], ['← / →', 'Previous / next side pattern'], ['L', 'Link or unlink the sides'],

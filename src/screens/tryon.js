@@ -147,7 +147,7 @@ export function TryOn() {
 
           <${Slider} label="Band width" value=${design.width} min=${2} max=${12} step=${0.5} onInput=${(v) => setDesign({ width: v })} />
         </div>
-        <${StepNav} back=${{ to: 'studio', label: 'Design' }} next=${{ to: 'review', label: 'Review & files' }} />
+        <${StepNav} back=${{ to: 'studio', label: 'Design' }} next=${{ to: 'review', label: 'Files' }} />
       </aside>
     </main>
   </div>`;

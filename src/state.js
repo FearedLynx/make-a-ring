@@ -246,13 +246,28 @@ window.addEventListener('hashchange', () => {
   transition(ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'forward' : 'back', () => {
     store.set({ screen: screenFromHash() }); // the address at swap time, in case it changed again mid-sweep
     window.scrollTo(0, 0);
+    requestAnimationFrame(focusHeading);
   });
 });
 
 // ── Navigation ────────────────────────────────────────────────
+/** Focus the new screen's heading, so keyboard and screen-reader users start at the top of what changed. */
+export function focusHeading() {
+  const h = document.querySelector('h1');
+  if (!h) return;
+  h.setAttribute('tabindex', '-1');
+  h.focus({ preventScroll: true });
+}
+
 export function go(screen) {
   if (location.hash !== `#/${screen}`) location.hash = `#/${screen}`;
   else store.set({ screen });
+}
+
+/** Straight to drawing: the studio with the pattern editor open, on the design you have (US 7 Heritage by default). */
+export function drawPattern() {
+  go('studio');
+  store.set({ editor: { zone: 'middle' } });
 }
 
 /** Back to the page you came from. On the first page of a visit (a shared link, a bookmark) it goes one step back in the flow instead of leaving the site. */

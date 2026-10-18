@@ -2,12 +2,12 @@ import { useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Logo } from '../components/ui.js';
 import { TemplateCard, SavedCard } from '../components/template-card.js';
-import { BackButton } from '../components/topbar.js';
+import { BackButton, StepsNav } from '../components/topbar.js';
 import { SizeDrawing } from '../components/size-drawing.js';
 import { tape } from '../lib/sound.js';
 import { TEMPLATES } from '../lib/templates.js';
 import { sizeSummary, fmtUs } from '../lib/sizes.js';
-import { store, go, goBack, transition, applyTemplate, setDesign, openSavedDesign, deleteSavedDesign, duplicateSavedDesign } from '../state.js';
+import { store, go, goBack, focusHeading, transition, applyTemplate, setDesign, openSavedDesign, deleteSavedDesign, duplicateSavedDesign } from '../state.js';
 
 export function Start() {
   const design = store.use((s) => s.design);
@@ -32,15 +32,13 @@ export function Start() {
     transition(n > step ? 'forward' : 'back', () => {
       setStep(n);
       window.scrollTo(0, 0);
+      requestAnimationFrame(focusHeading);
     });
 
   return html`<div class="start">
     <header class="landing-nav">
       <div class="topbar-left"><${BackButton} onClick=${() => (step === 2 ? toStep(1) : goBack())} /><${Logo} /></div>
-      <ol class="start-steps" aria-label="Setup progress">
-        <li class=${step === 1 ? 'on' : 'done'} aria-current=${step === 1 ? 'step' : undefined}>1 · Starting point</li>
-        <li class=${step === 2 ? 'on' : ''} aria-current=${step === 2 ? 'step' : undefined}>2 · Your size</li>
-      </ol>
+      <${StepsNav} part=${step} />
       <button class="btn ghost sm" onClick=${() => go('studio')}>Skip to studio</button>
     </header>
 

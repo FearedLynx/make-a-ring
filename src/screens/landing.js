@@ -11,7 +11,7 @@ import { MATERIALS, getMaterial } from '../lib/materials.js';
 import { PATTERNS } from '../lib/patterns.js';
 import { sizeSummary } from '../lib/sizes.js';
 import { estimate, money } from '../lib/checks.js';
-import { go, patternById } from '../state.js';
+import { go, drawPattern, patternById } from '../state.js';
 import { DisplayTray } from '../components/display-tray.js';
 
 const SHOWCASE = ['heritage', 'botanica', 'nordic', 'everwrap', 'twin-rails', 'solitaire'];
@@ -147,8 +147,8 @@ export function Landing() {
             <li><span>03</span>Download print-ready files</li>
           </ol>
           <div class="lp-ctas">
-            <button class="key-btn" onClick=${() => go('start')}>Start from a template <${Icon} name="right" size=${18} /></button>
-            <button class="key-btn ghost" onClick=${() => go('studio')}>Blank studio</button>
+            <button class="key-btn" onClick=${() => go('start')}>Design a ring <${Icon} name="right" size=${18} /></button>
+            <button class="key-btn ghost" onClick=${drawPattern}><${Icon} name="pen" size=${17} /> Draw a pattern</button>
           </div>
         </div>
       </section>
@@ -161,12 +161,12 @@ export function Landing() {
       </div>
 
       <section class="lp-sec" id="process">
-        <${SectionBar} title="Process" meta="4 stations · about 3 minutes" />
+        <${SectionBar} title="Process" meta="4 steps · about 3 minutes" />
         <ol class="lp-process">
-          <li><span class="lp-n">01</span><h3>Start somewhere</h3><p>Pick a template or a blank band. A size finder helps if you don't know your size.</p></li>
-          <li><span class="lp-n">02</span><h3>Scroll to style</h3><p>Up and down changes the middle, left and right the sides. The ring updates live.</p></li>
-          <li><span class="lp-n">03</span><h3>Draw your own</h3><p>Sketch one tile, mirror it, smooth it. It repeats seamlessly around the band.</p></li>
-          <li><span class="lp-n">04</span><h3>Check & download</h3><p>Try it on a hand, fix any printability warning in one click, and download STL or OBJ.</p></li>
+          <li><span class="lp-n">01</span><h3>Start</h3><p>Pick a template and your size. A size finder helps if you don't know it.</p></li>
+          <li><span class="lp-n">02</span><h3>Design</h3><p>Up and down changes the middle, left and right the sides. Or draw one tile and watch it wrap the band.</p></li>
+          <li><span class="lp-n">03</span><h3>Try on</h3><p>See the band on a hand in five skin tones, or on a photo of your own that never leaves the device.</p></li>
+          <li><span class="lp-n">04</span><h3>Files</h3><p>Fix any printability warning in one click, then download STL or OBJ for a printer or a caster.</p></li>
         </ol>
       </section>
 

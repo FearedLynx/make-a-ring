@@ -684,10 +684,9 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 }
 .sound-toggle.off .st-wave { opacity: 0.25; }
 
-/* ── Header: home button next to the logo ── */
+/* ── Header: back button before the logo; on phones the app bar keeps only the ring mark ── */
 .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.home-btn { text-decoration: none; }
-@media (max-width: 900px) { .home-btn span { display: none; } .home-btn { padding-left: 8px; padding-right: 8px; } }
+@media (max-width: 420px) { .topbar .logo > span { display: none; } }
 
 /* ── Landing: section titles clear the sticky header when jumped to ── */
 .lp section[id] { scroll-margin-top: 84px; }

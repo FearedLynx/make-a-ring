@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon, Logo } from './ui.js';
 import { soundOn, setSound, snap } from '../lib/sound.js';
-import { store, go, toast, shareUrl, THEMES, setTheme, startTour, setGrid, saveDesign, currentSavedEntry, hasUnsavedChanges } from '../state.js';
+import { store, go, goBack, toast, shareUrl, THEMES, setTheme, startTour, setGrid, saveDesign, currentSavedEntry, hasUnsavedChanges } from '../state.js';
 
 /**
  * Save to My designs. Editing one of your saved designs: "Save" updates it and "Save as new" forks a copy.
@@ -87,11 +87,11 @@ export function GridToggle() {
   </button>`;
 }
 
-/** Back to the landing page. */
-export function HomeButton() {
-  return html`<a class="btn ghost sm home-btn" href="#/landing" onClick=${(e) => (e.preventDefault(), go('landing'))} title="Back to the home page">
-    <${Icon} name="home" size=${15} /><span>Home</span>
-  </a>`;
+/** Back to the previous page (the logo already goes home). */
+export function BackButton({ onClick = goBack }) {
+  return html`<button class="icon-btn back-btn" onClick=${onClick} aria-label="Back to the previous page" title="Back">
+    <${Icon} name="left" size=${18} />
+  </button>`;
 }
 
 function HelpMenu() {
@@ -125,7 +125,7 @@ export function TopBar() {
   const name = store.use((s) => s.ringName);
   const idx = STEPS.findIndex((s) => s.id === screen);
   return html`<header class="topbar">
-    <div class="topbar-left"><${Logo} /><${HomeButton} /></div>
+    <div class="topbar-left"><${BackButton} /><${Logo} /></div>
     <nav class="steps" aria-label="Design steps">
       <ol>
         ${STEPS.map(

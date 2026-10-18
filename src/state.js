@@ -95,7 +95,8 @@ export const store = createStore({
   tour: null, // { id, step }
 });
 
-if (shared || sharedLinkBroken) history.replaceState(null, '', location.pathname + location.hash);
+// Mark the page this visit opened on (a shared link drops its ?d= too), so goBack() knows there is no earlier app page.
+history.replaceState({ entry: true }, '', shared || sharedLinkBroken ? location.pathname + location.hash : location.href);
 
 store.subscribe((s) => {
   save('mar.design', s.design);
@@ -247,6 +248,15 @@ window.addEventListener('hashchange', () => {
 export function go(screen) {
   if (location.hash !== `#/${screen}`) location.hash = `#/${screen}`;
   else store.set({ screen });
+}
+
+/** Back to the page you came from. On the first page of a visit (a shared link, a bookmark) it goes one step back in the flow instead of leaving the site. */
+export function goBack() {
+  if (!history.state?.entry) return history.back();
+  const prev = ORDER[Math.max(0, ORDER.indexOf(store.get().screen) - 1)];
+  // Replace rather than push, so Back never bounces between two pages.
+  history.replaceState({ entry: true }, '', `#/${prev}`);
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
 }
 
 // ── Patterns ──────────────────────────────────────────────────

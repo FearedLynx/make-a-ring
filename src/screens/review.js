@@ -16,8 +16,9 @@ import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
-import { store, go, patternById, announce } from '../state.js';
+import { store, go, patternById, announce, toast } from '../state.js';
 import { chime } from '../lib/sound.js';
+import { ringCard } from '../lib/ring-card.js';
 
 const FORMATS = [
   { id: 'stl', name: 'STL', desc: 'Works with every slicer and casting house.' },
@@ -210,6 +211,44 @@ export function Review() {
   const layout = LAYOUTS[design.layout];
   const hasZ = (z) => layout.zones.some((x) => x.id === z);
 
+  // The card always shows the ring from the default three-quarter view, whatever angle the turntable is at.
+  const frontSnapshot = (v) => {
+    const pos = v.camera.position.clone();
+    v.resetView();
+    const png = v.snapshot();
+    v.camera.position.copy(pos);
+    v.controls?.update();
+    return png;
+  };
+  // Ring card: the sheet as one PNG. Phones get the share sheet; elsewhere it downloads.
+  const [cardBusy, setCardBusy] = useState(false);
+  const saveCard = async () => {
+    if (!viewer.current) return;
+    setCardBusy(true);
+    try {
+      const blob = await ringCard({
+        snapshot: frontSnapshot(viewer.current),
+        name,
+        rows: [['Layout', layout.name], ['Material', m.name], ['Size', `US ${size.us} · Ø ${size.diameter.toFixed(1)}`], ['Finish', design.finish], ['Weight', `≈ ${price.grams.toFixed(1)} g`], ['Est.', money(price.total)]],
+        dims: { outer: size.diameter + 2 * design.thickness, width: design.width },
+        stamp: ready ? { ok: true, title: 'READY', sub: 'TO PRINT' } : { ok: false, title: `${errors} TO FIX`, sub: 'BEFORE PRINTING' },
+      });
+      const file = new File([blob], `${(name || 'ring').trim().replace(/[^\w-]+/g, '-').toLowerCase() || 'ring'}-card.png`, { type: 'image/png' });
+      if (document.documentElement.dataset.input === 'touch' && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: name || 'My ring' }).catch(() => {});
+      } else {
+        const url = URL.createObjectURL(file);
+        save({ url, name: file.name });
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        toast('Ring card saved as a PNG');
+      }
+    } catch {
+      toast('The ring card could not be drawn on this device');
+    } finally {
+      setCardBusy(false);
+    }
+  };
+
   const engr = engravingLayout(design);
   const rows = [
     ['Size', `US ${size.us} · EU ${size.eu} · UK ${size.uk}`],
@@ -268,6 +307,7 @@ export function Review() {
         <div class="review-actions">
           <button class="btn ghost" onClick=${() => go('studio')}><${Icon} name="pen" size=${15} /> Edit design</button>
           <button class="btn ghost" onClick=${copyShareLink}><${Icon} name="share" size=${15} /> Copy share link</button>
+          <button class="btn ghost" onClick=${saveCard} disabled=${cardBusy}><${Icon} name="file" size=${15} /> ${cardBusy ? 'Drawing…' : 'Save ring card'}</button>
         </div>
       </section>
 

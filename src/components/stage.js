@@ -46,10 +46,12 @@ function useWheelStep(onStep) {
   };
 }
 
+/** A neighbouring pattern. The arrow on it says which way the carousel turns when you press it (or its arrow key). */
 function Card({ id, kind, dir, label, onClick, far = false, animKey, animClass }) {
   const p = patternById(id);
   return html`<button type="button" class=${`stage-card ${kind} ${far ? 'far' : ''} ${animClass}`} key=${animKey}
-    onClick=${onClick} aria-label=${`${label}: ${p?.name || 'Plain'}`} tabindex=${far ? -1 : 0}>
+    onClick=${onClick} aria-label=${far ? `${p?.name || 'Plain'}, two steps away` : `${label}: ${p?.name || 'Plain'}`} tabindex=${far ? -1 : 0}>
+    ${!far && dir && html`<span class=${'stage-card-dir ' + dir} aria-hidden="true"><${Icon} name=${dir} size=${13} /></span>`}
     <${PatternArt} pattern=${p} layout=${kind === 'middle' ? 'column' : 'pair'} repeats=${kind === 'middle' ? 2 : 3} />
     <span class="stage-card-name">${p?.name || 'Plain'}</span>
   </button>`;
@@ -171,15 +173,15 @@ export function Stage({ onDraw }) {
     <div class="cross">
       <div class="cross-top" onWheel=${mid ? midWheel : undefined} ...${mid ? midSwipe : {}}>
         ${mid
-          ? html`<${Card} id=${neighbours('middle', -1)} kind="middle" label="Previous middle pattern" onClick=${click('middle', -1)}
+          ? html`<${Card} id=${neighbours('middle', -1)} kind="middle" dir="up" label="Previous middle pattern" onClick=${click('middle', -1)}
               animKey=${k('middle', 't')} animClass=${cls('middle')} />`
           : placeholder('middle zone')}
       </div>
 
       <div class="cross-left" onWheel=${sides ? sideWheel : undefined} ...${sides ? sideSwipe : {}}>
         ${sides
-          ? html`<${Card} id=${neighbours(sideZone, -2)} kind="side" far label="" animKey=${k('side', 'l2')} animClass=${cls('side')} onClick=${() => (step('side', -1, 'click'), step('side', -1, 'click'))} />
-              <${Card} id=${neighbours(sideZone, -1)} kind="side" label="Previous side pattern" animKey=${k('side', 'l1')} animClass=${cls('side')} onClick=${click('side', -1)} />`
+          ? html`<${Card} id=${neighbours(sideZone, -2)} kind="side" far animKey=${k('side', 'l2')} animClass=${cls('side')} onClick=${() => (step('side', -1, 'click'), step('side', -1, 'click'))} />
+              <${Card} id=${neighbours(sideZone, -1)} kind="side" dir="left" label="Previous side pattern" animKey=${k('side', 'l1')} animClass=${cls('side')} onClick=${click('side', -1)} />`
           : placeholder('side zones')}
       </div>
 
@@ -187,38 +189,18 @@ export function Stage({ onDraw }) {
 
       <div class="cross-right" onWheel=${sides ? sideWheel : undefined} ...${sides ? sideSwipe : {}}>
         ${sides &&
-        html`<${Card} id=${neighbours(sideZone, 1)} kind="side" label="Next side pattern" animKey=${k('side', 'r1')} animClass=${cls('side')} onClick=${click('side', 1)} />
-          <${Card} id=${neighbours(sideZone, 2)} kind="side" far label="" animKey=${k('side', 'r2')} animClass=${cls('side')} onClick=${() => (step('side', 1, 'click'), step('side', 1, 'click'))} />`}
+        html`<${Card} id=${neighbours(sideZone, 1)} kind="side" dir="right" label="Next side pattern" animKey=${k('side', 'r1')} animClass=${cls('side')} onClick=${click('side', 1)} />
+          <${Card} id=${neighbours(sideZone, 2)} kind="side" far animKey=${k('side', 'r2')} animClass=${cls('side')} onClick=${() => (step('side', 1, 'click'), step('side', 1, 'click'))} />`}
       </div>
 
       <div class="cross-bottom" onWheel=${mid ? midWheel : undefined} ...${mid ? midSwipe : {}}>
         ${mid &&
-        html`<${Card} id=${neighbours('middle', 1)} kind="middle" label="Next middle pattern" onClick=${click('middle', 1)}
+        html`<${Card} id=${neighbours('middle', 1)} kind="middle" dir="down" label="Next middle pattern" onClick=${click('middle', 1)}
           animKey=${k('middle', 'b')} animClass=${cls('middle')} />`}
       </div>
     </div>
 
     <div class="selection-bar">
-      <div class=${'sel-group' + (mid ? '' : ' disabled')}>
-        <button class="icon-btn sm" disabled=${!mid} onClick=${click('middle', -1)} aria-label="Previous middle pattern"><${Icon} name="up" size=${16} /></button>
-        <div class="sel-text">
-          <span class="sel-label">Middle</span>
-          <strong key=${k('middle', 'n')} class=${cls('middle')}>${mid ? patternById(design.patterns.middle)?.name || 'Plain' : '—'}</strong>
-          ${mid && html`<span class="sel-count">${midIdx}/${midList.length}</span>`}
-        </div>
-        <button class="icon-btn sm" disabled=${!mid} onClick=${click('middle', 1)} aria-label="Next middle pattern"><${Icon} name="down" size=${16} /></button>
-      </div>
-
-      <div class=${'sel-group' + (sides ? '' : ' disabled')}>
-        <button class="icon-btn sm" disabled=${!sides} onClick=${click('side', -1)} aria-label="Previous side pattern"><${Icon} name="left" size=${16} /></button>
-        <div class="sel-text">
-          <span class="sel-label">${design.linked ? 'Sides' : activeSide === 'sideL' ? 'Left side' : 'Right side'}</span>
-          <strong key=${k('side', 'n')} class=${cls('side')}>${sides ? patternById(design.patterns[sideZone])?.name || 'Plain' : '—'}</strong>
-          ${sides && html`<span class="sel-count">${sideIdx}/${sideList.length}</span>`}
-        </div>
-        <button class="icon-btn sm" disabled=${!sides} onClick=${click('side', 1)} aria-label="Next side pattern"><${Icon} name="right" size=${16} /></button>
-      </div>
-
       <div class="sel-group link-group">
         <button class=${'chip' + (design.linked ? ' on' : '')} disabled=${!sides} aria-pressed=${design.linked}
           onClick=${() => setLinked(!design.linked)} title="Link sides (L)">
@@ -230,6 +212,19 @@ export function Stage({ onDraw }) {
             onClick=${() => store.set({ activeSide: z })}>${z === 'sideL' ? 'Left' : 'Right'}</button>`)}
         </div>`}
       </div>
+
+      <p class="sel-now">
+        <span class=${'sel-item' + (mid ? '' : ' disabled')}>
+          <span class="sel-label">Middle</span>
+          <strong key=${k('middle', 'n')} class=${cls('middle')}>${mid ? patternById(design.patterns.middle)?.name || 'Plain' : '—'}</strong>
+          ${mid && html`<span class="sel-count">${midIdx}/${midList.length}</span>`}
+        </span>
+        <span class=${'sel-item' + (sides ? '' : ' disabled')}>
+          <span class="sel-label">${design.linked ? 'Sides' : activeSide === 'sideL' ? 'Left side' : 'Right side'}</span>
+          <strong key=${k('side', 'n')} class=${cls('side')}>${sides ? patternById(design.patterns[sideZone])?.name || 'Plain' : '—'}</strong>
+          ${sides && html`<span class="sel-count">${sideIdx}/${sideList.length}</span>`}
+        </span>
+      </p>
 
       <button class="btn accent draw-btn" onClick=${onDraw}><${Icon} name="pen" size=${16} /> Draw your own</button>
     </div>

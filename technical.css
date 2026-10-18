@@ -832,3 +832,27 @@ h1[tabindex='-1']:focus { outline: none; }
 [data-theme='beige'] .btn.accent, [data-theme='gray'] .btn.accent { background: var(--accent-ink); border-color: var(--accent-ink); }
 [data-theme='beige'] .btn.accent:hover:not(:disabled), [data-theme='gray'] .btn.accent:hover:not(:disabled) { background: color-mix(in oklab, var(--accent-ink) 85%, var(--ink)); }
 .pill.ok, .acc-val.ok, .check-chip.ok { color: color-mix(in srgb, var(--ok) 80%, #000); }
+
+/* ── Middle and Sides live on the carousel: arrows on the cards, the current names in one row under it ──
+   (replaces the selector column on the right of the stage, so the ring gets that width back) */
+.stage-main { display: contents; }
+.stage .cross-right { overflow-x: visible; }
+.stage .selection-bar { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 18px 0 0; padding: 0; }
+.stage .link-group { flex-direction: row; gap: 6px; padding: 0; background: none; border: 0; }
+.stage .link-group .chip { width: auto; }
+.sel-now { flex: 1; min-width: 0; display: flex; justify-content: center; gap: 26px; margin: 0; }
+.sel-item { display: grid; grid-template-columns: auto auto; column-gap: 7px; align-items: baseline; min-width: 0; }
+.sel-item .sel-label { grid-column: 1 / -1; }
+.sel-item strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sel-item.disabled { opacity: 0.55; }
+.sel-keys { margin-left: 3px; font: 600 10px var(--mono); letter-spacing: 0; color: var(--accent-ink); }
+.stage-card { position: relative; }
+.stage-card-dir {
+  position: absolute; z-index: 1; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--line-2); color: var(--ink-2); box-shadow: var(--shadow); transition: background 0.15s, color 0.15s;
+}
+.stage-card:hover .stage-card-dir, .stage-card:focus-visible .stage-card-dir { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+.stage-card-dir.up { top: -11px; left: 50%; transform: translateX(-50%); }
+.stage-card-dir.down { bottom: -11px; left: 50%; transform: translateX(-50%); }
+.stage-card-dir.left { left: -11px; top: 50%; transform: translateY(-50%); }
+.stage-card-dir.right { right: -11px; top: 50%; transform: translateY(-50%); }

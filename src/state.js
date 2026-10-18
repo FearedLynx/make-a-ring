@@ -164,14 +164,15 @@ export function setRails(patch) {
 
 // ── Page transitions ──────────────────────────────────────────
 // Screens sit in a row, landing → start → studio → try on → review. A curtain (page colour, drafting grid, an
-// accent leading edge) sweeps across in one continuous move in the direction you are going: it speeds up as it
-// covers the screen, the page swaps at the instant it is fully covered, and it carries straight on out the other
-// side. The content itself never animates, so text and images cannot flicker. Clicking again mid-sweep closes it
-// at once and swaps once more.
+// accent leading edge) sweeps in from the side you are heading to, rests while the new page renders, then sweeps
+// on out the other side. The content itself never animates, so text and images cannot flicker. Clicking again
+// mid-sweep closes it at once and swaps once more.
 const ORDER = ['landing', 'start', 'studio', 'tryon', 'review'];
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-// The two halves use mirrored easings, so the speed at the swap is the same on both sides: no stop, no jolt.
-const HALF = 230, EASE_IN = 'cubic-bezier(0.5, 0, 0.75, 0)', EASE_OUT = 'cubic-bezier(0.25, 1, 0.5, 1)';
+// Building a screen (its 3D viewer, shaders, first ring) holds the main thread for 0.1–0.6 s, so the curtain cannot
+// pass straight through at full speed: it would freeze mid-swing. Both moves start and end at rest instead, so that
+// pause reads as the curtain settling, however long it is.
+const HALF = 240, EASE = 'cubic-bezier(0.65, 0, 0.35, 1)';
 let curtain = null, phase = 'idle', pending = null, timer = 0, cycle = 0;
 
 function getCurtain() {
@@ -211,7 +212,7 @@ export function transition(dir, update) {
   if (phase === 'idle') {
     phase = 'covering';
     c.classList.add('on');
-    slide(dir === 'forward' ? '100%' : '-100%', '0%', HALF, EASE_IN, () => swap(dir));
+    slide(dir === 'forward' ? '100%' : '-100%', '0%', HALF, EASE, () => swap(dir));
   } else {
     // covered or already wiping away: close it again at once and swap
     ++cycle;
@@ -224,22 +225,26 @@ export function transition(dir, update) {
 
 function swap(dir) {
   phase = 'covered';
-  const run = pending;
+  const run = pending, mine = cycle;
   pending = null;
   run?.();
-  // carry straight on out the far side (the new page renders before the next frame, so it is there to reveal)
-  phase = 'revealing';
-  slide('0%', dir === 'forward' ? '-100%' : '100%', HALF, EASE_OUT, () => {
-    phase = 'idle';
-    curtain.classList.remove('on');
-  });
+  // Reveal once the new page has painted and its effects (3D viewer, first build) have run, so that work happens
+  // behind the curtain instead of during the sweep. A newer click (cycle moved on) takes over from here.
+  requestAnimationFrame(() => setTimeout(() => requestAnimationFrame(() => {
+    if (mine !== cycle) return;
+    phase = 'revealing';
+    slide('0%', dir === 'forward' ? '-100%' : '100%', HALF, EASE, () => {
+      phase = 'idle';
+      curtain.classList.remove('on');
+    });
+  })));
 }
 
 window.addEventListener('hashchange', () => {
   const next = screenFromHash(), prev = store.get().screen;
   if (next === prev) return;
   transition(ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'forward' : 'back', () => {
-    store.set({ screen: next });
+    store.set({ screen: screenFromHash() }); // the address at swap time, in case it changed again mid-sweep
     window.scrollTo(0, 0);
   });
 });

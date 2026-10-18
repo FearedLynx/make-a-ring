@@ -171,6 +171,25 @@ function EngravingPreview({ design, L }) {
   </figure>`;
 }
 
+/** Materials in their groups, each with its name. The studio and try-on share it. */
+export function MaterialPicker({ design }) {
+  const groups = [...new Set(MATERIALS.map((x) => x.group))];
+  return groups.map(
+    (g) => html`<div class="mat-group">
+      <span class="field-label">${g}</span>
+      <div class="swatches" role="radiogroup" aria-label=${g}>
+        ${MATERIALS.filter((x) => x.group === g).map(
+          (x) => html`<button role="radio" aria-checked=${design.materialId === x.id} class=${'swatch' + (design.materialId === x.id ? ' on' : '')}
+            onClick=${() => setDesign({ materialId: x.id })} title=${x.name}>
+            <span class="swatch-dot" style=${`--c:${x.color}; --m:${x.metalness}`}></span>
+            <span class="swatch-name">${x.name}</span>
+          </button>`
+        )}
+      </div>
+    </div>`
+  );
+}
+
 export const SPEC_CATS = [
   { id: 'size', label: 'Size', icon: 'ruler' },
   { id: 'layout', label: 'Layout', icon: 'layout' },
@@ -210,7 +229,6 @@ export function Specs({ onHide }) {
   const nat = (id) => zones.find((z) => z.id === id && z.pattern)?.repeats;
   const status = checkStatus(design);
   const price = estimate(design);
-  const groups = [...new Set(MATERIALS.map((x) => x.group))];
   const title = SPEC_CATS.find((c) => c.id === cat)?.label;
 
   return html`<aside class="rail specs" aria-label="Ring specifications">
@@ -267,20 +285,7 @@ export function Specs({ onHide }) {
       ${cat === 'material' &&
       html`<section class="spec-sec">
         <h3 class="sr-only">Material</h3>
-        ${groups.map(
-          (g) => html`<div class="mat-group">
-            <span class="field-label">${g}</span>
-            <div class="swatches" role="radiogroup" aria-label=${g}>
-              ${MATERIALS.filter((x) => x.group === g).map(
-                (x) => html`<button role="radio" aria-checked=${design.materialId === x.id} class=${'swatch' + (design.materialId === x.id ? ' on' : '')}
-                  onClick=${() => setDesign({ materialId: x.id })} title=${x.name}>
-                  <span class="swatch-dot" style=${`--c:${x.color}; --m:${x.metalness}`}></span>
-                  <span class="swatch-name">${x.name}</span>
-                </button>`
-              )}
-            </div>
-          </div>`
-        )}
+        <${MaterialPicker} design=${design} />
         <p class="mat-process"><strong>${m.process}</strong> · min wall ${m.minWall} mm · min detail ${m.minDetail} mm
           ${m.leadDays ? ` · typically ~${m.leadDays} days at a service` : ' · print it yourself'}</p>
         ${m.platable &&
@@ -307,14 +312,12 @@ export function Specs({ onHide }) {
     </div>
 
     <div class="price-card">
+      <button class=${'check-chip ' + status.level} onClick=${() => setRails({ specCat: 'checks', specOpen: true })}
+        aria-label=${`Printability: ${status.text}. Show checks`} title="Show printability checks">
+        <${Icon} name=${status.level === 'ok' ? 'check' : 'alert'} size=${12} /> ${status.level === 'ok' ? 'Printable' : status.text}
+      </button>
       <div>
-        <span class="price-meta">
-          <span class="muted">Estimated</span>
-          <button class=${'check-chip ' + status.level} onClick=${() => setRails({ specCat: 'checks', specOpen: true })}
-            aria-label=${`Printability: ${status.text}. Show checks`} title="Show printability checks">
-            <${Icon} name=${status.level === 'ok' ? 'check' : 'alert'} size=${12} /> ${status.level === 'ok' ? 'Printable' : status.text}
-          </button>
-        </span>
+        <span class="price-meta"><span class="muted">Estimated</span></span>
         <strong class="price">${money(price.total)}</strong>
         <span class="muted small">Estimate, not a quote</span>
       </div>

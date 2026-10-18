@@ -3,8 +3,8 @@ import { html } from '../lib/html.js';
 import { TopBar, StepNav } from '../components/topbar.js';
 import { Icon, Segmented, Slider } from '../components/ui.js';
 import { RingView } from '../components/ring-view.js';
+import { MaterialPicker } from '../components/specs.js';
 import { Hand, SKIN_TONES, ringAnchor, FULL, closeUp } from '../components/hand.js';
-import { MATERIALS, getMaterial } from '../lib/materials.js';
 import { bandMetrics } from '../lib/band.js';
 import { sizeSummary } from '../lib/sizes.js';
 import { store, setDesign } from '../state.js';
@@ -134,16 +134,7 @@ export function TryOn() {
                   <${Slider} label="Finger angle" value=${t.pos.rot} min=${-60} max=${60} step=${1} unit="°"
                     onInput=${(v) => set({ pos: { ...t.pos, rot: v } })} />`}`}
 
-          <span class="field-label">Material</span>
-          <div class="swatches compact" role="radiogroup" aria-label="Material">
-            ${MATERIALS.map(
-              (x) => html`<button role="radio" aria-checked=${design.materialId === x.id} class=${'swatch' + (design.materialId === x.id ? ' on' : '')}
-                onClick=${() => setDesign({ materialId: x.id })} title=${x.name} aria-label=${x.name}>
-                <span class="swatch-dot" style=${`--c:${x.color}; --m:${x.metalness}`}></span>
-              </button>`
-            )}
-          </div>
-          <p class="muted small">${getMaterial(design.materialId).name}</p>
+          <div class="tryon-materials"><${MaterialPicker} design=${design} /></div>
 
           <${Slider} label="Band width" value=${design.width} min=${2} max=${12} step=${0.5} onInput=${(v) => setDesign({ width: v })} />
         </div>

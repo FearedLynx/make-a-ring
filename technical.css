@@ -760,3 +760,14 @@ h1[tabindex='-1']:focus { outline: none; }
 .view-menu .theme-dot { background: linear-gradient(135deg, var(--swbg) 0 48%, var(--sw) 52% 100%); }
 .view-menu .theme-dots { display: flex !important; }
 @media (max-width: 760px) { .topbar-right .help-menu > .icon-btn { display: inline-grid; } .help-menu .menu { right: -4px; } }
+
+/* ── Studio hierarchy: one accent button (Draw your own), one ink button (Try it on), toggles are outlined ── */
+.link-group .chip.on { background: var(--surface); color: var(--ink); border-color: var(--ink); }
+.link-group .chip.on svg { color: var(--accent-ink); }
+/* The printability chip gets its own row above the price, so it can never slide under Try it on. */
+.price-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; row-gap: 6px; }
+.price-card .check-chip { grid-column: 1 / -1; justify-self: start; white-space: nowrap; }
+/* A plain zone reads as a smooth surface (drawing hatch), not as an empty card. */
+.stage-card .pattern-art.plain { background: repeating-linear-gradient(135deg, var(--line-2) 0 1px, transparent 1px 7px), var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); }
+.stage-card.far { opacity: 0.62; }
+.tryon-materials .mat-group { margin-bottom: 6px; }

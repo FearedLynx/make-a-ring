@@ -106,7 +106,7 @@ export function Library({ onDraw, onHide }) {
             ${TAGS.map((t) => html`<button class=${'tag' + (tag === t ? ' on' : '')} aria-pressed=${tag === t} onClick=${() => setTag(tag === t ? null : t)}>${t}</button>`)}
           </div>
 
-          <h3 class="rail-h">${q || tag ? 'Results' : 'Library'} <span class="muted">${mine.length + lib.length}</span></h3>
+          <h3 class="rail-h">${q || tag ? 'Results' : 'All patterns'} <span class="muted">${mine.length + lib.length}</span></h3>
           ${mine.length + lib.length
             ? html`<ul class="lib-grid">${mine.map(tile)}${lib.map(tile)}</ul>`
             : html`<div class="empty">

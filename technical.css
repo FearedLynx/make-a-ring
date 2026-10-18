@@ -771,3 +771,29 @@ h1[tabindex='-1']:focus { outline: none; }
 .stage-card .pattern-art.plain { background: repeating-linear-gradient(135deg, var(--line-2) 0 1px, transparent 1px 7px), var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); }
 .stage-card.far { opacity: 0.62; }
 .tryon-materials .mat-group { margin-bottom: 6px; }
+
+/* ── Specs panel: every category with its current value; one opens in place ── */
+.spec-acc { padding: 0; }
+.acc { border-bottom: 1px solid var(--line); }
+.acc-h { margin: 0; font: inherit; }
+.acc-head {
+  width: 100%; display: grid; grid-template-columns: 18px minmax(0, 1fr) 14px; align-items: center; gap: 10px;
+  padding: 9px 14px; border: 0; background: none; color: var(--ink); text-align: left; font: 600 13.5px var(--font); cursor: pointer;
+}
+.acc-head:hover { background: var(--surface-2); }
+.acc-head > svg:first-child { color: var(--ink-3); }
+.acc-label { white-space: nowrap; }
+.acc-text { display: grid; gap: 1px; min-width: 0; }
+.acc-val { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 11.5px var(--mono); color: var(--ink-2); }
+.acc-val.ok { color: var(--ok); }
+.acc-val.warn { color: var(--warn); }
+.acc-val.error { color: var(--error); }
+.acc-head > svg:last-child { color: var(--ink-3); transition: transform 0.15s; }
+.acc.open .acc-head > svg:last-child { transform: rotate(180deg); }
+.acc.open .acc-head { background: var(--surface-2); }
+.acc.open .acc-head > svg:first-child { color: var(--accent-ink); }
+.acc-body { padding: 4px 14px 14px; }
+.acc-body .spec-sec { padding-left: 0; padding-right: 0; }
+@media (max-width: 1023px) { .rail-strip.spec { display: none; } }
+.studio .rail-body.spec-acc { padding: 0; }
+.acc-body .spec-sec:last-child { border-bottom: 0; margin-bottom: 0; }

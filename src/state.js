@@ -53,7 +53,7 @@ const cleanPatterns = (list) =>
 export const RAIL_DEFAULTS = matchMedia('(max-width: 1440px)').matches ? { lib: 240, spec: 268 } : { lib: 256, spec: 296 };
 function loadRails() {
   const r = load('mar.rails', null);
-  const base = { ...RAIL_DEFAULTS, libOpen: true, specOpen: true, libCat: 'patterns', specCat: 'size', v: 2 };
+  const base = { ...RAIL_DEFAULTS, libOpen: true, specOpen: true, libCat: 'patterns', specCat: 'material', v: 2 };
   if (!r) return base;
   // Before the category strips, widths included everything; keep the panels the same overall size.
   if (r.v !== 2) return { ...base, ...r, lib: Math.max(240, r.lib - 44), spec: Math.max(240, r.spec - 44), v: 2 };

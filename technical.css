@@ -826,3 +826,9 @@ h1[tabindex='-1']:focus { outline: none; }
   .review-tb { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .files-bar { display: block; position: sticky; bottom: 0; z-index: 5; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.06); }
 }
+
+/* Contrast: white on the beige and gray accents is 3.9:1, so the accent button uses the deeper accent there;
+   success green text is deepened a little so it passes 4.5:1 on its soft background too. */
+[data-theme='beige'] .btn.accent, [data-theme='gray'] .btn.accent { background: var(--accent-ink); border-color: var(--accent-ink); }
+[data-theme='beige'] .btn.accent:hover:not(:disabled), [data-theme='gray'] .btn.accent:hover:not(:disabled) { background: color-mix(in oklab, var(--accent-ink) 85%, var(--ink)); }
+.pill.ok, .acc-val.ok, .check-chip.ok { color: color-mix(in srgb, var(--ok) 80%, #000); }

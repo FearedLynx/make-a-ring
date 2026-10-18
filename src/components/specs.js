@@ -313,7 +313,7 @@ export function Specs({ onHide }) {
     <div class="rail-body spec-acc" id="spec-panel">
       ${SPEC_CATS.map(
         (c) => html`<div class=${'acc' + (cat === c.id ? ' open' : '')} key=${c.id}>
-          <h3 class="acc-h">
+          <h2 class="acc-h">
             <button class="acc-head" id=${`spec-acc-${c.id}`} aria-expanded=${cat === c.id} aria-controls=${`spec-sec-${c.id}`} onClick=${() => toggle(c.id)}>
               <${Icon} name=${c.icon} size=${16} />
               <span class="acc-text">
@@ -322,7 +322,7 @@ export function Specs({ onHide }) {
               </span>
               <${Icon} name="down" size=${14} />
             </button>
-          </h3>
+          </h2>
           ${cat === c.id && html`<div class="acc-body" id=${`spec-sec-${c.id}`} role="region" aria-labelledby=${`spec-acc-${c.id}`}>${bodies[c.id]()}</div>`}
         </div>`
       )}

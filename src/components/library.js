@@ -106,7 +106,7 @@ export function Library({ onDraw, onHide }) {
             ${TAGS.map((t) => html`<button class=${'tag' + (tag === t ? ' on' : '')} aria-pressed=${tag === t} onClick=${() => setTag(tag === t ? null : t)}>${t}</button>`)}
           </div>
 
-          <h3 class="rail-h">${q || tag ? 'Results' : 'All patterns'} <span class="muted">${mine.length + lib.length}</span></h3>
+          <h2 class="rail-h">${q || tag ? 'Results' : 'All patterns'} <span class="muted">${mine.length + lib.length}</span></h2>
           ${mine.length + lib.length
             ? html`<ul class="lib-grid">${mine.map(tile)}${lib.map(tile)}</ul>`
             : html`<div class="empty">
@@ -132,14 +132,14 @@ export function Library({ onDraw, onHide }) {
 
     ${tab === 'templates' &&
       html`<div class="rail-body" id="lib-panel" role="tabpanel" aria-labelledby="lib-tab-templates">
-          <h3 class="rail-h">My designs <span class="muted">${saved.length}</span></h3>
+          <h2 class="rail-h">My designs <span class="muted">${saved.length}</span></h2>
           ${saved.length
             ? html`<ul class="tpl-list">
                 ${saved.map((e) => html`<li key=${e.id}><${SavedCard} entry=${e} on=${currentSaved === e.id}
                   onClick=${() => currentSaved !== e.id && openSavedDesign(e.id)} onDelete=${() => deleteSavedDesign(e.id)} onDuplicate=${() => duplicateSavedDesign(e.id)} /></li>`)}
               </ul>`
             : html`<p class="rail-note">Press <strong>Save</strong> in the top bar to keep this ring here. Built-in templates below never change.</p>`}
-          <h3 class="rail-h">Templates</h3>
+          <h2 class="rail-h">Templates</h2>
           <p class="rail-note">Templates set the layout, patterns and material. Your size and engraving are kept.</p>
           <ul class="tpl-list">
             ${TEMPLATES.map((t) => {

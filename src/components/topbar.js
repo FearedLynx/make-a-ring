@@ -115,9 +115,14 @@ export function BackButton({ onClick = goBack }) {
   </button>`;
 }
 
+/**
+ * Help and view settings in one place: tours, shortcuts, colour theme, grid and sounds. They change how the app
+ * looks, not the ring, so they stay out of the way of Save and Share. A plain disclosure: Tab moves through it, Esc closes.
+ */
 function HelpMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef();
+  const btn = useRef();
   const screen = store.use((s) => s.screen);
   useEffect(() => {
     if (!open) return;
@@ -125,24 +130,29 @@ function HelpMenu() {
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
   }, [open]);
-  const item = (label, icon, run) => html`<button role="menuitem" onClick=${() => (setOpen(false), run())}><${Icon} name=${icon} size=${15} />${label}</button>`;
+  const shut = () => (setOpen(false), btn.current?.focus());
+  const item = (label, icon, run) => html`<button onClick=${() => (setOpen(false), run())}><${Icon} name=${icon} size=${15} />${label}</button>`;
   return html`<div class="help-menu" ref=${ref}>
-    <button class="icon-btn" aria-haspopup="menu" aria-expanded=${open} aria-label="Help" title="Help" onClick=${() => setOpen(!open)}><${Icon} name="help" /></button>
+    <button class="icon-btn" ref=${btn} aria-expanded=${open} aria-controls="help-panel" aria-label="Help and view settings" title="Help and view settings" onClick=${() => setOpen(!open)}><${Icon} name="help" /></button>
     ${open &&
-    html`<div class="menu" role="menu" onKeyDown=${(e) => e.key === 'Escape' && setOpen(false)}>
+    html`<div class="menu view-menu" id="help-panel" role="group" aria-label="Help and view settings" onKeyDown=${(e) => e.key === 'Escape' && (e.stopPropagation(), shut())}>
+      <span class="menu-label">Help</span>
       ${screen === 'studio' && item('Studio tour', 'sparkle', () => startTour('studio'))}
-      ${item('Keyboard shortcuts', 'keyboard', () => store.set({ shortcutsOpen: true }))}
       ${item('Pattern editor tour', 'pen', () => {
         if (store.get().screen !== 'studio') go('studio');
         store.set({ editor: { zone: 'middle' } });
         setTimeout(() => startTour('editor'), 500);
       })}
+      ${item('Keyboard shortcuts', 'keyboard', () => store.set({ shortcutsOpen: true }))}
+      <span class="menu-label">View</span>
+      <div class="menu-row"><span>Colour theme</span><${ThemeDots} /></div>
+      <div class="menu-row"><span>Background grid</span><${GridToggle} /></div>
+      <div class="menu-row"><span>Interface sounds</span><${SoundToggle} /></div>
     </div>`}
   </div>`;
 }
 
 export function TopBar() {
-  const screen = store.use((s) => s.screen);
   const name = store.use((s) => s.ringName);
   return html`<header class="topbar">
     <div class="topbar-left"><${BackButton} /><${Logo} /></div>
@@ -154,9 +164,8 @@ export function TopBar() {
         <${Icon} name="pen" size=${13} />
       </label>
       <${SaveControl} />
-      <div class="view-prefs"><${ThemeDots} /><${GridToggle} /><${SoundToggle} /></div>
-      <${HelpMenu} />
       <button class="btn ghost sm share-btn" onClick=${copyShareLink} aria-label="Copy share link"><${Icon} name="share" size=${15} /><span>Share</span></button>
+      <${HelpMenu} />
     </div>
   </header>`;
 }

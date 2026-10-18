@@ -797,3 +797,32 @@ h1[tabindex='-1']:focus { outline: none; }
 @media (max-width: 1023px) { .rail-strip.spec { display: none; } }
 .studio .rail-body.spec-acc { padding: 0; }
 .acc-body .spec-sec:last-child { border-bottom: 0; margin-bottom: 0; }
+
+/* ── Files: the last sheet uses the landing's drawing language (title block, callouts, registration marks) ── */
+.review-title .eyebrow { color: var(--accent-ink); }
+.review-title h1 { margin: 2px 0 0; }
+.review-dim.h { top: 92%; }
+.review-dim.v { left: 92%; top: 47%; }
+.review-sheet { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.review-tb { flex: 1 1 360px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ready-stamp {
+  display: grid; justify-items: center; margin: 0; padding: 8px 14px; transform: rotate(-7deg);
+  border: 3px double var(--ok); border-radius: 6px; color: var(--ok); background: color-mix(in srgb, var(--surface) 75%, transparent);
+  font: 800 19px/1.05 var(--display); font-stretch: 118%; text-transform: uppercase; letter-spacing: 0.02em;
+  animation: stamp-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) 0.5s both;
+}
+.ready-stamp span + span { font: 600 10.5px var(--mono); letter-spacing: 0.14em; }
+.ready-stamp.todo { color: var(--error); border-color: var(--error); animation: none; }
+@keyframes stamp-in { from { opacity: 0; transform: rotate(-7deg) scale(1.6); } }
+.spec-card summary { display: flex; align-items: center; justify-content: space-between; cursor: pointer; list-style: none; }
+.spec-card summary::-webkit-details-marker { display: none; }
+.spec-card summary h2 { margin: 0; }
+.spec-card[open] summary { margin-bottom: 14px; }
+.spec-card[open] summary svg { transform: rotate(180deg); }
+.review .review-zoom { left: 8px; right: auto; }
+.lp-dim-label { white-space: nowrap; }
+.files-bar { display: none; }
+@media (max-width: 760px) {
+  .review-tb { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .files-bar { display: block; position: sticky; bottom: 0; z-index: 5; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.06); }
+}

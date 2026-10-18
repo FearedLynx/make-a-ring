@@ -16,7 +16,7 @@ import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
-import { store, go, patternById } from '../state.js';
+import { store, go, patternById, announce } from '../state.js';
 import { chime } from '../lib/sound.js';
 
 const FORMATS = [
@@ -201,6 +201,11 @@ export function Review() {
   const size = sizeSummary(design.sizeUS);
   const price = estimate(design);
   const { errors } = runChecks(design, patternById);
+  const ready = errors === 0;
+  // Arriving with every check passed is the end of the job: say so, once.
+  useEffect(() => {
+    if (ready) announce('Ready to print. Every printability check passes.');
+  }, [ready]);
   const pn = (z) => patternById(design.patterns[z])?.name;
   const layout = LAYOUTS[design.layout];
   const hasZ = (z) => layout.zones.some((x) => x.id === z);
@@ -225,19 +230,39 @@ export function Review() {
     <${TopBar} />
     <main class="review" id="main">
       <section class="review-hero">
+        <div class="review-title">
+          <span class="eyebrow">Step 04 · Files</span>
+          <h1>${name || 'Untitled ring'}</h1>
+        </div>
         <div class="review-ring">
+          <span class="reg tl" aria-hidden="true"></span><span class="reg tr" aria-hidden="true"></span>
+          <span class="reg bl" aria-hidden="true"></span><span class="reg br" aria-hidden="true"></span>
           <${RingView} design=${design} mode="hero" zoom autoRotate onViewer=${(v) => (viewer.current = v)}
             label="3D ring. Drag to rotate, scroll or use the buttons to zoom." />
+          <svg class="lp-dims review-dims" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="22" x2="78" y1="92" y2="92" /><line x1="22" x2="22" y1="89" y2="95" /><line x1="78" x2="78" y1="89" y2="95" />
+            <line x1="92" x2="92" y1="22" y2="72" /><line x1="89" x2="95" y1="22" y2="22" /><line x1="89" x2="95" y1="72" y2="72" />
+          </svg>
+          <span class="lp-dim-label review-dim h">Ø ${(size.diameter + 2 * design.thickness).toFixed(1)} mm</span>
+          <span class="lp-dim-label review-dim v">${design.width.toFixed(1)} mm</span>
           <div class="review-zoom" role="group" aria-label="Zoom">
             <button class="icon-btn" onClick=${() => viewer.current?.zoomBy(0.8)} aria-label="Zoom in" title="Zoom in"><${Icon} name="plus" /></button>
             <button class="icon-btn" onClick=${() => viewer.current?.zoomBy(1.25)} aria-label="Zoom out" title="Zoom out"><${Icon} name="minus" /></button>
             <button class="icon-btn" onClick=${() => viewer.current?.resetView()} aria-label="Reset view" title="Reset view"><${Icon} name="reset" /></button>
           </div>
         </div>
-        <div class="review-title">
-          <span class="eyebrow">Your design</span>
-          <h1>${name || 'Untitled ring'}</h1>
-          <p class="muted">${m.name} · US ${size.us} · ${design.width} mm</p>
+        <div class="review-sheet">
+          <dl class="title-block review-tb">
+            <div><dt>Layout</dt><dd>${layout.name}</dd></div>
+            <div><dt>Material</dt><dd>${m.name}</dd></div>
+            <div><dt>Size</dt><dd>US ${size.us} · Ø ${size.diameter.toFixed(1)}</dd></div>
+            <div><dt>Finish</dt><dd>${design.finish}</dd></div>
+            <div><dt>Weight</dt><dd>≈ ${price.grams.toFixed(1)} g</dd></div>
+            <div><dt>Est.</dt><dd>${money(price.total)}</dd></div>
+          </dl>
+          ${ready
+            ? html`<p class="ready-stamp" aria-hidden="true"><span>Ready</span><span>to print</span></p>`
+            : html`<p class="ready-stamp todo" aria-hidden="true"><span>${errors} to fix</span><span>before printing</span></p>`}
         </div>
         <${BandMap} design=${design} getPattern=${patternById} className="review-band" />
         <div class="review-actions">
@@ -247,9 +272,18 @@ export function Review() {
       </section>
 
       <section class="review-side">
-        <div class="card">
-          <h2>Specification</h2>
-          <dl class="spec-sheet">${rows.map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl>
+        <div class="card export-card">
+          <h2>Print-ready files</h2>
+          <p class="muted">STL or OBJ in millimetres, already checked against ${m.name} limits.</p>
+          <button class="btn primary full" disabled=${errors > 0} onClick=${() => store.set({ exportOpen: true })}>
+            <${Icon} name="download" size=${16} /> Download print files
+          </button>
+          ${errors > 0 && html`<p class="error-note" role="status"><${Icon} name="alert" size=${14} /> Fix ${errors} printability issue${errors > 1 ? 's' : ''} below first. One click each.</p>`}
+          <ol class="next-steps">
+            <li><strong>Download</strong> the files.</li>
+            <li><strong>Print</strong> at home (PLA or resin), or send them to a casting house.</li>
+            <li><strong>Finish</strong> by polishing or plating, then wear it.</li>
+          </ol>
         </div>
 
         <div class="card">
@@ -266,22 +300,18 @@ export function Review() {
           <p class="muted small">${price.leadDays ? `A casting house or print service typically takes about ${price.leadDays} days.` : 'Print it yourself today. Plate it later if you like.'} An estimate, not a quote: shipping and tax are not included.</p>
         </div>
 
-        <div class="card export-card">
-          <h2>Print-ready files</h2>
-          <p class="muted">STL or OBJ in millimetres, already checked against ${m.name} limits.</p>
-          <button class="btn primary full" disabled=${errors > 0} onClick=${() => store.set({ exportOpen: true })}>
-            <${Icon} name="download" size=${16} /> Download print files
-          </button>
-          ${errors > 0 && html`<p class="error-note" role="status"><${Icon} name="alert" size=${14} /> Fix ${errors} printability issue${errors > 1 ? 's' : ''} above first. One click each.</p>`}
-          <ol class="next-steps">
-            <li><strong>Download</strong> the files.</li>
-            <li><strong>Print</strong> at home (PLA or resin), or send them to a casting house.</li>
-            <li><strong>Finish</strong> by polishing or plating, then wear it.</li>
-          </ol>
-        </div>
+        <details class="card spec-card">
+          <summary><h2>Full specification</h2><${Icon} name="down" size=${16} /></summary>
+          <dl class="spec-sheet">${rows.map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl>
+        </details>
         <${StepNav} back=${{ to: 'tryon', label: 'Try on' }} />
       </section>
     </main>
+    <div class="files-bar">
+      <button class="btn primary full" disabled=${errors > 0} onClick=${() => store.set({ exportOpen: true })}>
+        <${Icon} name="download" size=${16} /> ${errors > 0 ? `Fix ${errors} check${errors > 1 ? 's' : ''} to download` : 'Download print files'}
+      </button>
+    </div>
     <${ExportModal} open=${exportOpen} onClose=${() => store.set({ exportOpen: false })} design=${design} name=${name} rows=${rows} />
   </div>`;
 }

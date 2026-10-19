@@ -365,7 +365,7 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .lp-mega:hover { background: var(--ink); color: var(--bg); }
 .lp-mega:hover svg { transform: translateX(10px); }
 .lp-foot { padding: 26px var(--gut) 44px; }
-.title-block.foot { grid-template-columns: repeat(5, 1fr); }
+.title-block.foot { grid-template-columns: repeat(3, 1fr); }
 .title-block.foot dd { white-space: normal; }
 .title-block.foot a { color: var(--accent-ink); text-underline-offset: 3px; }
 .title-block.foot a:hover { color: var(--ink); }
@@ -424,7 +424,6 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
   .lp-bar-row .lp-bar-track { grid-column: 1 / -1; grid-row: 2; }
   .lp-axis { display: none; }
   .title-block.foot { grid-template-columns: 1fr 1fr; }
-  .title-block.foot > :last-child { grid-column: 1 / -1; }
   .topbar .theme-dots { display: none; }
   .ed-props { grid-template-columns: 1fr; }
   .tip { left: 10px; right: 10px; bottom: 10px; max-width: none; }

@@ -7,7 +7,7 @@ see it on a hand, and leave with a print-ready STL or OBJ, made in your browser.
 
 Built for **HyperBloom October 2026 (UI/UX & Web Design)**.
 
-> **Live demo:** _link added at deploy_ · **Video:** _2-minute walkthrough, link added at submission_
+> **Live demo:** [make-a-ring.deployxa.online](https://make-a-ring.deployxa.online) (hosted on Deployxa) · **Video:** _link added at submission_
 
 ![The landing page: a drafting-table hero with a live 3D ring and a title block of its specs](docs/screens/landing.png)
 
@@ -22,8 +22,10 @@ an idea for a ring has no way to try it, see it at their real size, or hand a ma
 |---|---|
 | ![Studio](docs/screens/studio.png) | **The studio.** A cross carousel around a live 3D ring: up and down change the middle pattern, left and right the sides. The unrolled band underneath shows the whole design flat, with handles to resize each zone. |
 | ![Templates](docs/screens/templates.png) | **Start anywhere.** Eight templates with real 3D thumbnails, or one of your saved designs. A size step with a dimensioned drawing you can drag, and a size finder that uses a card you already own. |
-| ![Try on](docs/screens/try-on.png) | **Try it on.** A 3D hand in five skin tones, two builds and four fingers, or a photo of your own hand. The ring is drawn at true scale. |
+| ![Pattern editor](docs/screens/editor.png) | **Draw your own.** Sketch one tile with mirror, rotate or kaleidoscope symmetry; it repeats seamlessly around the band, and the ring on the right updates when you lift the pen. Line weights are checked against the material while you draw. |
+| ![Try on](docs/screens/try-on.png) | **Try it on.** A 3D hand in five skin tones, two builds and four fingers, or a photo of your own hand, uploaded or taken with the camera. The ring is drawn at true scale. |
 | ![Files](docs/screens/review.png) | **Check and download.** A drawing sheet with a READY TO PRINT stamp, printability checks with real limits per material (wall thickness, detail size, seamless wrap) and one-click fixes, an itemised estimate, STL/OBJ files with a maker brief, and a ring card to share. |
+| ![Phone](docs/screens/phone.png) | **On a phone.** The ring fills the first screen, the panels become tabs, and the price and Try it on stay docked at the bottom. |
 
 ## Design decisions
 
@@ -48,6 +50,7 @@ an idea for a ring has no way to try it, see it at their real size, or hand a ma
 - `prefers-reduced-motion` turns off transitions, the turntable and animated tours.
 - Status is never colour alone: checks carry an icon and words.
 - Four colour themes built on the same tokens, so every control looks right in each.
+- axe-core 4.10 reports 0 WCAG 2.2 AA violations on all five screens in all four themes, and on a phone-sized screen.
 
 ## Try it in 60 seconds
 
@@ -66,7 +69,7 @@ python serve.py
 
 Then open http://localhost:5173. Libraries (Preact, htm, three.js, three-subdivide) load from jsDelivr via the import map in `index.html`.
 The try-on hand is the WebXR generic-hand model (`assets/hand-right.glb`, MIT, © 2019 Amazon, from `@webxr-input-profiles/assets`).
-To deploy, upload the folder as a static site; there is nothing to build.
+To deploy, upload the folder as a static site; there is nothing to build. The live demo runs on [Deployxa](https://deployxa.com): `npx @deployxa/cli login`, then `npx @deployxa/cli deploy` in the folder (detected as a static site).
 
 Frontend-only prototype: no backend, no accounts, no real brands. Prices are estimates; the STL and OBJ files are real.
 

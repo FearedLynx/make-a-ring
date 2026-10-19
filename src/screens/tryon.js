@@ -7,7 +7,7 @@ import { MaterialPicker } from '../components/specs.js';
 import { Hand, SKIN_TONES, ringAnchor, FULL, closeUp } from '../components/hand.js';
 import { bandMetrics } from '../lib/band.js';
 import { sizeSummary } from '../lib/sizes.js';
-import { store, setDesign } from '../state.js';
+import { store, setDesign, toast } from '../state.js';
 
 const FINGERS = [
   { value: 'index', label: 'Index' },
@@ -15,6 +15,8 @@ const FINGERS = [
   { value: 'ring', label: 'Ring' },
   { value: 'pinky', label: 'Little' },
 ];
+
+const touch = () => document.documentElement.dataset.input === 'touch';
 
 function useBox(ref) {
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -64,13 +66,57 @@ export function TryOn() {
     const { x, y, pos } = drag.current;
     set({ pos: { ...pos, x: Math.min(1, Math.max(0, pos.x + (e.clientX - x) / box.w)), y: Math.min(1, Math.max(0, pos.y + (e.clientY - y) / box.h)) } });
   };
+  const usePhoto = (photo) => set({ photo, mode: 'photo', pos: { x: 0.5, y: 0.45, scale: 1, rot: 0 } });
   const onUpload = (e) => {
     const f = e.currentTarget.files?.[0];
     if (!f) return;
     const r = new FileReader();
-    r.onload = () => set({ photo: r.result, mode: 'photo', pos: { x: 0.5, y: 0.45, scale: 1, rot: 0 } });
+    r.onload = () => usePhoto(r.result);
     r.readAsDataURL(f);
   };
+
+  // Taking a photo: phones and tablets open their own camera app through a file input (full resolution, either
+  // camera); desktops show the webcam live in the scene. Either way the photo never leaves the device.
+  const [cam, setCam] = useState(null); // the webcam stream while the live view is open
+  const video = useRef();
+  const shutter = useRef();
+  const camInput = useRef();
+  const takePhoto = async () => {
+    if (touch()) return camInput.current.click();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 } }, audio: false });
+      set({ mode: 'photo' });
+      setCam(stream);
+    } catch (err) {
+      toast(err.name === 'NotAllowedError' ? 'Camera access is blocked. Allow it from the address bar, or upload a photo.' : 'No camera available. Upload a photo instead.');
+    }
+  };
+  useEffect(() => {
+    if (!cam) return;
+    video.current.srcObject = cam;
+    shutter.current?.focus();
+    return () => cam.getTracks().forEach((tr) => tr.stop()); // closing, switching view or leaving turns the camera off
+  }, [cam]);
+  const snap = () => {
+    const v = video.current;
+    if (!v.videoWidth) return;
+    const c = document.createElement('canvas');
+    c.width = v.videoWidth;
+    c.height = v.videoHeight;
+    const g = c.getContext('2d');
+    g.translate(c.width, 0);
+    g.scale(-1, 1); // keep the mirrored view the person saw
+    g.drawImage(v, 0, 0);
+    usePhoto(c.toDataURL('image/jpeg', 0.9));
+    setCam(null);
+  };
+  const onCamKey = (e) => {
+    if (e.key === 'Escape') (e.stopPropagation(), setCam(null));
+    if (e.key === ' ' && e.target === e.currentTarget) (e.preventDefault(), snap());
+  };
+  const photoButtons = (cls) => html`<button class=${cls} onClick=${takePhoto}><${Icon} name="camera" size=${16} /> Take a photo</button>
+    <label class=${cls.replace('primary', 'ghost')}><${Icon} name="upload" size=${16} /> Upload a photo
+      <input type="file" accept="image/*" onChange=${onUpload} class="sr-only" /></label>`;
   const size = sizeSummary(design.sizeUS);
   const tone = SKIN_TONES[t.tone];
 
@@ -84,15 +130,24 @@ export function TryOn() {
           <${Segmented} label="Zoom" size="sm" value=${t.close ? 'close' : 'hand'} onChange=${(v) => set({ close: v === 'close' })}
             options=${[{ value: 'hand', label: 'Whole hand' }, { value: 'close', label: 'Close-up' }]} />
         </div>`}
-        ${t.mode === 'photo' && t.photo && html`<img class="tryon-photo" src=${t.photo} alt="Your uploaded hand photo" />`}
-        ${t.mode === 'photo' && !t.photo &&
-        html`<label class="upload-drop">
-          <${Icon} name="upload" size=${28} />
-          <strong>Upload a photo of your hand</strong>
+        ${t.mode === 'photo' && t.photo && !cam && html`<img class="tryon-photo" src=${t.photo} alt="Your hand photo" />`}
+        ${t.mode === 'photo' && !t.photo && !cam &&
+        html`<div class="upload-drop">
+          <${Icon} name="camera" size=${28} />
+          <strong>Add a photo of your hand</strong>
           <span>Back of the hand, fingers up, good light. It stays on your device.</span>
-          <input type="file" accept="image/*" onChange=${onUpload} class="sr-only" />
-        </label>`}
-        ${ring &&
+          <div class="upload-actions">${photoButtons('btn primary')}</div>
+        </div>`}
+        ${cam &&
+        html`<div class="tryon-cam" tabindex="-1" onKeyDown=${onCamKey}>
+          <video ref=${video} autoplay playsinline muted aria-label="Camera preview"></video>
+          <p class="cam-tip">Back of the hand, fingers up</p>
+          <div class="cam-bar">
+            <button class="btn ghost" onClick=${() => setCam(null)}>Cancel</button>
+            <button class="cam-shutter" ref=${shutter} onClick=${snap} aria-label="Take the photo" title="Take the photo (Space)"></button>
+          </div>
+        </div>`}
+        ${ring && !cam &&
         html`<div class="ring-overlay" style=${`left:${ring.x - overlaySize / 2}px; top:${ring.y - overlaySize / 2}px; width:${overlaySize}px; height:${overlaySize}px`}
           onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${() => (drag.current = null)}>
           <${RingView} design=${design} mode="tryon" onViewer=${(v) => (viewer.current = v)} label="The ring on the hand" />
@@ -107,7 +162,7 @@ export function TryOn() {
           <h1 class="screen-title">See it on a hand</h1>
           <p class="muted">Check how wide the band looks before you print. Change the material to compare.</p>
 
-          <${Segmented} label="View" size="full" value=${t.mode} onChange=${(v) => set({ mode: v })}
+          <${Segmented} label="View" size="full" value=${t.mode} onChange=${(v) => (setCam(null), set({ mode: v }))}
             options=${[{ value: 'illustration', label: 'Illustrated hand' }, { value: 'photo', label: 'My photo' }]} />
 
           ${t.mode === 'illustration'
@@ -123,11 +178,8 @@ export function TryOn() {
                   options=${[{ value: 'slender', label: 'Slender' }, { value: 'broad', label: 'Broad' }]} />
                 <span class="field-label">Finger</span>
                 <${Segmented} label="Finger" size="full" value=${t.finger} onChange=${(v) => set({ finger: v })} options=${FINGERS} />`
-            : html`<label class="btn ghost full">
-                  <${Icon} name="upload" size=${16} /> ${t.photo ? 'Choose another photo' : 'Upload a photo'}
-                  <input type="file" accept="image/*" onChange=${onUpload} class="sr-only" />
-                </label>
-                ${t.photo &&
+            : html`<div class="photo-actions">${photoButtons('btn ghost')}</div>
+                ${t.photo && !cam &&
                 html`<p class="hint">Drag the ring onto your finger, then match its size and angle.</p>
                   <${Slider} label="Ring scale" value=${t.pos.scale} min=${0.4} max=${3} step=${0.02} unit="" format=${(v) => `${Math.round(v * 100)}%`}
                     onInput=${(v) => set({ pos: { ...t.pos, scale: v } })} />
@@ -141,5 +193,6 @@ export function TryOn() {
         <${StepNav} back=${{ to: 'studio', label: 'Design' }} next=${{ to: 'review', label: 'Files' }} />
       </aside>
     </main>
+    <input ref=${camInput} type="file" accept="image/*" capture="environment" onChange=${onUpload} class="sr-only" tabindex="-1" aria-hidden="true" />
   </div>`;
 }

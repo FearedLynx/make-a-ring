@@ -103,7 +103,7 @@ For side patterns, `y = 0` is the outer edge of the ring.
 
 Make-a-Ring is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
 
-Required Notice: Copyright (c) 2026 Franciszek Kossut and emermelada (https://github.com/FearedLynx/make-a-ring)
+Required Notice: Copyright (c) 2026 Franciszek Kossut and Javier Arevalo (https://github.com/FearedLynx/make-a-ring)
 
 You may read, run, study and change the code, and share it, for any **noncommercial** purpose: personal projects,
 learning, research, hobby use, and use by charities, schools and public institutions. **Any commercial use needs

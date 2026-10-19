@@ -4,7 +4,7 @@ This folder records what the Make-a-Ring interface looked like when it was first
 evidence for the authors' **unregistered EU design right** in the appearance of the product (the whole interface and
 its parts), which protects against copying for three years from first disclosure within the European Union.
 
-**Authors and owners:** Franciszek Kossut and emermelada (GitHub), jointly.
+**Authors and owners:** Franciszek Kossut and Javier Arevalo, jointly.
 **Repository:** https://github.com/FearedLynx/make-a-ring
 **Live site:** https://make-a-ring.deployxa.online
 

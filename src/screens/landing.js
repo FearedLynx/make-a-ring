@@ -228,7 +228,7 @@ export function Landing() {
         <div><dt>Status</dt><dd>Frontend prototype</dd></div>
         <div><dt>Note</dt><dd>Prices are illustrative estimates</dd></div>
         <div><dt>Brand</dt><dd><a href="brand/brand-guide.html" target="_blank" rel="noopener">Brand identity guidelines</a></dd></div>
-        <div><dt>Rights</dt><dd>© 2026 F. Kossut & emermelada · <a href="https://github.com/FearedLynx/make-a-ring/blob/main/LICENSE.md" target="_blank" rel="noopener">noncommercial license</a></dd></div>
+        <div><dt>Rights</dt><dd>© 2026 Franciszek Kossut & Javier Arevalo · <a href="https://github.com/FearedLynx/make-a-ring/blob/main/LICENSE.md" target="_blank" rel="noopener">noncommercial license</a></dd></div>
       </dl>
     </footer>
   </div>`;

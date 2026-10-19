@@ -95,3 +95,16 @@ Frontend-only prototype: no backend, no accounts, no real brands. Prices are est
 
 Add a `def(...)` entry in `src/lib/patterns.js`. Zone is `'middle'`, `'side'` or `'any'`.
 For side patterns, `y = 0` is the outer edge of the ring.
+
+## License
+
+Make-a-Ring is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
+
+Required Notice: Copyright (c) 2026 Franciszek Kossut and emermelada (https://github.com/FearedLynx/make-a-ring)
+
+You may read, run, study and change the code, and share it, for any **noncommercial** purpose: personal projects,
+learning, research, hobby use, and use by charities, schools and public institutions. **Any commercial use needs
+written permission from both authors**: selling it or a product built on it, running it as a paid service, or using
+it in a business. To ask, open an issue on this repository.
+
+This summary is only for convenience; [LICENSE.md](LICENSE.md) is what applies.

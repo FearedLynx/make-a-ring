@@ -242,7 +242,13 @@ function swap(dir) {
 
 window.addEventListener('hashchange', () => {
   const next = screenFromHash(), prev = store.get().screen;
-  if (next === prev) return;
+  if (next === prev) {
+    // Same page, new address (e.g. "#" or "#/landing" while on the landing): glide to the top instead of jumping
+    if (next === 'landing' && !document.getElementById(location.hash.slice(1))) {
+      window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    return;
+  }
   transition(ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'forward' : 'back', () => {
     store.set({ screen: screenFromHash() }); // the address at swap time, in case it changed again mid-sweep
     window.scrollTo(0, 0);

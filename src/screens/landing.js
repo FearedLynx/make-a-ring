@@ -40,6 +40,11 @@ const scrollTo = (id) => (e) => {
   e.preventDefault();
   document.getElementById(id)?.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth' });
 };
+// The logo on the landing page glides back to the top, the same way the section links glide down.
+const toTop = (e) => {
+  e.preventDefault();
+  window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
+};
 
 const COST_ROUTES = [
   { id: 'home', short: 'Home print', label: 'Printed at home', ids: ['pla', 'resin', 'tpu'],
@@ -94,7 +99,7 @@ export function Landing() {
 
   return html`<div class="lp">
     <header class="lp-head">
-      <${Logo} />
+      <${Logo} onClick=${toTop} />
       <nav class="lp-nav" aria-label="Page sections">
         <a href="#process" onClick=${scrollTo('process')}>Process</a>
         <a href="#studio" onClick=${scrollTo('studio')}>Studio</a>

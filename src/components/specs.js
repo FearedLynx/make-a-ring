@@ -9,6 +9,7 @@ import { resolveZones } from '../lib/band.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
 import { store, setDesign, setRails, patternById, go, toast } from '../state.js';
 import { RailStrip } from './rail-strip.js';
+import { SizeDrawing } from './size-drawing.js';
 import { tick, engrave } from '../lib/sound.js';
 import { ENGRAVE_KINDS, ENGRAVE_FONTS, ENGRAVE_MARGIN, LETTER_MIN, LETTER_MAX, DEPTH_MIN, DEPTH_MAX, MAX_CUSTOM, getFont, getEngraving, engravingLayout, cleanInitials, cleanCustom } from '../lib/engraving.js';
 
@@ -270,6 +271,7 @@ export function Specs({ onHide }) {
         <${Slider} label="Ring size (US)" value=${design.sizeUS} min=${US_MIN} max=${US_MAX} step=${0.25} unit=""
           format=${fmtUs} onInput=${(v) => (tick(), setDesign({ sizeUS: v }))} />
         <button class="btn ghost sm size-find" onClick=${() => store.set({ sizeFinderOpen: true })}><${Icon} name="ruler" size=${14} /> Find my size</button>
+        <div class="spec-drawing"><${SizeDrawing} sizeUS=${design.sizeUS} onChange=${(v) => setDesign({ sizeUS: v })} /></div>
       </section>`,
     layout: () => html`<section class="spec-sec" id="spec-layout">
         <h3 class="sr-only">Layout</h3>

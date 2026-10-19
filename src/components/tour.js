@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { Icon } from './ui.js';
 import { TourAnim } from './tour-anim.js';
-import { store, endTour, dismissTip, setRails } from '../state.js';
+import { store, endTour, dismissTip, setRails, toast, startTour } from '../state.js';
 
 const touch = () => document.documentElement.dataset.input === 'touch';
 const K = (k) => html`<kbd>${k}</kbd>`;
@@ -38,9 +38,49 @@ export const TOURS = {
       done: 'Both sides changed together.',
     },
     {
+      extra: true,
+      target: '.link-group', anim: 'link', allowKeys: ['l', 'L', 's', 'S'],
+      watch: changed((s) => s.design.linked),
+      title: 'Matched or mixed sides',
+      body: () => (touch() ? 'Tap to unlink, then pick which side you are styling.' : html`${K('L')} links or unlinks the sides. When unlinked, ${K('S')} switches between left and right.`),
+      done: 'Now each side can have its own border.',
+    },
+    {
+      extra: true,
+      target: '.band-map-wrap', anim: 'band',
+      watch: changed((s) => [s.design.splits, s.libZone, s.activeSide]),
+      title: 'The unrolled band',
+      body: () => 'The ring laid flat, exactly as it will be made. Drag the handles on the zone edges to make the sides or middle bigger, or click a zone to filter the library.',
+      done: 'Proportions are yours to set.',
+    },
+    {
+      extra: true,
+      target: '.rail.library', anim: 'search', detect: 'input', allowKeys: '*input', onEnter: libCat('patterns'), host: '.rail-strip.lib',
+      title: 'Find anything faster',
+      body: () => (touch() ? 'Search every pattern here instead of scrolling. The icons on the edge switch to your own patterns and templates.' : html`Type in the search box (${K('/')} jumps there). The icons on the edge switch categories, ${K('[')} hides the panel, and its edge drags to resize.`),
+      done: 'Search narrows patterns as you type.',
+    },
+    {
       target: '.draw-btn', anim: 'draw', interact: false,
       title: 'Draw your own pattern',
       body: () => (touch() ? 'Sketch one tile and it repeats around the whole ring.' : html`Sketch one tile and it repeats around the whole ring. Shortcut: ${K('D')}.`),
+      more: 'The editor has its own short tour the first time you open it.',
+    },
+    {
+      extra: true,
+      target: '#spec-layout', anim: 'layout', onEnter: specCat('layout'), host: '.rail-strip.spec',
+      watch: changed((s) => [s.design.layout, s.design.splits]),
+      title: 'Layout and proportions',
+      body: () => 'Choose which zones the ring has, then set how wide the sides are compared to the middle.',
+      done: 'Layout updated.',
+    },
+    {
+      extra: true,
+      target: '#spec-checks', anim: 'checks', onEnter: specCat('checks'), host: '.rail-strip.spec',
+      watch: changed((s) => s.design),
+      title: 'Printability, checked live',
+      body: () => 'Thin walls, fine lines and deep engravings are flagged for the material you pick. Each warning has a one-click fix.',
+      done: 'Fixed, and it can be undone from the toast.',
     },
     {
       target: '.price-card', anim: 'price', interact: false, onEnter: () => setRails({ specOpen: true }), host: '.rail-strip.spec',
@@ -132,6 +172,8 @@ export function Tour() {
 
   const steps = tour
     ? (TOURS[tour.id] || []).filter((st) => {
+        // The first-run tour is the 5 core steps; the full one (help menu) adds the `extra` ones.
+        if (st.extra && !tour.full) return false;
         // A step whose target sits in a closed panel category stays if its panel (`host`) is on screen;
         // its onEnter opens that category.
         const shown = (sel) => !!document.querySelector(sel)?.getClientRects().length;
@@ -145,6 +187,11 @@ export function Tour() {
     const snap = tour?.snapshot;
     if (snap && JSON.stringify(snap) !== JSON.stringify(store.get().design)) setFinal(true);
     else endTour();
+  };
+  const skip = () => {
+    const id = tour.id, full = tour.full;
+    finish();
+    toast('Tour skipped', { label: 'Replay', run: () => startTour(id, { full }) });
   };
   const go = (n) => {
     setSkipAsk(false);
@@ -243,7 +290,7 @@ export function Tour() {
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        if (!final) setSkipAsk((v) => !v);
+        if (!final) skip();
         return;
       }
       if (e.key === 'Tab' && !e.target.closest?.(step?.target || '#none')) {
@@ -340,7 +387,7 @@ export function Tour() {
                   <button class="btn primary sm" data-primary onClick=${() => setSkipAsk(false)}>Keep going</button>
                 </div>`
               : html`<div class="tour-actions">
-                  <button class="link-btn muted-link" onClick=${() => setSkipAsk(true)}>Skip tour</button>
+                  <button class="link-btn muted-link" onClick=${skip}>Skip tour</button>
                   <span class="spacer"></span>
                   ${i > 0 && html`<button class="btn ghost sm" onClick=${() => go(i - 1)}><${Icon} name="left" size=${14} /> Back</button>`}
                   <button class="btn primary sm" ref=${nextBtn} onClick=${() => go(i + 1)}>${last ? 'Finish' : 'Next'} ${!last && html`<${Icon} name="right" size=${14} />`}</button>

@@ -192,6 +192,24 @@ function save(f) {
   a.click();
 }
 
+/** Lay the spec out like a drawing's title block, 3 columns: long values take a whole row, and the last short
+ *  cell before a full row (or at the end) stretches to the edge, so the block never has holes. */
+function sheetCells(rows, cols = 3) {
+  const cells = rows.map(([k, v]) => ({ k, v, span: String(v).length > 26 ? cols : 1 }));
+  let col = 0;
+  cells.forEach((c, n) => {
+    if (c.span === cols) return void (col = 0);
+    col += 1;
+    const next = cells[n + 1];
+    if (col === cols) col = 0;
+    else if (!next || next.span === cols) {
+      c.span = cols - col + 1;
+      col = 0;
+    }
+  });
+  return cells;
+}
+
 export function Review() {
   const viewer = useRef();
   const design = store.use((s) => s.design);
@@ -287,7 +305,7 @@ export function Review() {
           <div class="review-zoom" role="group" aria-label="Zoom">
             <button class="icon-btn" onClick=${() => viewer.current?.zoomBy(0.8)} aria-label="Zoom in" title="Zoom in"><${Icon} name="plus" /></button>
             <button class="icon-btn" onClick=${() => viewer.current?.zoomBy(1.25)} aria-label="Zoom out" title="Zoom out"><${Icon} name="minus" /></button>
-            <button class="icon-btn" onClick=${() => viewer.current?.resetView()} aria-label="Reset view" title="Reset view"><${Icon} name="reset" /></button>
+            <button class="icon-btn" onClick=${() => viewer.current?.resetView()} aria-label="Reset view" title="Reset view"><${Icon} name="recenter" /></button>
           </div>
         </div>
         <div class="review-sheet">
@@ -342,7 +360,9 @@ export function Review() {
 
         <details class="card spec-card">
           <summary><h2>Full specification</h2><${Icon} name="down" size=${16} /></summary>
-          <dl class="spec-sheet">${rows.map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl>
+          <dl class="title-block review-tb">
+            ${sheetCells(rows).map(({ k, v, span }) => html`<div style=${`grid-column: span ${span}`}><dt>${k}</dt><dd>${v}</dd></div>`)}
+          </dl>
         </details>
         <${StepNav} back=${{ to: 'tryon', label: 'Try on' }} />
       </section>

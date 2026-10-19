@@ -20,7 +20,13 @@ const pathFor = (strokes, map, onlyFill = false) =>
  */
 export function PatternArt({ pattern, layout = 'strip', repeats = 3, className = '' }) {
   if (!pattern) {
-    return html`<div class=${'pattern-art plain ' + className} aria-hidden="true"><span>Plain</span></div>`;
+    return html`<div class=${'pattern-art plain ' + className} aria-hidden="true">
+      <svg viewBox="0 0 40 40" preserveAspectRatio="none">
+        <defs><pattern id="plain-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" /></pattern></defs>
+        <rect x="0.5" y="0.5" width="39" height="39" fill="url(#plain-hatch)" />
+      </svg>
+      <span>Plain</span>
+    </div>`;
   }
   const tw = pattern.aspect * 100;
   const sw = pattern.sw * 100;

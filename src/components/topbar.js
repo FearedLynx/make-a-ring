@@ -137,7 +137,8 @@ function HelpMenu() {
     ${open &&
     html`<div class="menu view-menu" id="help-panel" role="group" aria-label="Help and view settings" onKeyDown=${(e) => e.key === 'Escape' && (e.stopPropagation(), shut())}>
       <span class="menu-label">Help</span>
-      ${screen === 'studio' && item('Studio tour', 'sparkle', () => startTour('studio'))}
+      ${screen === 'studio' && item('Studio tour (5 steps)', 'sparkle', () => startTour('studio'))}
+      ${screen === 'studio' && item('Full studio tour (10 steps)', 'sparkle', () => startTour('studio', { full: true }))}
       ${item('Pattern editor tour', 'pen', () => {
         if (store.get().screen !== 'studio') go('studio');
         store.set({ editor: { zone: 'middle' } });

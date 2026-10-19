@@ -145,9 +145,10 @@ export const tourDone = (id) => load('mar.tours.done', []).includes(id);
 const markTourSeen = (id) => save('mar.tours.done', [...new Set([...load('mar.tours.done', []), id])]);
 // A tour counts as seen as soon as it starts: finished, skipped, or left by reloading, it never
 // starts on its own again. The help menu still replays it.
-export function startTour(id) {
+/** full: include the optional deep-dive steps (the first-run studio tour is the 5 core ones). */
+export function startTour(id, { full = false } = {}) {
   markTourSeen(id);
-  store.set({ tour: { id, step: 0, snapshot: id === 'studio' ? store.get().design : null }, tip: null });
+  store.set({ tour: { id, full, step: 0, snapshot: id === 'studio' ? store.get().design : null }, tip: null });
 }
 export function endTour() {
   const t = store.get().tour;
@@ -270,8 +271,9 @@ export function go(screen) {
   else store.set({ screen });
 }
 
-/** Straight to drawing: the studio with the pattern editor open, on the design you have (US 7 Heritage by default). */
+/** Straight to drawing: a blank band in the studio with the pattern editor already open (keeps the ring size). */
 export function drawPattern() {
+  applyTemplate('blank', { silent: true });
   go('studio');
   store.set({ editor: { zone: 'middle' } });
 }

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
 import { RingViewer } from '../lib/viewer.js';
 import { buildHeightmap } from '../lib/heightmap.js';
@@ -115,6 +115,7 @@ export function RingView({ design, getPattern = patternById, mode = 'studio', au
   const shape = useRef(null);
   const asked = useRef(0); // numbers each ring this view asks for
   const shown = useRef(0); // number of the ring on screen
+  const [ready, setReady] = useState(false); // until the first ring arrives, the view says it is on its way
 
   useLayoutEffect(() => {
     viewer.current = new RingViewer(host.current, { mode, autoRotate, zoom, focus });
@@ -142,6 +143,7 @@ export function RingView({ design, getPattern = patternById, mode = 'studio', au
     const show = (geom) => {
       if (!geom || !viewer.current || n < shown.current) return;
       shown.current = n;
+      setReady(true);
       const { innerD, outerD } = bandMetrics(design);
       viewer.current.setGeometry(geom, innerD, outerD + 2 * design.relief);
       viewer.current.setLook(renderLook(design));
@@ -155,5 +157,7 @@ export function RingView({ design, getPattern = patternById, mode = 'studio', au
   const desc =
     label ||
     `3D preview of the ring in ${m.name}. ${pats[0] ? `Middle: ${pats[0].name}.` : ''} ${pats[1] ? `Sides: ${pats[1].name}${pats[2] && pats[2] !== pats[1] ? ' and ' + pats[2].name : ''}.` : ''} Drag to rotate.`;
-  return html`<div class=${'ring-view ' + className} ref=${host} role="img" aria-label=${desc}></div>`;
+  // The waiting label is a CSS ::after on the host, so it never touches the canvas three.js puts inside.
+  return html`<div class=${'ring-view ' + className + (ready ? '' : ' loading')} ref=${host} role="img" aria-label=${desc}
+    aria-busy=${ready ? undefined : 'true'} data-loading=${mode === 'tryon' ? 'Placing your ring…' : 'Building your ring…'}></div>`;
 }

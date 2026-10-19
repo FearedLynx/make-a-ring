@@ -1,27 +1,43 @@
-// Hand illustration for the try-on (back of a right hand, fingers up), drawn as a flat vector illustration:
-// one silhouette with a single outline, crisp light and shadow shapes from the upper left, nails and a few creases.
-// Exposes finger anchors so the 3D ring can be placed exactly on a finger.
+// Hand for the try-on: a real 3D hand model (back of a right hand, fingers up), lit and tinted to the chosen skin tone.
+// The model is the WebXR "generic-hand" (MIT, Amazon, @webxr-input-profiles/assets), vendored in assets/.
+// It is drawn with an orthographic camera in view-box units (x right, y down), so the ring overlay lines up with it.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { LoopSubdivision } from 'three-subdivide';
+import { useEffect, useRef } from 'preact/hooks';
 import { html } from '../lib/html.js';
 
 export const SKIN_TONES = [
-  { id: 0, name: 'Light', skin: '#f3d4bf', shade: '#e0b398', line: '#a8735a', nail: '#f9e6dc' },
-  { id: 1, name: 'Light medium', skin: '#e2b08d', shade: '#cc9470', line: '#8f5a3c', nail: '#f0d2bf' },
-  { id: 2, name: 'Medium', skin: '#c68b62', shade: '#ad734c', line: '#6e4127', nail: '#dcb196' },
-  { id: 3, name: 'Medium deep', skin: '#8e5c3e', shade: '#76492e', line: '#3f2414', nail: '#b78b70' },
-  { id: 4, name: 'Deep', skin: '#5c3b28', shade: '#4a2e1d', line: '#24130a', nail: '#8d6852' },
+  { id: 0, name: 'Light', skin: '#f1cdb6' },
+  { id: 1, name: 'Light medium', skin: '#dba582' },
+  { id: 2, name: 'Medium', skin: '#bd8058' },
+  { id: 3, name: 'Medium deep', skin: '#8a573a' },
+  { id: 4, name: 'Deep', skin: '#5a3825' },
 ];
 
-// Finger knuckles (bx, by), angle from vertical (a), length from the knuckle to the tip, and width at the base.
-// The fingers touch at the base and fan out a little, as a relaxed hand does.
-const BASE = {
-  index: { bx: 156, by: 306, a: -3.5, len: 184, w: 45 },
-  middle: { bx: 201, by: 298, a: 0, len: 204, w: 46 },
-  ring: { bx: 245, by: 304, a: 3.5, len: 190, w: 43 },
-  pinky: { bx: 284, by: 324, a: 8.5, len: 148, w: 37 },
-};
-const THUMB = { bx: 146, by: 428, a: -30, len: 136, w: 52 };
 export const VIEW = { w: 400, h: 560 };
 export const FULL = { x: 30, y: 70, w: 340, h: 480 };
+const BROAD = 1.12; // the broad hand is the same model, wider
+const SCALE = 1950; // view-box units per metre of the model
+const FINGERS = ['index', 'middle', 'ring', 'pinky'];
+const SPREAD = { index: -5, ring: 4, pinky: 9 }; // degrees from the middle finger: a relaxed hand, fingers nearly together
+
+// Where a ring sits on each finger of the slender hand (view-box units), and how wide the finger is there.
+// Measured from the posed model with measureAnchors(); rerun it if the pose or SCALE changes.
+const ANCHORS = {
+  index: { x: 182.9, y: 238.1, angle: -5.9, width: 33.4 },
+  middle: { x: 229.6, y: 225.6, angle: -0.6, width: 32.2 },
+  ring: { x: 272.1, y: 240.1, angle: 3.6, width: 29.2 },
+  pinky: { x: 311.5, y: 252.5, angle: 6.3, width: 26.5 },
+};
+
+/** Where a ring sits on the finger, in view-box units. */
+export function ringAnchor(build, finger) {
+  const a = ANCHORS[finger];
+  if (build !== 'broad') return a;
+  return { ...a, x: 200 + (a.x - 200) * BROAD, width: a.width * BROAD };
+}
 
 /** A tight crop centred on the ring, for the close-up view. */
 export function closeUp(build, finger) {
@@ -29,145 +45,151 @@ export function closeUp(build, finger) {
   return { x: a.x - 85, y: a.y - 120, w: 170, h: 230 };
 }
 
-export function fingers(build) {
-  const k = build === 'broad' ? 1.16 : 1;
+let loading;
+/**
+ * Loads the model once and poses it: fingers together, back to the camera, in view-box units (y up, as three.js has it).
+ * The pose is baked into a plain mesh and smoothed twice, because the model is low-poly and its fingertips come out flat.
+ */
+function loadHand() {
+  return (loading ??= new GLTFLoader().loadAsync(new URL('../../assets/hand-right.glb', import.meta.url).href).then(({ scene }) => {
+    const bones = {};
+    scene.traverse((o) => {
+      if (o.isBone) bones[o.name] = o;
+      if (o.isMesh) o.frustumCulled = false;
+    });
+    // All joints hang straight off the armature, so a finger turns by moving its joints round its knuckle.
+    const P = (n) => bones[n].position;
+    const axis = (f) => new THREE.Vector3().subVectors(P(`${f}-finger-tip`), P(`${f}-finger-phalanx-proximal`)).normalize();
+    const N = new THREE.Vector3().subVectors(P('index-finger-phalanx-proximal'), P('pinky-finger-phalanx-proximal')).cross(axis('middle')).normalize();
+    for (const [f, deg] of Object.entries(SPREAD)) {
+      const mid = axis('middle'), d = axis(f);
+      const now = Math.atan2(new THREE.Vector3().crossVectors(mid, d).dot(N), mid.dot(d));
+      const q = new THREE.Quaternion().setFromAxisAngle(N, (deg * Math.PI) / 180 - now);
+      const pivot = P(`${f}-finger-phalanx-proximal`).clone();
+      for (const k of ['phalanx-proximal', 'phalanx-intermediate', 'phalanx-distal', 'tip']) {
+        const b = bones[`${f}-finger-${k}`];
+        b.position.sub(pivot).applyQuaternion(q).add(pivot);
+        b.quaternion.premultiply(q);
+      }
+    }
+    // Fingers up, back of the hand to the camera (thumb on the left), y flipped to view-box units.
+    const hand = new THREE.Group();
+    hand.add(scene);
+    hand.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2));
+    hand.scale.setScalar(SCALE);
+    hand.updateMatrixWorld(true);
+    // Stand the middle finger straight up.
+    const up = bones['middle-finger-tip'].getWorldPosition(new THREE.Vector3()).sub(bones['middle-finger-phalanx-proximal'].getWorldPosition(new THREE.Vector3()));
+    hand.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.atan2(up.x, up.y)));
+    hand.updateMatrixWorld(true);
+    const skinned = scene.getObjectByProperty('isSkinnedMesh', true);
+    const pos = [];
+    for (let i = 0, v = new THREE.Vector3(); i < skinned.geometry.attributes.position.count; i++) pos.push(...skinned.getVertexPosition(i, v).applyMatrix4(skinned.matrixWorld).toArray());
+    let geometry = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)).setIndex(skinned.geometry.index);
+    geometry = LoopSubdivision.modify(mergeVertices(geometry), 2, { split: false });
+    geometry.computeVertexNormals();
+    // Centre it across the frame, fingertips just under the top.
+    geometry.computeBoundingBox();
+    const { min, max } = geometry.boundingBox, shift = new THREE.Vector3(200 - (min.x + max.x) / 2, -92 - max.y, 0);
+    geometry.translate(shift.x, shift.y, 0);
+    const joint = (n) => bones[n].getWorldPosition(new THREE.Vector3()).add(shift);
+    return { geometry, joint };
+  }));
+}
+
+/** Ring position and finger width for each finger of the posed slender hand. Paste the result into ANCHORS. */
+export async function measureAnchors() {
+  const { geometry, joint } = await loadHand();
+  const view = (v) => new THREE.Vector2(v.x, -v.y);
+  const p3 = geometry.attributes.position, verts = [];
+  for (let i = 0; i < p3.count; i++) verts.push(new THREE.Vector2(p3.getX(i), -p3.getY(i)));
   const out = {};
-  for (const [id, f] of Object.entries(BASE)) out[id] = { ...f, w: f.w * k };
+  for (const f of FINGERS) {
+    const a = view(joint(`${f}-finger-phalanx-proximal`));
+    const b = view(joint(`${f}-finger-phalanx-intermediate`));
+    const p = a.clone().lerp(b, f === 'pinky' ? 0.85 : 0.62);
+    const along = b.clone().sub(a).normalize(), across = new THREE.Vector2(-along.y, along.x);
+    // The finger's width there: the spread of mesh points in a thin slice across it, keeping points nearer this finger than its neighbours.
+    const axes = FINGERS.filter((g) => g !== f).map((g) => {
+      const o = view(joint(`${g}-finger-phalanx-proximal`)), e = view(joint(`${g}-finger-phalanx-intermediate`)).sub(o).normalize();
+      return (v) => Math.abs(v.clone().sub(o).cross(e));
+    });
+    const slice = verts.map((v) => v.clone().sub(p)).filter((d) => Math.abs(d.dot(along)) < 3 && axes.every((dist) => dist(d.clone().add(p)) > Math.abs(d.dot(across)))).map((d) => d.dot(across));
+    out[f] = { x: +p.x.toFixed(1), y: +p.y.toFixed(1), angle: +((Math.atan2(along.x, -along.y) * 180) / Math.PI).toFixed(1), width: +(Math.max(...slice) - Math.min(...slice)).toFixed(1) };
+  }
+  // The wrist, so the sleeve can cover where the model ends.
+  const wrist = verts.filter((v) => Math.abs(v.y - 480) < 4).map((v) => v.x);
+  out.wrist = [Math.min(...wrist), Math.max(...wrist), Math.max(...verts.map((v) => v.y))].map((v) => +v.toFixed(1));
   return out;
 }
 
-/** Where a ring sits on the finger, in view-box units. */
-export function ringAnchor(build, finger) {
-  const f = fingers(build)[finger];
-  const d = f.len * 0.3;
-  const r = (f.a * Math.PI) / 180;
-  return { x: f.bx + Math.sin(r) * d, y: f.by - Math.cos(r) * d, angle: f.a, width: f.w };
-}
-
-const n = (v) => +v.toFixed(2);
-
-/** A smooth path through points (Catmull-Rom as cubic Béziers), continuing from the current point. */
-function through(pts) {
-  let d = '';
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
-    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
-    d += ` C${n(c1[0])} ${n(c1[1])} ${n(c2[0])} ${n(c2[1])} ${n(p2[0])} ${n(p2[1])}`;
-  }
-  return d;
-}
-
-/** Outline round a spine of [x, y, half width] points running from the base to the tip, closed by a round tip. */
-function limb(spine) {
-  const L = [], R = [];
-  spine.forEach(([x, y, hw], i) => {
-    const a = spine[Math.max(0, i - 1)], b = spine[Math.min(spine.length - 1, i + 1)];
-    const d = Math.hypot(b[0] - a[0], b[1] - a[1]), nx = -(b[1] - a[1]) / d, ny = (b[0] - a[0]) / d;
-    R.push([x + nx * hw, y + ny * hw]);
-    L.push([x - nx * hw, y - ny * hw]);
-  });
-  const r = spine.at(-1)[2], l = L.at(-1);
-  R.reverse();
-  return `M${n(L[0][0])} ${n(L[0][1])}${through(L)} A${n(r)} ${n(r)} 0 0 1 ${n(R[0][0])} ${n(R[0][1])}${through(R)} Z`;
-}
-
-/**
- * One finger in its own frame: the knuckle at y = 0, the tip at y = -L. Nearly straight sides that ease in towards
- * the tip and swell a touch at the two joints. It runs on into the back of the hand, which hides the join.
- */
-function fingerSpine(L, W) {
-  const h = W / 2, r = h * 0.86;
-  return [[0, 50, h * 1.04], [0, 0, h], [0, -0.3 * L, h * 0.97], [0, -0.5 * L, h * 0.98], [0, -0.68 * L, h * 0.9], [0, -0.8 * L, h * 0.91], [0, -L + r, r]];
-}
-
-/** The thumb, seen from the side as it is from the back of the hand: thick at the base, bending gently in. */
-function thumbSpine(L, W) {
-  const h = W / 2, r = h * 0.78;
-  return [[0, 70, h * 1.1], [0, 0, h], [-1, -0.42 * L, h * 0.9], [0, -0.6 * L, h * 0.86], [3, -0.8 * L, h * 0.84], [6, -L + r, r]];
-}
-
-/** The nail: rounded towards the tip, a curved cuticle towards the hand. */
-function nailPath(L, W, k = 1, dx = 0) {
-  const w = W * 0.29 * k, top = -L + W * 0.1, bottom = -L + W * 0.95;
-  const x = (v) => n(v + dx);
-  return `M${x(-w)} ${n(bottom)} C${x(-w * 1.04)} ${n(top + w * 0.9)} ${x(-w * 0.72)} ${n(top)} ${x(0)} ${n(top)} C${x(w * 0.72)} ${n(top)} ${x(w * 1.04)} ${n(top + w * 0.9)} ${x(w)} ${n(bottom)} Q${x(0)} ${n(bottom + W * 0.14)} ${x(-w)} ${n(bottom)} Z`;
-}
-
-/** Short skin folds across a joint: a few soft arcs, the longest first. */
-function creases(y, W, count) {
-  const out = [];
-  for (let i = 0; i < count; i++) {
-    const yy = y + i * W * 0.1, ww = W * (0.2 - i * 0.045);
-    out.push(`M${n(-ww)} ${n(yy)} q${n(ww)} ${n(-W * 0.07)} ${n(ww * 2)} 0`);
-  }
-  return out.join(' ');
-}
-
-// The back of the hand and the wrist as one shape. Along the top it dips between the fingers into the webs; on the
-// left it runs into the thumb, so the web between thumb and index is part of the outline.
-const PALM_PTS = [[128, 560], [127, 520], [120, 478], [112, 446], [118, 404], [124, 376], [130, 344], [134, 318], [150, 300], [177, 287], [200, 284], [223, 287], [246, 292], [266, 300], [286, 312], [300, 322], [308, 350], [311, 390], [310, 414], [300, 458], [284, 494], [274, 524], [272, 560]];
-const PALM = `M${PALM_PTS[0][0]} ${PALM_PTS[0][1]}${through(PALM_PTS)} Z`;
-
 export function Hand({ tone = 1, build = 'slender', crop = FULL, className = '' }) {
-  const t = SKIN_TONES[tone];
-  const F = fingers(build);
-  const k = build === 'broad' ? 1.08 : 1;
-  const widen = `translate(${200 * (1 - k)} 0) scale(${k} 1)`;
-  // Lines keep about the same weight on screen in the close-up.
-  const lw = crop.w < FULL.w ? 0.6 : 1;
-  const thumbW = THUMB.w * (build === 'broad' ? 1.12 : 1);
-  const digits = [
-    { id: 'thumb', ...THUMB, w: thumbW, d: limb(thumbSpine(THUMB.len, thumbW)) },
-    ...['pinky', 'ring', 'middle', 'index'].map((id) => ({ id, ...F[id], d: limb(fingerSpine(F[id].len, F[id].w)) })),
-  ];
-  const at = (f) => `translate(${f.bx} ${f.by}) rotate(${f.a})`;
+  const canvas = useRef();
+  const gl = useRef(null);
+  const props = useRef();
+  props.current = { tone, build, crop };
 
-  // The silhouette twice: a stroked copy underneath, then the plain fill on top, so only the outer outline shows.
-  const silhouette = (attrs) => html`
-    <path d=${PALM} transform=${widen} ...${attrs} />
-    ${digits.map((f) => html`<path d=${f.d} transform=${at(f)} key=${f.id} ...${attrs} />`)}`;
+  useEffect(() => {
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas.current, antialias: true, alpha: true });
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    const scene = new THREE.Scene();
+    scene.add(new THREE.HemisphereLight(0xfff6ee, 0x6b4a3a, 1.6));
+    const key = new THREE.DirectionalLight(0xfff1e4, 2.6);
+    key.position.set(-1.2, 1.6, 2);
+    const rim = new THREE.DirectionalLight(0xdfe8ff, 1.1);
+    rim.position.set(1.5, -0.4, -1);
+    scene.add(key, rim);
+    const camera = new THREE.OrthographicCamera(0, 1, 0, -1, -2000, 2000);
+    camera.position.z = 1000;
+    const material = new THREE.MeshPhysicalMaterial({ roughness: 0.62, sheen: 0.5, sheenRoughness: 0.6, sheenColor: new THREE.Color('#ffd9c4') });
+    const wide = new THREE.Group();
+    scene.add(wide);
 
-  // Light from the upper left: a shadow down the right of each digit, a soft highlight down the left.
-  const digit = (f) => {
-    const h = f.w / 2, L = f.len, thumb = f.id === 'thumb';
-    return html`<g transform=${at(f)} key=${f.id}>
-      <clipPath id=${'hand-clip-' + f.id}><path d=${f.d} /></clipPath>
-      <g clip-path=${`url(#hand-clip-${f.id})`}>
-        <path d=${`M${n(h * 1.4)} 40 L${n(h * 1.4)} ${n(-L - 10)} L${n(h * 0.3)} ${n(-L - 10)} C${n(h * 0.34)} ${n(-0.6 * L)} ${n(h * 0.4)} ${n(-0.22 * L)} ${n(h * 1.3)} ${n(thumb ? -0.32 * L : -8)} Z`} fill=${t.shade} />
-        <path d=${`M${n(-h * 0.5)} ${n(-0.3 * L)} L${n(-h * 0.52)} ${n(-L + h * 1.6)}`} stroke="#fff" stroke-opacity=".12" stroke-width=${n(h * 0.3)} stroke-linecap="round" />
+    const draw = () => {
+      const el = canvas.current;
+      if (!el || !el.clientWidth) return;
+      const { tone, build, crop } = props.current;
+      const w = el.clientWidth, h = el.clientHeight;
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.setSize(w, h, false);
+      // Same fit as an SVG viewBox with xMidYMid meet, which the try-on screen assumes.
+      const s = Math.min(w / crop.w, h / crop.h), cx = crop.x + crop.w / 2, cy = crop.y + crop.h / 2;
+      Object.assign(camera, { left: cx - w / s / 2, right: cx + w / s / 2, top: -(cy - h / s / 2), bottom: -(cy + h / s / 2) });
+      camera.updateProjectionMatrix();
+      const k = build === 'broad' ? BROAD : 1;
+      wide.scale.set(k, 1, 1);
+      wide.position.x = 200 * (1 - k);
+      material.color.set(SKIN_TONES[tone].skin);
+      renderer.render(scene, camera);
+    };
+    gl.current = { draw };
+    let alive = true;
+    loadHand().then(({ geometry }) => {
+      if (!alive) return;
+      wide.add(new THREE.Mesh(geometry, material));
+      draw();
+    });
+    const ro = new ResizeObserver(draw);
+    ro.observe(canvas.current);
+    return () => {
+      alive = false;
+      ro.disconnect();
+      wide.clear();
+      material.dispose();
+      renderer.dispose();
+    };
+  }, []);
+  useEffect(() => gl.current?.draw(), [tone, build, crop.x, crop.y, crop.w, crop.h]);
+
+  return html`<div class=${'hand ' + className} aria-hidden="true">
+    <canvas ref=${canvas}></canvas>
+    <svg viewBox=${`${crop.x} ${crop.y} ${crop.w} ${crop.h}`} preserveAspectRatio="xMidYMid meet">
+      <g transform=${build === 'broad' ? `translate(${200 * (1 - BROAD)} 0) scale(${BROAD} 1)` : ''}>
+        <path class="sleeve" d="M194 472 C214 463 298 463 318 472 L326 584 L186 584 Z" />
+        <path d="M194 472 C214 463 298 463 318 472" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2" />
+        ${[214, 233, 252, 271, 290].map((x) => html`<line x1=${x} y1="470" x2=${x} y2="584" stroke="#000" stroke-opacity=".14" stroke-width="2" key=${x} />`)}
       </g>
-      <path d=${creases(-0.5 * L - f.w * 0.08, f.w, 3)} fill="none" stroke=${t.line} stroke-width=${1.1 * lw} stroke-linecap="round" opacity=".35" />
-      ${!thumb && html`<path d=${creases(-0.8 * L + f.w * 0.02, f.w, 2)} fill="none" stroke=${t.line} stroke-width=${lw} stroke-linecap="round" opacity=".28" />`}
-      <path d=${nailPath(L, f.w, thumb ? 0.85 : 1, thumb ? -h * 0.12 : 0)} fill=${t.nail} stroke=${t.line} stroke-width=${0.9 * lw} stroke-opacity=".5" />
-      <path d=${`M${n(-f.w * 0.13 - (thumb ? h * 0.12 : 0))} ${n(-L + f.w * 0.3)} l0 ${n(f.w * 0.36)}`} stroke="#fff" stroke-opacity=".7" stroke-width=${n(f.w * 0.07)} stroke-linecap="round" />
-    </g>`;
-  };
-  // Where two fingers touch, a short line runs down to the web.
-  const seam = (f) => {
-    const h = f.w / 2;
-    return html`<path transform=${at(f)} key=${'s' + f.id} d=${`M${n(h * 0.98)} ${n(-14)} L${n(h * 0.95)} ${n(-0.24 * f.len)}`} stroke=${t.line} stroke-width=${1.2 * lw} stroke-linecap="round" opacity=".45" />`;
-  };
-  return html`<svg class=${'hand ' + className} viewBox=${`${crop.x} ${crop.y} ${crop.w} ${crop.h}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-    <defs>
-      <filter id="hand-drop" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#3a2a1c" flood-opacity=".16" />
-      </filter>
-    </defs>
-    <g filter="url(#hand-drop)">
-      ${silhouette({ fill: t.line, stroke: t.line, 'stroke-width': 3.2 * lw, 'stroke-linejoin': 'round' })}
-      ${silhouette({ fill: t.skin })}
-      <g transform=${widen}>
-        <clipPath id="hand-clip-palm"><path d=${PALM} /></clipPath>
-        <path clip-path="url(#hand-clip-palm)" d="M306 320 C292 370 296 440 270 520 L276 580 L340 580 L340 300 Z" fill=${t.shade} />
-      </g>
-      ${digits.map(digit)}
-      ${['index', 'middle', 'ring'].map((id) => seam(F[id]))}
-      <g transform=${widen}>
-        <path class="sleeve" d="M124 520 C150 510 250 510 276 520 L282 584 L118 584 Z" />
-        <path d="M124 520 C150 510 250 510 276 520" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2" />
-        ${[146, 168, 189, 211, 232, 254].map((x) => html`<line x1=${x} y1="520" x2=${x} y2="584" stroke="#000" stroke-opacity=".14" stroke-width="2" key=${x} />`)}
-      </g>
-    </g>
-  </svg>`;
+    </svg>
+  </div>`;
 }

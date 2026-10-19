@@ -14,7 +14,7 @@ No build step and no npm. Any static server works; this one fixes `.js` MIME typ
 python serve.py
 ```
 
-Then open http://localhost:5173. Libraries (Preact, htm, three.js) load from jsDelivr via the import map in `index.html`.
+Then open http://localhost:5173. Libraries (Preact, htm, three.js, three-subdivide) load from jsDelivr via the import map in `index.html`. The try-on hand is the WebXR generic-hand model (`assets/hand-right.glb`, MIT, © 2019 Amazon, from `@webxr-input-profiles/assets`).
 
 ## Deploy
 

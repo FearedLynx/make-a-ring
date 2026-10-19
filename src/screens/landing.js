@@ -221,6 +221,7 @@ export function Landing() {
         <div><dt>For</dt><dd>HyperBloom October 2026</dd></div>
         <div><dt>Status</dt><dd>Frontend prototype</dd></div>
         <div><dt>Note</dt><dd>Prices are illustrative estimates</dd></div>
+        <div><dt>Brand</dt><dd><a href="brand/brand-guide.html" target="_blank" rel="noopener">Brand identity guidelines</a></dd></div>
       </dl>
     </footer>
   </div>`;

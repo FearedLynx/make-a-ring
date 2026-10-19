@@ -300,8 +300,8 @@ export function Review() {
             <div><dt>Est.</dt><dd>${money(price.total)}</dd></div>
           </dl>
           ${ready
-            ? html`<p class="ready-stamp" aria-hidden="true"><span>Ready</span><span>to print</span></p>`
-            : html`<p class="ready-stamp todo" aria-hidden="true"><span>${errors} to fix</span><span>before printing</span></p>`}
+            ? html`<p key="ready" class="ready-stamp" aria-hidden="true"><span>Ready</span><span>to print</span></p>`
+            : html`<p key=${`todo-${errors}`} class="ready-stamp todo" aria-hidden="true"><span>${errors} to fix</span><span>before printing</span></p>`}
         </div>
         <${BandMap} design=${design} getPattern=${patternById} className="review-band" />
         <div class="review-actions">

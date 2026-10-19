@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Make-a-Ring · Brand rules</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,7 +21,7 @@
   body { font: 10.5pt/1.5 var(--font); color: var(--ink); background: var(--bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .page { width: 210mm; height: 297mm; padding: 18mm 18mm 16mm; position: relative; overflow: hidden; page-break-after: always; break-after: page;
     background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 6mm 6mm; }
-  .page:last-child { page-break-after: auto; break-after: auto; }
+  .page:last-of-type { page-break-after: auto; break-after: auto; }
   .foot { position: absolute; left: 18mm; right: 18mm; bottom: 10mm; display: flex; justify-content: space-between; font: 7.5pt var(--mono); color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase; border-top: 1px solid var(--ink); padding-top: 2.5mm; }
   .kicker { font: 600 8pt var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-ink); margin: 0 0 3mm; }
   h1 { font: 850 40pt/0.92 var(--display); font-stretch: 122%; letter-spacing: -0.03em; text-transform: uppercase; margin: 0 0 6mm; }
@@ -96,6 +97,11 @@
   .flow { display: flex; align-items: center; gap: 3mm; font: 600 9pt var(--mono); margin: 2mm 0 4mm; }
   .flow span { padding: 2mm 3mm; border: 1px solid var(--ink); background: var(--surface); }
   .flow em { font-style: normal; color: var(--accent-ink); }
+  /* screen: the A4 sheets sit side by side and scale to fill the window (the script sets --z); print is untouched */
+  @media screen {
+    body { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: var(--gap, 32px); padding: var(--gap, 32px); min-height: 100vh; background: color-mix(in srgb, var(--ink) 10%, var(--bg)); }
+    .page { flex: none; zoom: var(--z, 1); background-color: var(--bg); box-shadow: 0 1px 2px rgba(40, 30, 15, .12), 0 12px 32px rgba(40, 30, 15, .14); }
+  }
 </style>
 </head>
 <body>
@@ -332,5 +338,17 @@
   </table>
   <div class="foot"><span>Make-a-Ring · Brand rules</span><span>8 / 8</span></div>
 </section>
+<script>
+  // Two sheets across on wide screens, one on narrow ones, each scaled so the row fills the window.
+  const fit = () => {
+    const w = document.documentElement.clientWidth, gap = w < 600 ? 12 : 32, sheet = (210 / 25.4) * 96;
+    const across = w >= 1400 ? 2 : 1;
+    const z = Math.min(1.5, (w - 2 * gap - (across - 1) * gap) / (across * sheet));
+    document.documentElement.style.setProperty('--z', z.toFixed(4));
+    document.documentElement.style.setProperty('--gap', gap + 'px');
+  };
+  fit();
+  addEventListener('resize', fit);
+</script>
 </body>
 </html>

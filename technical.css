@@ -15,7 +15,7 @@
 .slider-head output { font-size: 12.5px; }
 .rail-tabs button { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
 .logo { font-family: var(--display); font-weight: 800; font-stretch: 118%; letter-spacing: -0.02em; text-transform: uppercase; font-size: 16px; }
-.logo-dash { color: var(--accent); }
+.logo-dash { color: var(--accent-ink); }
 body { background: var(--bg); transition: background 0.2s; }
 .ed-tile { fill: var(--surface); }
 .band-map .band-zone.active .zone-hit { fill: color-mix(in srgb, var(--accent) 14%, transparent); }
@@ -365,8 +365,10 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .lp-mega:hover { background: var(--ink); color: var(--bg); }
 .lp-mega:hover svg { transform: translateX(10px); }
 .lp-foot { padding: 26px var(--gut) 44px; }
-.title-block.foot { grid-template-columns: repeat(4, 1fr); }
+.title-block.foot { grid-template-columns: repeat(3, 1fr); }
 .title-block.foot dd { white-space: normal; }
+.title-block.foot a { color: var(--accent-ink); text-underline-offset: 3px; }
+.title-block.foot a:hover { color: var(--ink); }
 
 /* Start screen header shares the landing look */
 .landing-nav .logo { font-size: 16px; }
@@ -684,10 +686,9 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 }
 .sound-toggle.off .st-wave { opacity: 0.25; }
 
-/* ── Header: home button next to the logo ── */
+/* ── Header: back button before the logo; on phones the app bar keeps only the ring mark ── */
 .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.home-btn { text-decoration: none; }
-@media (max-width: 900px) { .home-btn span { display: none; } .home-btn { padding-left: 8px; padding-right: 8px; } }
+@media (max-width: 420px) { .topbar .logo > span { display: none; } }
 
 /* ── Landing: section titles clear the sticky header when jumped to ── */
 .lp section[id] { scroll-margin-top: 84px; }
@@ -716,6 +717,177 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .sd-hint { margin: 0; font: 12px var(--mono); color: var(--ink-3); }
 @media (hover: none) { .sd-hint { display: none; } }
 
+/* ── One path of four steps (app bar and Start share it) ── */
+.steps a:not(.on):not(.done) .step-n { color: var(--ink-2); }
+.step-part { font-weight: 500; color: var(--ink-3); }
+.landing-nav .steps { margin: 0 auto; }
+@media (max-width: 900px) { .landing-nav .steps a:not(.on) .step-label { display: none; } .landing-nav .steps a:not(.on) { padding: 6px; } }
+@media (max-width: 520px) { .landing-nav .steps .step-label { display: none; } .landing-nav .steps a { padding: 6px; } }
+h1[tabindex='-1']:focus { outline: none; }
+
+/* ── Landing hero: the pitch and both ways in sit under "Make a", beside the ring, not at the foot of the sheet ── */
+@media (min-width: 1101px) {
+  .lp-hero-foot { grid-column: 1 / 5; grid-row: 1 / 4; align-self: start; margin-top: calc(clamp(70px, 15.5vw, 290px) * 0.8 + clamp(28px, 3vw, 52px)); padding-top: 0; }
+}
+@media (max-width: 760px) {
+  .lp-hero-foot { grid-row: 2; padding-top: 14px; }
+  .lp-stage { grid-row: 3; margin-top: 8px; }
+  .lp-inline-steps { display: none; }
+}
+
+/* ── First-visit coach: how the stage works, in the free top-left corner, until the first change ── */
+.stage-hint.hidden { visibility: hidden; }
+.stage-coach {
+  position: absolute; top: 14px; left: 18px; z-index: 4; display: grid; gap: 7px; margin: 0; padding: 12px 40px 12px 14px;
+  max-width: 250px; background: var(--surface); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md); box-shadow: var(--shadow); font-size: 13px; color: var(--ink); zoom: var(--ui);
+  animation: coach-in 0.4s ease-out both 0.6s;
+}
+.stage-coach span { display: flex; gap: 4px; align-items: center; }
+.stage-coach-x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--ink-3); }
+.stage-coach-x:hover { background: var(--surface-2); color: var(--ink); }
+@keyframes coach-in { from { opacity: 0; transform: translateY(-6px); } }
+@media (max-width: 760px) { .stage-coach { position: static; max-width: none; margin: 6px 0 2px; order: 2; } .stage-coach ~ .band-map-wrap { order: 3; } }
+
+/* The live ring in the editor pulses once on the first stroke: that is where the tile wraps. */
+.ed-preview.pulse { animation: preview-pulse 1.3s ease-out 0.15s; border-radius: var(--radius-md); }
+@keyframes preview-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 16px transparent; } }
+
+/* ── Help and view settings: one menu instead of six header controls ── */
+.view-menu { min-width: 260px; gap: 2px; }
+.menu-label { padding: 8px 10px 4px; font: 600 10.5px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+.menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; font-size: 14px; }
+.view-menu .theme-dot { width: 24px; height: 24px; }
+.view-menu .grid-toggle, .view-menu .theme-dot { padding: 0; }
+.view-menu .theme-dot { background: linear-gradient(135deg, var(--swbg) 0 48%, var(--sw) 52% 100%); }
+.view-menu .theme-dots { display: flex !important; }
+@media (max-width: 760px) { .topbar-right .help-menu > .icon-btn { display: inline-grid; } .help-menu .menu { right: -4px; } }
+
+/* ── Studio hierarchy: one accent button (Draw your own), one ink button (Try it on), toggles are outlined ── */
+.link-group .chip.on { background: var(--surface); color: var(--ink); border-color: var(--ink); }
+.link-group .chip.on svg { color: var(--accent-ink); }
+/* The printability chip gets its own row above the price, so it can never slide under Try it on. */
+.price-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; row-gap: 6px; }
+.price-card .check-chip { grid-column: 1 / -1; justify-self: start; white-space: nowrap; }
+.stage-card.far { opacity: 0.62; }
+.tryon-materials .mat-group { margin-bottom: 6px; }
+
+/* ── Specs panel: every category with its current value; one opens in place ── */
+.spec-acc { padding: 0; }
+.acc { border-bottom: 1px solid var(--line); }
+.acc-h { margin: 0; font: inherit; }
+.acc-head {
+  width: 100%; display: grid; grid-template-columns: 18px minmax(0, 1fr) 14px; align-items: center; gap: 10px;
+  padding: 9px 14px; border: 0; background: none; color: var(--ink); text-align: left; font: 600 13.5px var(--font); cursor: pointer;
+}
+.acc-head:hover { background: var(--surface-2); }
+.acc-head > svg:first-child { color: var(--ink-3); }
+.acc-label { white-space: nowrap; }
+.acc-text { display: grid; gap: 1px; min-width: 0; }
+.acc-val { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 11.5px var(--mono); color: var(--ink-2); }
+.acc-val.ok { color: var(--ok); }
+.acc-val.warn { color: var(--warn); }
+.acc-val.error { color: var(--error); }
+.acc-head > svg:last-child { color: var(--ink-3); transition: transform 0.15s; }
+.acc.open .acc-head > svg:last-child { transform: rotate(180deg); }
+.acc.open .acc-head { background: var(--surface-2); }
+.acc.open .acc-head > svg:first-child { color: var(--accent-ink); }
+.acc-body { padding: 4px 14px 14px; }
+.acc-body .spec-sec { padding-left: 0; padding-right: 0; }
+@media (max-width: 1023px) { .rail-strip.spec { display: none; } }
+.studio .rail-body.spec-acc { padding: 0; }
+.acc-body .spec-sec:last-child { border-bottom: 0; margin-bottom: 0; }
+
+/* ── Files: the last sheet uses the landing's drawing language (title block, callouts, registration marks) ── */
+.review-title .eyebrow { color: var(--accent-ink); }
+.review-title h1 { margin: 2px 0 0; }
+.review-dim.h { top: 92%; }
+.review-dim.v { left: 92%; top: 47%; }
+.review-sheet { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.review-tb { flex: 1 1 360px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ready-stamp {
+  display: grid; justify-items: center; margin: 0; padding: 8px 14px; transform: rotate(-7deg);
+  border: 3px double var(--ok); border-radius: 6px; color: var(--ok); background: color-mix(in srgb, var(--surface) 75%, transparent);
+  font: 800 19px/1.05 var(--display); font-stretch: 118%; text-transform: uppercase; letter-spacing: 0.02em;
+  animation: stamp-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) 0.5s both;
+}
+.ready-stamp span + span { font: 600 10.5px var(--mono); letter-spacing: 0.14em; }
+.ready-stamp.todo { color: var(--error); border-color: var(--error); }
+@keyframes stamp-in { from { opacity: 0; transform: rotate(-7deg) scale(1.6); } }
+.spec-card summary { display: flex; align-items: center; justify-content: space-between; cursor: pointer; list-style: none; }
+.spec-card summary::-webkit-details-marker { display: none; }
+.spec-card summary h2 { margin: 0; }
+.spec-card[open] summary { margin-bottom: 14px; }
+.spec-card[open] summary svg { transform: rotate(180deg); }
+.review .review-zoom { left: 8px; right: auto; }
+.lp-dim-label { white-space: nowrap; }
+.files-bar { display: none; }
+@media (max-width: 760px) {
+  .review-tb { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .files-bar { display: block; position: sticky; bottom: 0; z-index: 5; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.06); }
+}
+
+/* Contrast: white on the beige and gray accents is 3.9:1, so the accent button uses the deeper accent there;
+   success green text is deepened a little so it passes 4.5:1 on its soft background too. */
+[data-theme='beige'] .btn.accent, [data-theme='gray'] .btn.accent { background: var(--accent-ink); border-color: var(--accent-ink); }
+[data-theme='beige'] .btn.accent:hover:not(:disabled), [data-theme='gray'] .btn.accent:hover:not(:disabled) { background: color-mix(in oklab, var(--accent-ink) 85%, var(--ink)); }
+.pill.ok, .acc-val.ok, .check-chip.ok { color: color-mix(in srgb, var(--ok) 80%, #000); }
+
+/* ── Middle and Sides live on the carousel: arrows on the cards, the current names in one row under it ──
+   (replaces the selector column on the right of the stage, so the ring gets that width back) */
+.stage-main { display: contents; }
+.stage .cross-right { overflow-x: visible; }
+.stage .selection-bar { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 18px 0 0; padding: 0; }
+.stage .link-group { flex-direction: row; gap: 6px; padding: 0; background: none; border: 0; }
+.stage .link-group .chip { width: auto; }
+.sel-now { flex: 1; min-width: 0; display: flex; justify-content: center; gap: 26px; margin: 0; }
+.sel-item { display: grid; grid-template-columns: auto auto; column-gap: 7px; align-items: baseline; min-width: 0; }
+.sel-item .sel-label { grid-column: 1 / -1; }
+.sel-item strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sel-item.disabled { opacity: 0.55; }
+.sel-keys { margin-left: 3px; font: 600 10px var(--mono); letter-spacing: 0; color: var(--accent-ink); }
+.stage-card { position: relative; }
+.stage-card-dir {
+  position: absolute; z-index: 1; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--line-2); color: var(--ink-2); box-shadow: var(--shadow); transition: background 0.15s, color 0.15s;
+}
+.stage-card:hover .stage-card-dir, .stage-card:focus-visible .stage-card-dir { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+.stage-card-dir.up { top: -11px; left: 50%; transform: translateX(-50%); }
+.stage-card-dir.down { bottom: -11px; left: 50%; transform: translateX(-50%); }
+.stage-card-dir.left { left: -11px; top: 50%; transform: translateY(-50%); }
+.stage-card-dir.right { right: -11px; top: 50%; transform: translateY(-50%); }
+
+/* ── Studio on phones and small tablets ──
+   The stage fills the first screen (ring first, Smashing's 65–75 % rule), the two panel tabs sit at its foot and stick
+   under the app bar, and price, printability and Try it on are docked to the bottom so the next step is always there. */
+.studio-dock { display: none; }
+@media (max-width: 1023px) {
+  .studio .rail .price-card { display: none; }
+  .studio-dock { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; padding-bottom: env(safe-area-inset-bottom); background: var(--surface); box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.07); }
+  .studio-dock .price-card { border-top: 1px solid var(--line); }
+  .studio { padding-bottom: 92px; }
+  .mobile-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+}
+@media (max-width: 760px) {
+  .studio-dock .price-card { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 12px; padding: 10px 14px; }
+  .studio-dock .price-card .check-chip { grid-column: auto; grid-row: 1; }
+  .studio-dock .price-card .small, .studio-dock .price-meta { display: none; }
+  .studio-dock .price { font-size: 22px; }
+  .studio { padding-bottom: 68px; }
+  /* first screen: app bar + stage + the tabs, with the dock below */
+  .studio .stage { height: calc(100dvh - var(--topbar) - 68px - 58px); min-height: 440px; padding: 8px 10px 10px; display: flex; flex-direction: column; }
+  .studio .band-map-wrap { display: none; }
+  .studio .cross { flex: 1; min-height: 0; grid-template-rows: auto minmax(150px, 1fr) auto; padding-top: 30px; }
+  .studio .selection-bar { margin-top: 14px; gap: 8px; }
+  .studio .sel-now { order: -1; flex: 1 0 100%; gap: 20px; }
+  .studio .link-group { flex: 1; }
+  .studio .link-group .chip { padding: 8px 12px; }
+  .studio .draw-btn { width: auto; flex: 1; justify-content: center; }
+  .studio .stage-coach { position: absolute; left: 10px; right: 10px; top: auto; bottom: 8px; max-width: none; margin: 0; order: 0; }
+  /* pinch zooms on a phone, so only reset and turntable stay, clear of the top card */
+  [data-input="touch"] .studio .stage-tools .icon-btn:nth-child(-n + 2) { display: none; }
+  .studio .mobile-tabs { padding: 8px 12px; }
+}
 /* 3D views while the first ring is still being built: a quiet label with a breathing dot, centred */
 :where(.ring-view) { position: relative; } /* zero specificity: every placed view keeps its own position */
 .ring-view.loading::after {
@@ -728,13 +900,10 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 @keyframes ring-wait { 50% { background-image: radial-gradient(circle at 15px 50%, color-mix(in srgb, var(--accent) 35%, transparent) 0 4px, transparent 4.5px); } }
 @media (prefers-reduced-motion: reduce) { .ring-view.loading::after { animation: none; } }
 
-/* Review: the download comes first; the specification is a drawing title block like the landing's */
+/* Files: the full specification is a drawing title block like the landing's */
 .review-tb { grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--surface); }
 .review-tb dd { white-space: normal; overflow: visible; font-variant-numeric: tabular-nums; }
-.review-tb .tb-name { font-size: 18px; }
-.tb-sheet-n { font: 600 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
-.review-sheet h2 { margin-bottom: 12px; }
-@media (max-width: 760px) { .review-tb { grid-template-columns: 1fr; } .review-tb > div { grid-column: auto !important; } }
+@media (max-width: 760px) { .spec-card .review-tb { grid-template-columns: 1fr; } .spec-card .review-tb > div { grid-column: auto !important; } }
 
 /* Landing: the promise line, and no orphaned last words in running text */
 .lp-promise { text-wrap: balance; margin: 0 0 10px; font: 800 clamp(20px, 1.9vw, 28px)/1.15 var(--display); font-stretch: 112%; letter-spacing: -0.015em; color: var(--ink); max-width: 30ch; }
@@ -752,8 +921,6 @@ p, .lp-lede, h1, h2, h3 { text-wrap: pretty; }
 .pattern-art.plain line { stroke: color-mix(in oklab, var(--ink) 16%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .pattern-art.plain span { position: relative; }
 .stage-card .pattern-art.plain { background: var(--surface); box-shadow: none; }
-.link-group .chip.on { background: var(--surface); color: var(--ink); border-color: var(--ink); }
-.link-group .chip.on .icon { color: var(--accent-ink); }
 .spec-drawing { margin-top: 14px; }
 .spec-drawing .sd-svg { width: 100%; }
 .spec-drawing .sd-block { width: 100%; }

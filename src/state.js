@@ -53,7 +53,7 @@ const cleanPatterns = (list) =>
 export const RAIL_DEFAULTS = matchMedia('(max-width: 1440px)').matches ? { lib: 240, spec: 268 } : { lib: 256, spec: 296 };
 function loadRails() {
   const r = load('mar.rails', null);
-  const base = { ...RAIL_DEFAULTS, libOpen: true, specOpen: true, libCat: 'patterns', specCat: 'size', v: 2 };
+  const base = { ...RAIL_DEFAULTS, libOpen: true, specOpen: true, libCat: 'patterns', specCat: 'material', v: 2 };
   if (!r) return base;
   // Before the category strips, widths included everything; keep the panels the same overall size.
   if (r.v !== 2) return { ...base, ...r, lib: Math.max(240, r.lib - 44), spec: Math.max(240, r.spec - 44), v: 2 };
@@ -95,7 +95,8 @@ export const store = createStore({
   tour: null, // { id, step }
 });
 
-if (shared || sharedLinkBroken) history.replaceState(null, '', location.pathname + location.hash);
+// Mark the page this visit opened on (a shared link drops its ?d= too), so goBack() knows there is no earlier app page.
+history.replaceState({ entry: true }, '', shared || sharedLinkBroken ? location.pathname + location.hash : location.href);
 
 store.subscribe((s) => {
   save('mar.design', s.design);
@@ -164,14 +165,15 @@ export function setRails(patch) {
 
 // ── Page transitions ──────────────────────────────────────────
 // Screens sit in a row, landing → start → studio → try on → review. A curtain (page colour, drafting grid, an
-// accent leading edge) sweeps across in one continuous move in the direction you are going: it speeds up as it
-// covers the screen, the page swaps at the instant it is fully covered, and it carries straight on out the other
-// side. The content itself never animates, so text and images cannot flicker. Clicking again mid-sweep closes it
-// at once and swaps once more.
+// accent leading edge) sweeps in from the side you are heading to, rests while the new page renders, then sweeps
+// on out the other side. The content itself never animates, so text and images cannot flicker. Clicking again
+// mid-sweep closes it at once and swaps once more.
 const ORDER = ['landing', 'start', 'studio', 'tryon', 'review'];
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-// The two halves use mirrored easings, so the speed at the swap is the same on both sides: no stop, no jolt.
-const HALF = 230, EASE_IN = 'cubic-bezier(0.5, 0, 0.75, 0)', EASE_OUT = 'cubic-bezier(0.25, 1, 0.5, 1)';
+// Building a screen (its 3D viewer, shaders, first ring) holds the main thread for 0.1–0.6 s, so the curtain cannot
+// pass straight through at full speed: it would freeze mid-swing. Both moves start and end at rest instead, so that
+// pause reads as the curtain settling, however long it is.
+const HALF = 240, EASE = 'cubic-bezier(0.65, 0, 0.35, 1)';
 let curtain = null, phase = 'idle', pending = null, timer = 0, cycle = 0;
 
 function getCurtain() {
@@ -211,7 +213,7 @@ export function transition(dir, update) {
   if (phase === 'idle') {
     phase = 'covering';
     c.classList.add('on');
-    slide(dir === 'forward' ? '100%' : '-100%', '0%', HALF, EASE_IN, () => swap(dir));
+    slide(dir === 'forward' ? '100%' : '-100%', '0%', HALF, EASE, () => swap(dir));
   } else {
     // covered or already wiping away: close it again at once and swap
     ++cycle;
@@ -224,30 +226,65 @@ export function transition(dir, update) {
 
 function swap(dir) {
   phase = 'covered';
-  const run = pending;
+  const run = pending, mine = cycle;
   pending = null;
   run?.();
-  // carry straight on out the far side (the new page renders before the next frame, so it is there to reveal)
-  phase = 'revealing';
-  slide('0%', dir === 'forward' ? '-100%' : '100%', HALF, EASE_OUT, () => {
-    phase = 'idle';
-    curtain.classList.remove('on');
-  });
+  // Reveal once the new page has painted and its effects (3D viewer, first build) have run, so that work happens
+  // behind the curtain instead of during the sweep. A newer click (cycle moved on) takes over from here.
+  requestAnimationFrame(() => setTimeout(() => requestAnimationFrame(() => {
+    if (mine !== cycle) return;
+    phase = 'revealing';
+    slide('0%', dir === 'forward' ? '-100%' : '100%', HALF, EASE, () => {
+      phase = 'idle';
+      curtain.classList.remove('on');
+    });
+  })));
 }
 
 window.addEventListener('hashchange', () => {
   const next = screenFromHash(), prev = store.get().screen;
-  if (next === prev) return;
+  if (next === prev) {
+    // Same page, new address (e.g. "#" or "#/landing" while on the landing): glide to the top instead of jumping
+    if (next === 'landing' && !document.getElementById(location.hash.slice(1))) {
+      window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    return;
+  }
   transition(ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'forward' : 'back', () => {
-    store.set({ screen: next });
+    store.set({ screen: screenFromHash() }); // the address at swap time, in case it changed again mid-sweep
     window.scrollTo(0, 0);
+    requestAnimationFrame(focusHeading);
   });
 });
 
 // ── Navigation ────────────────────────────────────────────────
+/** Focus the new screen's heading, so keyboard and screen-reader users start at the top of what changed. */
+export function focusHeading() {
+  const h = document.querySelector('h1');
+  if (!h) return;
+  h.setAttribute('tabindex', '-1');
+  h.focus({ preventScroll: true });
+}
+
 export function go(screen) {
   if (location.hash !== `#/${screen}`) location.hash = `#/${screen}`;
   else store.set({ screen });
+}
+
+/** Straight to drawing: a blank band in the studio with the pattern editor already open (keeps the ring size). */
+export function drawPattern() {
+  applyTemplate('blank', { silent: true });
+  go('studio');
+  store.set({ editor: { zone: 'middle' } });
+}
+
+/** Back to the page you came from. On the first page of a visit (a shared link, a bookmark) it goes one step back in the flow instead of leaving the site. */
+export function goBack() {
+  if (!history.state?.entry) return history.back();
+  const prev = ORDER[Math.max(0, ORDER.indexOf(store.get().screen) - 1)];
+  // Replace rather than push, so Back never bounces between two pages.
+  history.replaceState({ entry: true }, '', `#/${prev}`);
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
 }
 
 // ── Patterns ──────────────────────────────────────────────────

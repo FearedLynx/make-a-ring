@@ -16,8 +16,9 @@ import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { runChecks, estimate, money } from '../lib/checks.js';
-import { store, go, patternById } from '../state.js';
+import { store, go, patternById, announce, toast } from '../state.js';
 import { chime } from '../lib/sound.js';
+import { ringCard } from '../lib/ring-card.js';
 
 const FORMATS = [
   { id: 'stl', name: 'STL', desc: 'Works with every slicer and casting house.' },
@@ -219,9 +220,52 @@ export function Review() {
   const size = sizeSummary(design.sizeUS);
   const price = estimate(design);
   const { errors } = runChecks(design, patternById);
+  const ready = errors === 0;
+  // Arriving with every check passed is the end of the job: say so, once.
+  useEffect(() => {
+    if (ready) announce('Ready to print. Every printability check passes.');
+  }, [ready]);
   const pn = (z) => patternById(design.patterns[z])?.name;
   const layout = LAYOUTS[design.layout];
   const hasZ = (z) => layout.zones.some((x) => x.id === z);
+
+  // The card always shows the ring from the default three-quarter view, whatever angle the turntable is at.
+  const frontSnapshot = (v) => {
+    const pos = v.camera.position.clone();
+    v.resetView();
+    const png = v.snapshot();
+    v.camera.position.copy(pos);
+    v.controls?.update();
+    return png;
+  };
+  // Ring card: the sheet as one PNG. Phones get the share sheet; elsewhere it downloads.
+  const [cardBusy, setCardBusy] = useState(false);
+  const saveCard = async () => {
+    if (!viewer.current) return;
+    setCardBusy(true);
+    try {
+      const blob = await ringCard({
+        snapshot: frontSnapshot(viewer.current),
+        name,
+        rows: [['Layout', layout.name], ['Material', m.name], ['Size', `US ${size.us} · Ø ${size.diameter.toFixed(1)}`], ['Finish', design.finish], ['Weight', `≈ ${price.grams.toFixed(1)} g`], ['Est.', money(price.total)]],
+        dims: { outer: size.diameter + 2 * design.thickness, width: design.width },
+        stamp: ready ? { ok: true, title: 'READY', sub: 'TO PRINT' } : { ok: false, title: `${errors} TO FIX`, sub: 'BEFORE PRINTING' },
+      });
+      const file = new File([blob], `${(name || 'ring').trim().replace(/[^\w-]+/g, '-').toLowerCase() || 'ring'}-card.png`, { type: 'image/png' });
+      if (document.documentElement.dataset.input === 'touch' && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: name || 'My ring' }).catch(() => {});
+      } else {
+        const url = URL.createObjectURL(file);
+        save({ url, name: file.name });
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        toast('Ring card saved as a PNG');
+      }
+    } catch {
+      toast('The ring card could not be drawn on this device');
+    } finally {
+      setCardBusy(false);
+    }
+  };
 
   const engr = engravingLayout(design);
   const rows = [
@@ -243,26 +287,45 @@ export function Review() {
     <${TopBar} />
     <main class="review" id="main">
       <section class="review-hero">
-        <span class="reg tl" aria-hidden="true"></span><span class="reg tr" aria-hidden="true"></span>
-        <span class="reg bl" aria-hidden="true"></span><span class="reg br" aria-hidden="true"></span>
+        <div class="review-title">
+          <span class="eyebrow">Step 04 · Files</span>
+          <h1>${name || 'Untitled ring'}</h1>
+        </div>
         <div class="review-ring">
+          <span class="reg tl" aria-hidden="true"></span><span class="reg tr" aria-hidden="true"></span>
+          <span class="reg bl" aria-hidden="true"></span><span class="reg br" aria-hidden="true"></span>
           <${RingView} design=${design} mode="hero" zoom autoRotate onViewer=${(v) => (viewer.current = v)}
             label="3D ring. Drag to rotate, scroll or use the buttons to zoom." />
+          <svg class="lp-dims review-dims" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="22" x2="78" y1="92" y2="92" /><line x1="22" x2="22" y1="89" y2="95" /><line x1="78" x2="78" y1="89" y2="95" />
+            <line x1="92" x2="92" y1="22" y2="72" /><line x1="89" x2="95" y1="22" y2="22" /><line x1="89" x2="95" y1="72" y2="72" />
+          </svg>
+          <span class="lp-dim-label review-dim h">Ø ${(size.diameter + 2 * design.thickness).toFixed(1)} mm</span>
+          <span class="lp-dim-label review-dim v">${design.width.toFixed(1)} mm</span>
           <div class="review-zoom" role="group" aria-label="Zoom">
             <button class="icon-btn" onClick=${() => viewer.current?.zoomBy(0.8)} aria-label="Zoom in" title="Zoom in"><${Icon} name="plus" /></button>
             <button class="icon-btn" onClick=${() => viewer.current?.zoomBy(1.25)} aria-label="Zoom out" title="Zoom out"><${Icon} name="minus" /></button>
             <button class="icon-btn" onClick=${() => viewer.current?.resetView()} aria-label="Reset view" title="Reset view"><${Icon} name="recenter" /></button>
           </div>
         </div>
-        <div class="review-title">
-          <span class="eyebrow">Your design</span>
-          <h1>${name || 'Untitled ring'}</h1>
-          <p class="muted">${m.name} · US ${size.us} · ${design.width} mm</p>
+        <div class="review-sheet">
+          <dl class="title-block review-tb">
+            <div><dt>Layout</dt><dd>${layout.name}</dd></div>
+            <div><dt>Material</dt><dd>${m.name}</dd></div>
+            <div><dt>Size</dt><dd>US ${size.us} · Ø ${size.diameter.toFixed(1)}</dd></div>
+            <div><dt>Finish</dt><dd>${design.finish}</dd></div>
+            <div><dt>Weight</dt><dd>≈ ${price.grams.toFixed(1)} g</dd></div>
+            <div><dt>Est.</dt><dd>${money(price.total)}</dd></div>
+          </dl>
+          ${ready
+            ? html`<p key="ready" class="ready-stamp" aria-hidden="true"><span>Ready</span><span>to print</span></p>`
+            : html`<p key=${`todo-${errors}`} class="ready-stamp todo" aria-hidden="true"><span>${errors} to fix</span><span>before printing</span></p>`}
         </div>
         <${BandMap} design=${design} getPattern=${patternById} className="review-band" />
         <div class="review-actions">
           <button class="btn ghost" onClick=${() => go('studio')}><${Icon} name="pen" size=${15} /> Edit design</button>
           <button class="btn ghost" onClick=${copyShareLink}><${Icon} name="share" size=${15} /> Copy share link</button>
+          <button class="btn ghost" onClick=${saveCard} disabled=${cardBusy}><${Icon} name="file" size=${15} /> ${cardBusy ? 'Drawing…' : 'Save ring card'}</button>
         </div>
       </section>
 
@@ -280,13 +343,6 @@ export function Review() {
             <li><strong>Finish</strong> by polishing or plating, then wear it.</li>
           </ol>
         </div>
-        <div class="card review-sheet">
-          <h2>Specification</h2>
-          <dl class="title-block review-tb">
-            <div class="tb-wide"><dt class="sr-only">Part</dt><dd class="tb-name">${name || 'Untitled ring'}</dd><span class="tb-sheet-n">Sheet 3 / 3</span></div>
-            ${sheetCells(rows).map(({ k, v, span }) => html`<div style=${`grid-column: span ${span}`}><dt>${k}</dt><dd>${v}</dd></div>`)}
-          </dl>
-        </div>
 
         <div class="card">
           <h2>Printability</h2>
@@ -302,9 +358,20 @@ export function Review() {
           <p class="muted small">${price.leadDays ? `A casting house or print service typically takes about ${price.leadDays} days.` : 'Print it yourself today. Plate it later if you like.'} An estimate, not a quote: shipping and tax are not included.</p>
         </div>
 
+        <details class="card spec-card">
+          <summary><h2>Full specification</h2><${Icon} name="down" size=${16} /></summary>
+          <dl class="title-block review-tb">
+            ${sheetCells(rows).map(({ k, v, span }) => html`<div style=${`grid-column: span ${span}`}><dt>${k}</dt><dd>${v}</dd></div>`)}
+          </dl>
+        </details>
         <${StepNav} back=${{ to: 'tryon', label: 'Try on' }} />
       </section>
     </main>
+    <div class="files-bar">
+      <button class="btn primary full" disabled=${errors > 0} onClick=${() => store.set({ exportOpen: true })}>
+        <${Icon} name="download" size=${16} /> ${errors > 0 ? `Fix ${errors} check${errors > 1 ? 's' : ''} to download` : 'Download print files'}
+      </button>
+    </div>
     <${ExportModal} open=${exportOpen} onClose=${() => store.set({ exportOpen: false })} design=${design} name=${name} rows=${rows} />
   </div>`;
 }

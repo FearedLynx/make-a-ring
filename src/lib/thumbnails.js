@@ -26,6 +26,8 @@ function pump() {
   if (busy || !queue.length) return;
   busy = true;
   const run = () => {
+    // Wait out a page transition: a 100 ms render would lengthen the pause behind the curtain or jolt its sweep.
+    if (document.querySelector('.curtain.on')) return void setTimeout(run, 120);
     const job = queue.shift();
     if (!cache.has(job.key)) {
       const v = getViewer();

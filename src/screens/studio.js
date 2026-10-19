@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../lib/html.js';
+import { Icon } from '../components/ui.js';
 import { TopBar } from '../components/topbar.js';
 import { Stage } from '../components/stage.js';
 import { Library, LibStrip } from '../components/library.js';
-import { Specs, SpecStrip } from '../components/specs.js';
-import { store, setRails, startTour, tourDone, RAIL_DEFAULTS } from '../state.js';
+import { Specs, SpecStrip, PriceCard } from '../components/specs.js';
+import { store, setRails, RAIL_DEFAULTS } from '../state.js';
 
 const MIN = 240, MAX = 520;
 const uiScaleNow = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
@@ -45,6 +46,17 @@ const STRIP = 44;
 export function Studio() {
   const [panel, setPanel] = useState('specs');
   const rails = store.use((s) => s.rails);
+  const ringName = store.use((s) => s.ringName);
+  // Phones: the panels sit under the stage. Picking one scrolls it up under the app bar, so it is in view at once.
+  const showPanel = (p, rails) => {
+    setPanel(p);
+    setRails(rails);
+    requestAnimationFrame(() => {
+      const tabs = document.querySelector('.mobile-tabs');
+      const bar = document.querySelector('.topbar')?.offsetHeight || 0;
+      if (tabs) window.scrollTo({ top: tabs.getBoundingClientRect().top + scrollY - bar, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    });
+  };
   const openEditor = (base) => store.set({ editor: { base, zone: store.get().libZone === 'side' ? 'side' : 'middle' } });
 
   useEffect(() => {
@@ -63,13 +75,7 @@ export function Studio() {
       }
     };
     window.addEventListener('keydown', onKey);
-    // First visit: walk through the studio.
-    // (not while the pattern editor is open, e.g. arriving from "Draw your own": the editor has its own tour)
-    const t = !tourDone('studio') && setTimeout(() => !store.get().editor && startTour('studio'), 700);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      clearTimeout(t);
-    };
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   // Panel widths scale with the fit-to-screen UI scale (--ui), like everything drawn inside them.
@@ -78,6 +84,7 @@ export function Studio() {
   return html`<div class="app-shell">
     <${TopBar} />
     <main class=${'studio panel-' + panel} id="main" style=${`--studio-cols:${cols}`}>
+      <h1 class="sr-only">Design studio: ${ringName || 'Untitled ring'}</h1>
       <div class=${'rail-wrap lib' + (rails.libOpen ? '' : ' collapsed')}>
         <${LibStrip} />
         ${rails.libOpen && html`<${Library} onDraw=${openEditor} onHide=${() => setRails({ libOpen: false })} /><${Resizer} side="lib" />`}
@@ -88,9 +95,14 @@ export function Studio() {
         <${SpecStrip} />
       </div>
       <nav class="mobile-tabs" aria-label="Studio panels">
-        <button class=${panel === 'library' ? 'on' : ''} aria-pressed=${panel === 'library'} onClick=${() => (setPanel('library'), setRails({ libOpen: true }))}>Patterns & templates</button>
-        <button class=${panel === 'specs' ? 'on' : ''} aria-pressed=${panel === 'specs'} onClick=${() => (setPanel('specs'), setRails({ specOpen: true }))}>Size, material & checks</button>
+        <button class=${panel === 'library' ? 'on' : ''} aria-pressed=${panel === 'library'} onClick=${() => showPanel('library', { libOpen: true })}>
+          <${Icon} name="pattern" size=${16} /> Patterns
+        </button>
+        <button class=${panel === 'specs' ? 'on' : ''} aria-pressed=${panel === 'specs'} onClick=${() => showPanel('specs', { specOpen: true })}>
+          <${Icon} name="band" size=${16} /> Your ring
+        </button>
       </nav>
+      <div class="studio-dock"><${PriceCard} onChecks=${() => showPanel('specs', { specOpen: true, specCat: 'checks' })} /></div>
     </main>
   </div>`;
 }

@@ -172,6 +172,25 @@ function EngravingPreview({ design, L }) {
   </figure>`;
 }
 
+/** Materials in their groups, each with its name. The studio and try-on share it. */
+export function MaterialPicker({ design }) {
+  const groups = [...new Set(MATERIALS.map((x) => x.group))];
+  return groups.map(
+    (g) => html`<div class="mat-group">
+      <span class="field-label">${g}</span>
+      <div class="swatches" role="radiogroup" aria-label=${g}>
+        ${MATERIALS.filter((x) => x.group === g).map(
+          (x) => html`<button role="radio" aria-checked=${design.materialId === x.id} class=${'swatch' + (design.materialId === x.id ? ' on' : '')}
+            onClick=${() => setDesign({ materialId: x.id })} title=${x.name}>
+            <span class="swatch-dot" style=${`--c:${x.color}; --m:${x.metalness}`}></span>
+            <span class="swatch-name">${x.name}</span>
+          </button>`
+        )}
+      </div>
+    </div>`
+  );
+}
+
 export const SPEC_CATS = [
   { id: 'size', label: 'Size', icon: 'ruler' },
   { id: 'layout', label: 'Layout', icon: 'layout' },
@@ -201,6 +220,26 @@ export function SpecStrip() {
     onPick=${(id) => setRails({ specCat: id, specOpen: true })} onClose=${() => setRails({ specOpen: false })} />`;
 }
 
+/** Price, printability and the next step. In the specs panel on wide screens; docked to the bottom of the studio on phones. */
+export function PriceCard({ className = '', onChecks }) {
+  const design = store.use((s) => s.design);
+  store.use((s) => s.customPatterns);
+  const status = checkStatus(design);
+  const price = estimate(design);
+  return html`<div class=${'price-card ' + className}>
+      <button class=${'check-chip ' + status.level} onClick=${() => (onChecks ? onChecks() : setRails({ specCat: 'checks', specOpen: true }))}
+        aria-label=${`Printability: ${status.text}. Show checks`} title="Show printability checks">
+        <${Icon} name=${status.level === 'ok' ? 'check' : 'alert'} size=${12} /> ${status.level === 'ok' ? 'Printable' : status.text}
+      </button>
+      <div>
+        <span class="price-meta"><span class="muted">Estimated</span></span>
+        <strong class="price">${money(price.total)}</strong>
+        <span class="muted small">Estimate, not a quote</span>
+      </div>
+      <button class="btn primary" onClick=${() => go('tryon')}>Try it on <${Icon} name="right" size=${16} /></button>
+    </div>`;
+}
+
 export function Specs({ onHide }) {
   const design = store.use((s) => s.design);
   store.use((s) => s.customPatterns);
@@ -211,17 +250,19 @@ export function Specs({ onHide }) {
   const nat = (id) => zones.find((z) => z.id === id && z.pattern)?.repeats;
   const status = checkStatus(design);
   const price = estimate(design);
-  const groups = [...new Set(MATERIALS.map((x) => x.group))];
-  const title = SPEC_CATS.find((c) => c.id === cat)?.label;
-
-  return html`<aside class="rail specs" aria-label="Ring specifications">
-    <div class="rail-title">
-      <span>${title}</span>
-      ${onHide && html`<button class="rail-hide" onClick=${onHide} aria-label="Hide specs panel" title="Hide panel (])"><${Icon} name="panelR" size=${16} /></button>`}
-    </div>
-    <div class="rail-body" id="spec-panel" role="tabpanel" aria-labelledby=${`spec-tab-${cat}`} key=${cat}>
-      ${cat === 'size' &&
-      html`<section class="spec-sec">
+  // Every category shows its current value, so the whole ring reads at a glance; one opens at a time.
+  const engr = engravingLayout(design);
+  const values = {
+    size: `US ${size.us} · Ø ${size.diameter.toFixed(1)} mm`,
+    layout: LAYOUTS[design.layout].name,
+    band: `${design.width} mm · ${design.profile}`,
+    material: `${m.name} · ${design.finish}`,
+    engraving: engr ? `“${engr.text}”` : 'None',
+    checks: status.text,
+  };
+  const toggle = (id) => setRails({ specCat: cat === id ? 'none' : id, specOpen: true });
+  const bodies = {
+    size: () => html`<section class="spec-sec">
         <h3 class="sr-only">Size</h3>
         <div class="size-display">
           <span class="size-big">US ${size.us}</span>
@@ -231,20 +272,16 @@ export function Specs({ onHide }) {
           format=${fmtUs} onInput=${(v) => (tick(), setDesign({ sizeUS: v }))} />
         <button class="btn ghost sm size-find" onClick=${() => store.set({ sizeFinderOpen: true })}><${Icon} name="ruler" size=${14} /> Find my size</button>
         <div class="spec-drawing"><${SizeDrawing} sizeUS=${design.sizeUS} onChange=${(v) => setDesign({ sizeUS: v })} /></div>
-      </section>`}
-
-      ${cat === 'layout' &&
-      html`<section class="spec-sec" id="spec-layout">
+      </section>`,
+    layout: () => html`<section class="spec-sec" id="spec-layout">
         <h3 class="sr-only">Layout</h3>
         <${Segmented} label="Layout" size="full layout-seg" value=${design.layout}
           options=${Object.keys(LAYOUTS).map((id) => ({ value: id, title: LAYOUTS[id].hint, node: html`${layoutIcon(id)}<span>${LAYOUTS[id].name}</span>` }))}
           onChange=${(v) => setDesign({ layout: v })} />
         <p class="hint">${LAYOUTS[design.layout].hint}</p>
         <${SplitControl} design=${design} />
-      </section>`}
-
-      ${cat === 'band' &&
-      html`<section class="spec-sec">
+      </section>`,
+    band: () => html`<section class="spec-sec">
         <h3>Band</h3>
         <${Slider} label="Width" value=${design.width} min=${2} max=${12} step=${0.5} onInput=${(v) => setDesign({ width: v })} />
         <${Slider} label="Thickness" value=${design.thickness} min=${1} max=${3} step=${0.1} onInput=${(v) => setDesign({ thickness: +v.toFixed(1) })} />
@@ -264,25 +301,10 @@ export function Specs({ onHide }) {
         <${Slider} label="Depth" value=${design.relief} min=${0.1} max=${0.7} step=${0.05} onInput=${(v) => setDesign({ relief: +v.toFixed(2) })} />
         ${hasMiddle(design.layout) && nat('middle') && html`<${Repeats} label="Middle repeats" axis="middle" design=${design} natural=${nat('middle')} />`}
         ${hasSides(design.layout) && (nat('sideL') || nat('sideR')) && html`<${Repeats} label="Side repeats" axis="side" design=${design} natural=${nat('sideL') || nat('sideR')} />`}
-      </section>`}
-
-      ${cat === 'material' &&
-      html`<section class="spec-sec">
+      </section>`,
+    material: () => html`<section class="spec-sec">
         <h3 class="sr-only">Material</h3>
-        ${groups.map(
-          (g) => html`<div class="mat-group">
-            <span class="field-label">${g}</span>
-            <div class="swatches" role="radiogroup" aria-label=${g}>
-              ${MATERIALS.filter((x) => x.group === g).map(
-                (x) => html`<button role="radio" aria-checked=${design.materialId === x.id} class=${'swatch' + (design.materialId === x.id ? ' on' : '')}
-                  onClick=${() => setDesign({ materialId: x.id })} title=${x.name}>
-                  <span class="swatch-dot" style=${`--c:${x.color}; --m:${x.metalness}`}></span>
-                  <span class="swatch-name">${x.name}</span>
-                </button>`
-              )}
-            </div>
-          </div>`
-        )}
+        <${MaterialPicker} design=${design} />
         <p class="mat-process"><strong>${m.process}</strong> · min wall ${m.minWall} mm · min detail ${m.minDetail} mm
           ${m.leadDays ? ` · typically ~${m.leadDays} days at a service` : ' · print it yourself'}</p>
         ${m.platable &&
@@ -294,33 +316,40 @@ export function Specs({ onHide }) {
         <${Segmented} label="Finish" size="full" value=${design.finish}
           options=${[{ value: 'polished', label: 'Polished' }, { value: 'satin', label: 'Satin' }, ...(m.metalness || (m.platable && design.plating !== 'none') ? [{ value: 'antique', label: 'Antique' }] : [])]}
           onChange=${(v) => setDesign({ finish: v })} />
-      </section>`}
-
-      ${cat === 'engraving' && html`<${EngravingPanel} design=${design} />`}
-
-      ${cat === 'checks' &&
-      html`<section class="spec-sec" id="spec-checks" aria-labelledby="checks-h">
+      </section>`,
+    engraving: () => html`<${EngravingPanel} design=${design} />`,
+    checks: () => html`<section class="spec-sec" id="spec-checks" aria-labelledby="checks-h">
         <div class="spec-head">
           <h3 id="checks-h" class="sr-only">Printability</h3>
           <span class=${'pill ' + status.level}>${status.text}</span>
         </div>
         <${ChecksList} design=${design} />
-      </section>`}
+      </section>`,
+  };
+
+  return html`<aside class="rail specs" aria-label="Ring specifications">
+    <div class="rail-title">
+      <span>Your ring</span>
+      ${onHide && html`<button class="rail-hide" onClick=${onHide} aria-label="Hide specs panel" title="Hide panel (])"><${Icon} name="panelR" size=${16} /></button>`}
+    </div>
+    <div class="rail-body spec-acc" id="spec-panel">
+      ${SPEC_CATS.map(
+        (c) => html`<div class=${'acc' + (cat === c.id ? ' open' : '')} key=${c.id}>
+          <h2 class="acc-h">
+            <button class="acc-head" id=${`spec-acc-${c.id}`} aria-expanded=${cat === c.id} aria-controls=${`spec-sec-${c.id}`} onClick=${() => toggle(c.id)}>
+              <${Icon} name=${c.icon} size=${16} />
+              <span class="acc-text">
+                <span class="acc-label">${c.label}</span>
+                <span class=${'acc-val' + (c.id === 'checks' ? ' ' + status.level : '')}>${values[c.id]}</span>
+              </span>
+              <${Icon} name="down" size=${14} />
+            </button>
+          </h2>
+          ${cat === c.id && html`<div class="acc-body" id=${`spec-sec-${c.id}`} role="region" aria-labelledby=${`spec-acc-${c.id}`}>${bodies[c.id]()}</div>`}
+        </div>`
+      )}
     </div>
 
-    <div class="price-card">
-      <div>
-        <span class="price-meta">
-          <span class="muted">Estimated</span>
-          <button class=${'check-chip ' + status.level} onClick=${() => setRails({ specCat: 'checks', specOpen: true })}
-            aria-label=${`Printability: ${status.text}. Show checks`} title="Show printability checks">
-            <${Icon} name=${status.level === 'ok' ? 'check' : 'alert'} size=${12} /> ${status.level === 'ok' ? 'Printable' : status.text}
-          </button>
-        </span>
-        <strong class="price">${money(price.total)}</strong>
-        <span class="muted small">Estimate, not a quote</span>
-      </div>
-      <button class="btn primary" onClick=${() => go('tryon')}>Try it on <${Icon} name="right" size=${16} /></button>
-    </div>
+    <${PriceCard} />
   </aside>`;
 }

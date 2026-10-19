@@ -90,7 +90,7 @@ export const TOURS = {
   ],
   editor: [
     {
-      target: '.ed-canvas', anim: 'draw', detect: 'drawn', allowKeys: '*',
+      target: '.ed-canvas', anim: 'draw', detect: 'drawn', allowKeys: '*', avoid: '.ed-preview',
       title: 'Draw one tile',
       body: () => 'Whatever you draw here repeats around the ring. The faded copies on either side show where the next tiles join. Try a quick squiggle.',
       more: touch() ? null : 'Keyboard: arrow keys move the cursor, Enter places a point, Esc finishes a line.',
@@ -142,9 +142,12 @@ export const TOURS = {
   ],
 };
 
-function placeCard(r, card) {
+function placeCard(r, card, avoid) {
   const m = 14, vw = innerWidth, vh = innerHeight;
   const cw = card?.offsetWidth || 360, ch = card?.offsetHeight || 260;
+  // A step can name a part the card must never cover (the editor's live ring): then it sits in the lower-left corner of the target.
+  const a = avoid && document.querySelector(avoid)?.getBoundingClientRect();
+  if (a && a.width && r.right + m + cw > a.left && r.bottom + m + ch > vh) return { top: Math.max(m, vh - ch - m), left: Math.max(m, r.left) };
   let top, left;
   if (r.bottom + m + ch < vh) top = r.bottom + m;
   else if (r.top - m - ch > 0) top = r.top - m - ch;
@@ -273,7 +276,7 @@ export function Tour() {
   }, [tour?.id, i, skipAsk, final]);
 
   useLayoutEffect(() => {
-    if (rect) setPos(placeCard(rect, card.current));
+    if (rect) setPos(placeCard(rect, card.current, step?.avoid));
   }, [rect, i, !!doneMsg]); // not on skipAsk: the confirmation appears in place, the card does not jump
 
   useEffect(() => {

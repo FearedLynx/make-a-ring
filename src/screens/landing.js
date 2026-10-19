@@ -223,7 +223,7 @@ export function Landing() {
 
     <footer class="lp-foot">
       <dl class="title-block foot">
-        <div><dt>Project</dt><dd>Make-a-Ring</dd></div>
+        <div><dt>Project</dt><dd>Make-a-Ring™</dd></div>
         <div><dt>For</dt><dd>HyperBloom October 2026</dd></div>
         <div><dt>Status</dt><dd>Frontend prototype</dd></div>
         <div><dt>Note</dt><dd>Prices are illustrative estimates</dd></div>

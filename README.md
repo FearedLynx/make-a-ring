@@ -1,4 +1,4 @@
-# Make-a-Ring
+# Make-a-Ring™
 
 **Draw one tile. It wraps your ring. You download the file.**
 
@@ -112,5 +112,6 @@ it in a business. To ask, open an issue on this repository.
 
 **Name, logo and brand.** The license covers using the software. It does not give anyone the right to use the
 Make-a-Ring name, the logo or the visual identity in `brand/`; those stay with the authors.
+The look of the interface is recorded in [`docs/design-record/`](docs/design-record/RECORD.md).
 
 This summary is only for convenience; [LICENSE.md](LICENSE.md) is what applies.

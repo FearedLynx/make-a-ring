@@ -107,4 +107,7 @@ learning, research, hobby use, and use by charities, schools and public institut
 written permission from both authors**: selling it or a product built on it, running it as a paid service, or using
 it in a business. To ask, open an issue on this repository.
 
+**Name, logo and brand.** The license covers using the software. It does not give anyone the right to use the
+Make-a-Ring name, the logo or the visual identity in `brand/`; those stay with the authors.
+
 This summary is only for convenience; [LICENSE.md](LICENSE.md) is what applies.
